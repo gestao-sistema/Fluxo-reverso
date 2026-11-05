@@ -1,0 +1,495 @@
+/* REVERSO — fonte única de tokens visuais.
+   Todas as folhas (design.css, dashboard.css, approval.css, nc.css, …) consomem
+   estas variáveis. Dois eixos em <html>, aplicados por context/TemaContext.tsx:
+   - data-tema="alinare|novitah|conjunto": empresa da tela;
+   - data-modo="escuro|claro": preferência do usuário (padrão: a do sistema).
+   Os nomes são os mesmos em todas as combinações; só os valores mudam.
+
+   Paleta: proposta de identidade para sistemas (Alinare + Novitah, 26/10/2026;
+   não é manual de marca oficial):
+   - Alinare: azul-noite #25314A (principal), champagne #B79B75 (acento),
+     fundo #F7F6F3, texto #20252E/#343943, borda #E4E0D9;
+   - Novitah: vinho #704653 (principal), rosa envelhecido #AE7D83 (acento),
+     fundo #F9F6F8, texto #2D262A/#443940, borda #EADFE4;
+   - Estados fixos entre empresas (cor da marca ≠ cor de status).
+   A marca aparece no botão principal, na seleção, na navegação (chrome) e nos
+   títulos; o resto da interface é neutro.
+
+   Contraste: texto principal ≥ 7:1 e demais textos ≥ 4,5:1 sobre as
+   superfícies, mesmo no pior caso do fundo (conferido no navegador).
+   Não defina cor, raio, sombra ou tempo literal fora deste arquivo; se faltar um
+   token, adicione-o aqui. */
+
+:root {
+  /* Tipografia: serifada só em títulos; sans em formulários, tabelas e números */
+  --flow-font-sans: 'DM Sans', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --flow-font-serif: 'Cormorant Garamond', 'Cormorant', Georgia, 'Times New Roman', serif;
+  --flow-tracking-eyebrow: .14em;
+  /* Peso dos títulos serifados: 600 lê melhor que o traço fino do 500 */
+  --flow-peso-titulo: 600;
+
+  /* Espaçamento */
+  --flow-space-1: 4px;
+  --flow-space-2: 8px;
+  --flow-space-3: 12px;
+  --flow-space-4: 16px;
+  --flow-space-5: 20px;
+  --flow-space-6: 24px;
+  --flow-space-8: 32px;
+  --flow-space-10: 40px;
+  --flow-gutter: clamp(16px, 3.2vw, 48px);
+  --flow-content-max: 1400px;
+  --flow-form-max: 880px;
+
+  /* Raios */
+  --flow-radius-panel: 20px;
+  --flow-radius-card: 16px;
+  --flow-radius-control: 11px;
+  --flow-radius-pill: 999px;
+
+  /* Acabamento do acesso: ouro champagne e filete animado do card */
+  --flow-login-radius: 18px;
+  --flow-login-trace-duration: 5s;
+  --flow-login-bg-filter: contrast(1.12) saturate(1.1) brightness(1.04);
+  --flow-login-border: rgba(210, 176, 120, .3);
+  --flow-login-trace-edge: #c9a66b;
+  --flow-login-trace-highlight: #fff3cd;
+  --flow-login-trace-return: #d5ad73;
+  --flow-login-trace-filter: drop-shadow(0 0 6px rgba(216, 172, 104, .72));
+  --flow-login-trace-filter-hover: drop-shadow(0 0 10px rgba(243, 212, 157, .88));
+
+  /* Vidro: um único nível de blur por pilha de superfícies */
+  --flow-glass-blur: 18px;
+  --flow-glass-saturate: 1.12;
+
+  /* Foco visível: anel largo, fácil de achar */
+  --flow-foco-largura: 3px;
+
+  /* Movimento: hover 120–160 ms; transições 180–220 ms */
+  --flow-motion-hover: 140ms;
+  --flow-motion: 200ms;
+  --flow-ease: cubic-bezier(.2, .7, .2, 1);
+
+  /* Dimensões de shell */
+  --flow-topbar-height: 88px;
+  --flow-nav-height: 68px;
+  --flow-nav-gap: 16px;
+  --flow-safe-bottom: env(safe-area-inset-bottom, 0px);
+
+  /* Camadas, de baixo para cima. O fundo (-1) fica abaixo de todo o conteúdo
+     no contexto raiz; #root não cria contexto próprio (não define z-index). */
+  --flow-z-fundo: -1;
+  --flow-z-topbar: 30;
+  --flow-z-dock: 40;
+  --flow-z-dropdown: 60;
+  --flow-z-modal: 70;
+  --flow-z-toast: 80;
+
+  /* Posição do fundo (o modo claro dos temas de empresa ancora à direita) */
+  --flow-fundo-posicao: center 38%;
+  --flow-fundo-topo: 0px;
+
+  /* Superfície clara para indicadores Novitah no modo escuro (texto escuro) */
+  --flow-surface-light: rgba(249, 246, 248, .93);
+  --flow-text-on-light: #2d262a;
+  --flow-text-on-light-2: #554750;
+  --flow-line-on-light: rgba(255, 255, 255, .6);
+
+  /* Chrome (dock, cápsula do cabeçalho, menu "Mais"): no escuro acompanha as
+     superfícies; no modo claro vira a cor principal da marca. */
+  --flow-chrome: var(--flow-surface);
+  --flow-chrome-text: var(--flow-text-2);
+  --flow-chrome-text-forte: var(--flow-text);
+  --flow-chrome-hover: var(--flow-surface-hover);
+  --flow-chrome-inset: var(--flow-surface-inset);
+  --flow-chrome-line: var(--flow-line-strong);
+  --flow-chrome-ativo-bg: var(--flow-ativo-bg);
+  --flow-chrome-ativo-text: var(--flow-ativo-text);
+  --flow-chrome-ativo-borda: var(--flow-ativo-borda);
+  /* Títulos serifados: no escuro são marfim; no claro, a cor principal da marca */
+  --flow-titulo: var(--flow-text);
+}
+
+/* ══ MODO ESCURO (padrão) ═══════════════════════════════════════════════════ */
+
+/* ── Conjunto: grafite neutro entre as duas marcas, destaque champagne ── */
+:root {
+  color-scheme: dark;
+  --flow-bg: #111217;
+  --flow-particula: 214, 192, 156;
+  --flow-serie-alinare: #d9c4a1;
+  --flow-serie-novitah: #e0b9be;
+
+  --flow-surface: rgba(26, 27, 34, .84);
+  --flow-surface-solid: #1a1b22;
+  --flow-surface-raised: rgba(32, 33, 41, .97);
+  --flow-surface-raised-solid: #202129;
+  --flow-surface-inset: rgba(6, 7, 10, .42);
+  --flow-surface-nested: rgba(240, 232, 220, .05);
+  --flow-surface-hover: rgba(240, 232, 220, .07);
+  --flow-field: rgba(8, 9, 12, .72);
+  --flow-field-solid: #0e0f13;
+  --flow-overlay: rgba(5, 5, 8, .72);
+
+  --flow-text: #f7f6f3;
+  --flow-text-2: #e2ded7;
+  --flow-text-3: #c4bfb6;
+
+  --flow-accent: #dac6a4;
+  --flow-accent-hover: #e8d8bd;
+  --flow-accent-soft: rgba(183, 155, 117, .16);
+  --flow-accent-strong: rgba(183, 155, 117, .38);
+  --flow-fill: linear-gradient(135deg, #cfb790 0%, #b79b75 100%);
+  --flow-fill-hover: linear-gradient(135deg, #dac5a2 0%, #c4a983 100%);
+  --flow-fill-solid: #b79b75;
+  --flow-on-fill: #151f33;
+
+  --flow-line: rgba(228, 224, 217, .18);
+  --flow-line-strong: rgba(228, 224, 217, .34);
+  --flow-edge: rgba(255, 255, 255, .12);
+  --flow-glow: rgba(183, 155, 117, .22);
+
+  --flow-success: #86d3b7;
+  --flow-success-soft: rgba(23, 100, 79, .3);
+  --flow-warning: #f0b872;
+  --flow-warning-soft: rgba(164, 90, 10, .28);
+  --flow-danger: #ff9f96;
+  --flow-danger-deep: #b42318;
+  --flow-danger-soft: rgba(180, 35, 24, .28);
+  --flow-info: #a6c6ee;
+  --flow-info-soft: rgba(39, 91, 154, .3);
+  --flow-violet: #c9b6f0;
+  --flow-orange: #f2ae7e;
+
+  --flow-ativo-bg: linear-gradient(180deg, rgba(183, 155, 117, .36), rgba(183, 155, 117, .14));
+  --flow-ativo-text: #f4e9d6;
+  --flow-ativo-borda: rgba(183, 155, 117, .62);
+
+  --flow-shadow-panel: 0 22px 50px rgba(0, 0, 0, .34), 0 2px 6px rgba(0, 0, 0, .18);
+  --flow-shadow-float: 0 18px 44px rgba(0, 0, 0, .42);
+  --flow-shadow-modal: 0 30px 80px rgba(0, 0, 0, .55);
+  --flow-highlight: inset 0 1px 0 var(--flow-edge);
+  /* Texto pousado direto no cenário (títulos, rótulos de filtro): halo de leitura */
+  --flow-sombra-texto: 0 1px 2px rgba(0, 0, 0, .7), 0 0 20px rgba(0, 0, 0, .6);
+
+  --flow-veu:
+    radial-gradient(ellipse 70% 55% at 50% 42%, rgba(17, 18, 23, .25), rgba(17, 18, 23, .66) 100%),
+    linear-gradient(180deg, rgba(17, 18, 23, .15) 0%, rgba(17, 18, 23, .55) 100%);
+  --flow-brilho: radial-gradient(ellipse 40% 34% at 50% 30%, rgba(240, 222, 190, .18), transparent 70%);
+}
+
+/* ── Alinare: azul-noite profundo e champagne, texto off-white ── */
+:root[data-tema='alinare'] {
+  --flow-bg: #0b1019;
+  --flow-particula: 214, 190, 150;
+
+  --flow-surface: rgba(20, 27, 42, .84);
+  --flow-surface-solid: #141b2a;
+  --flow-surface-raised: rgba(25, 33, 51, .97);
+  --flow-surface-raised-solid: #192133;
+  --flow-surface-inset: rgba(4, 7, 13, .42);
+  --flow-surface-nested: rgba(228, 224, 217, .05);
+  --flow-surface-hover: rgba(183, 155, 117, .1);
+  --flow-field: rgba(6, 9, 16, .72);
+  --flow-field-solid: #0a0e17;
+  --flow-overlay: rgba(3, 5, 10, .72);
+
+  --flow-text: #f7f6f3;
+  --flow-text-2: #e0ddd6;
+  --flow-text-3: #bfbab1;
+
+  --flow-accent: #dac6a4;
+  --flow-accent-hover: #e8d8bd;
+  --flow-accent-soft: rgba(183, 155, 117, .16);
+  --flow-accent-strong: rgba(183, 155, 117, .38);
+  --flow-fill: linear-gradient(135deg, #cfb790 0%, #b79b75 100%);
+  --flow-fill-hover: linear-gradient(135deg, #dac5a2 0%, #c4a983 100%);
+  --flow-fill-solid: #b79b75;
+  --flow-on-fill: #151f33;
+
+  --flow-line: rgba(228, 224, 217, .18);
+  --flow-line-strong: rgba(228, 224, 217, .36);
+  --flow-edge: rgba(255, 255, 255, .12);
+  --flow-glow: rgba(183, 155, 117, .24);
+
+  --flow-ativo-bg: linear-gradient(180deg, rgba(183, 155, 117, .38), rgba(183, 155, 117, .14));
+  --flow-ativo-text: #f4e9d6;
+  --flow-ativo-borda: rgba(183, 155, 117, .64);
+
+  --flow-veu:
+    radial-gradient(ellipse 75% 60% at 55% 45%, rgba(11, 16, 25, .12), rgba(11, 16, 25, .6) 100%),
+    linear-gradient(180deg, rgba(11, 16, 25, .05) 0%, rgba(11, 16, 25, .5) 100%);
+  --flow-brilho: radial-gradient(ellipse 34% 30% at 68% 8%, rgba(228, 208, 172, .18), transparent 70%);
+}
+
+/* ── Novitah: vinho empoeirado e rosa envelhecido ── */
+:root[data-tema='novitah'] {
+  --flow-bg: #1e1418;
+  --flow-particula: 224, 185, 190;
+
+  --flow-surface: rgba(52, 36, 43, .86);
+  --flow-surface-solid: #34242b;
+  --flow-surface-raised: rgba(62, 44, 52, .97);
+  --flow-surface-raised-solid: #3e2c34;
+  --flow-surface-inset: rgba(18, 10, 14, .42);
+  --flow-surface-nested: rgba(243, 230, 235, .05);
+  --flow-surface-hover: rgba(174, 125, 131, .12);
+  --flow-field: rgba(20, 12, 16, .72);
+  --flow-field-solid: #170e12;
+  --flow-overlay: rgba(18, 10, 14, .72);
+
+  --flow-text: #f9f6f8;
+  --flow-text-2: #eadfe4;
+  --flow-text-3: #cfbec6;
+
+  --flow-accent: #e3bdc2;
+  --flow-accent-hover: #efd3d6;
+  --flow-accent-soft: rgba(174, 125, 131, .18);
+  --flow-accent-strong: rgba(174, 125, 131, .4);
+  --flow-fill: linear-gradient(135deg, #865a69 0%, #704653 100%);
+  --flow-fill-hover: linear-gradient(135deg, #946878 0%, #7e5160 100%);
+  --flow-fill-solid: #704653;
+  --flow-on-fill: #ffffff;
+
+  --flow-line: rgba(234, 223, 228, .2);
+  --flow-line-strong: rgba(234, 223, 228, .38);
+  --flow-edge: rgba(255, 255, 255, .12);
+  --flow-glow: rgba(174, 125, 131, .26);
+
+  --flow-ativo-bg: linear-gradient(180deg, #865a69 0%, #5f3a46 100%);
+  --flow-ativo-text: #ffffff;
+  --flow-ativo-borda: rgba(227, 189, 194, .5);
+
+  --flow-veu:
+    radial-gradient(ellipse 75% 60% at 55% 48%, rgba(30, 20, 24, .18), rgba(30, 20, 24, .62) 100%),
+    linear-gradient(180deg, rgba(30, 20, 24, .05) 0%, rgba(30, 20, 24, .52) 100%);
+  --flow-brilho: radial-gradient(ellipse 30% 40% at 30% 20%, rgba(240, 205, 205, .18), transparent 70%);
+}
+
+/* Vista conjunta dentro do app: as duas marcas da imagem ficam à meia altura,
+   atrás do conteúdo; o véu escurece essa faixa para virarem só uma marca-d'água. */
+:root[data-tema='conjunto'][data-contexto='app'] {
+  --flow-veu:
+    linear-gradient(180deg, rgba(17, 18, 23, .34) 0%, rgba(17, 18, 23, .84) 28%, rgba(17, 18, 23, .86) 50%, rgba(17, 18, 23, .55) 72%, rgba(17, 18, 23, .64) 100%);
+  /* Brilho acima da faixa das marcas, para não reacendê-las */
+  --flow-brilho: radial-gradient(ellipse 34% 22% at 52% 6%, rgba(240, 222, 190, .14), transparent 70%);
+}
+
+/* ══ MODO CLARO ═════════════════════════════════════════════════════════════
+   Mais que "branco": três camadas tonais — fundo médio (areia, rosa antigo ou
+   pedra) com o cenário ao fundo, painéis em papel quente e áreas internas no
+   tom do acento; branco só em campos, menus e diálogos (interativo ou elevado).
+   Títulos e botão principal na cor da marca e o chrome (dock + cápsula) sólido
+   na cor principal, com o item ativo no acento. Cada bloco redefine todas as
+   cores para nenhum valor do modo escuro vazar. */
+
+/* ── Conjunto claro: pedra quente, chrome grafite, detalhes champagne ── */
+:root[data-modo='claro'] {
+  color-scheme: light;
+  --flow-bg: #dfdbd3;
+  --flow-particula: 160, 132, 92;
+  --flow-serie-alinare: #25314a;
+  --flow-serie-novitah: #704653;
+
+  --flow-surface: rgba(249, 247, 242, .94);
+  --flow-surface-solid: #f9f7f2;
+  --flow-surface-raised: rgba(255, 254, 251, .99);
+  --flow-surface-raised-solid: #fffefb;
+  --flow-surface-inset: rgba(183, 155, 117, .22);
+  --flow-surface-nested: rgba(42, 46, 56, .045);
+  --flow-surface-hover: rgba(42, 46, 56, .07);
+  --flow-field: rgba(255, 255, 255, .98);
+  --flow-field-solid: #ffffff;
+  --flow-overlay: rgba(21, 24, 32, .45);
+
+  --flow-text: #20252e;
+  --flow-text-2: #343943;
+  --flow-text-3: #4d535e;
+  --flow-titulo: #2a2e38;
+
+  --flow-accent: #765833;
+  --flow-accent-hover: #5c4426;
+  --flow-accent-soft: rgba(183, 155, 117, .18);
+  --flow-accent-strong: rgba(183, 155, 117, .5);
+  --flow-fill: linear-gradient(135deg, #3a3f4c 0%, #2a2e38 100%);
+  --flow-fill-hover: linear-gradient(135deg, #2a2e38 0%, #1c1f26 100%);
+  --flow-fill-solid: #2a2e38;
+  --flow-on-fill: #ffffff;
+
+  --flow-line: rgba(70, 60, 45, .17);
+  --flow-line-strong: rgba(70, 60, 45, .32);
+  --flow-edge: rgba(255, 255, 255, .9);
+  --flow-glow: rgba(42, 46, 56, .16);
+
+  --flow-success: #17644f;
+  --flow-success-soft: rgba(23, 100, 79, .11);
+  --flow-warning: #8f4e09;
+  --flow-warning-soft: rgba(164, 90, 10, .12);
+  --flow-danger: #b42318;
+  --flow-danger-deep: #b42318;
+  --flow-danger-soft: rgba(180, 35, 24, .09);
+  --flow-info: #275b9a;
+  --flow-info-soft: rgba(39, 91, 154, .1);
+  --flow-violet: #573d94;
+  --flow-orange: #8a4612;
+
+  --flow-ativo-bg: linear-gradient(180deg, #3a3f4c 0%, #2a2e38 100%);
+  --flow-ativo-text: #ffffff;
+  --flow-ativo-borda: rgba(20, 22, 28, .55);
+
+  --flow-chrome: rgba(42, 46, 56, .96);
+  --flow-chrome-text: #e6e3dd;
+  --flow-chrome-text-forte: #ffffff;
+  --flow-chrome-hover: rgba(255, 255, 255, .1);
+  --flow-chrome-inset: rgba(255, 255, 255, .09);
+  --flow-chrome-line: rgba(255, 255, 255, .16);
+  --flow-chrome-ativo-bg: linear-gradient(180deg, #cfb790 0%, #b79b75 100%);
+  --flow-chrome-ativo-text: #151f33;
+  --flow-chrome-ativo-borda: rgba(255, 255, 255, .35);
+
+  --flow-shadow-panel: 0 16px 36px rgba(37, 40, 52, .1), 0 2px 6px rgba(37, 40, 52, .06);
+  --flow-shadow-float: 0 16px 36px rgba(37, 40, 52, .2);
+  --flow-shadow-modal: 0 28px 70px rgba(37, 40, 52, .26);
+  --flow-sombra-texto: 0 0 2px rgba(255, 255, 255, .9), 0 0 18px rgba(255, 255, 255, .9);
+
+  --flow-veu:
+    linear-gradient(180deg, rgba(226, 222, 214, .12) 0%, rgba(226, 222, 214, .26) 100%);
+  --flow-brilho: radial-gradient(ellipse 40% 34% at 50% 30%, rgba(255, 255, 255, .45), transparent 70%);
+}
+
+/* ── Alinare claro: canvas #F7F6F3, chrome azul-noite, acento champagne ── */
+:root[data-modo='claro'][data-tema='alinare'] {
+  --flow-bg: #ddd5c6;
+  --flow-particula: 160, 132, 92;
+
+  --flow-surface: rgba(248, 244, 236, .94);
+  --flow-surface-solid: #f8f4ec;
+  --flow-surface-raised: rgba(255, 253, 249, .99);
+  --flow-surface-raised-solid: #fffdf9;
+  --flow-surface-inset: rgba(183, 155, 117, .24);
+  --flow-surface-nested: rgba(37, 49, 74, .045);
+  --flow-surface-hover: rgba(37, 49, 74, .07);
+  --flow-field: rgba(255, 255, 255, .98);
+  --flow-field-solid: #ffffff;
+  --flow-overlay: rgba(21, 31, 51, .45);
+
+  --flow-text: #20252e;
+  --flow-text-2: #343943;
+  --flow-text-3: #4d535e;
+  --flow-titulo: #25314a;
+
+  --flow-accent: #765833;
+  --flow-accent-hover: #5c4426;
+  --flow-accent-soft: rgba(183, 155, 117, .18);
+  --flow-accent-strong: rgba(183, 155, 117, .5);
+  --flow-fill: linear-gradient(135deg, #34446a 0%, #25314a 100%);
+  --flow-fill-hover: linear-gradient(135deg, #25314a 0%, #151f33 100%);
+  --flow-fill-solid: #25314a;
+  --flow-on-fill: #ffffff;
+
+  --flow-line: rgba(37, 49, 74, .16);
+  --flow-line-strong: rgba(37, 49, 74, .32);
+  --flow-edge: rgba(255, 255, 255, .9);
+  --flow-glow: rgba(37, 49, 74, .18);
+
+  --flow-ativo-bg: linear-gradient(180deg, #34446a 0%, #25314a 100%);
+  --flow-ativo-text: #ffffff;
+  --flow-ativo-borda: rgba(21, 31, 51, .6);
+
+  --flow-chrome: rgba(37, 49, 74, .96);
+  --flow-chrome-text: #e3e7ef;
+  --flow-chrome-text-forte: #ffffff;
+  --flow-chrome-hover: rgba(255, 255, 255, .1);
+  --flow-chrome-inset: rgba(255, 255, 255, .09);
+  --flow-chrome-line: rgba(255, 255, 255, .16);
+  --flow-chrome-ativo-bg: linear-gradient(180deg, #cfb790 0%, #b79b75 100%);
+  --flow-chrome-ativo-text: #151f33;
+  --flow-chrome-ativo-borda: rgba(255, 255, 255, .35);
+
+  --flow-shadow-panel: 0 16px 36px rgba(21, 31, 51, .1), 0 2px 6px rgba(21, 31, 51, .06);
+  --flow-shadow-float: 0 16px 36px rgba(21, 31, 51, .22);
+  --flow-shadow-modal: 0 28px 70px rgba(21, 31, 51, .28);
+
+  --flow-veu:
+    linear-gradient(180deg, rgba(226, 218, 203, .12) 0%, rgba(226, 218, 203, .26) 100%);
+  --flow-brilho: radial-gradient(ellipse 34% 30% at 68% 8%, rgba(255, 255, 255, .5), transparent 70%);
+}
+
+/* ── Novitah claro: canvas #F9F6F8, chrome vinho, acento rosa envelhecido ── */
+:root[data-modo='claro'][data-tema='novitah'] {
+  --flow-bg: #e3d1d8;
+  --flow-particula: 170, 120, 128;
+
+  --flow-surface: rgba(250, 243, 246, .94);
+  --flow-surface-solid: #faf3f6;
+  --flow-surface-raised: rgba(255, 252, 253, .99);
+  --flow-surface-raised-solid: #fffcfd;
+  --flow-surface-inset: rgba(174, 125, 131, .24);
+  --flow-surface-nested: rgba(112, 70, 83, .045);
+  --flow-surface-hover: rgba(112, 70, 83, .07);
+  --flow-field: rgba(255, 255, 255, .98);
+  --flow-field-solid: #ffffff;
+  --flow-overlay: rgba(45, 38, 42, .45);
+
+  --flow-text: #2d262a;
+  --flow-text-2: #443940;
+  --flow-text-3: #574c55;
+  --flow-titulo: #663e4b;
+
+  --flow-accent: #8b5467;
+  --flow-accent-hover: #6d3f4f;
+  --flow-accent-soft: rgba(174, 125, 131, .18);
+  --flow-accent-strong: rgba(174, 125, 131, .5);
+  --flow-fill: linear-gradient(135deg, #865a69 0%, #704653 100%);
+  --flow-fill-hover: linear-gradient(135deg, #704653 0%, #583340 100%);
+  --flow-fill-solid: #704653;
+  --flow-on-fill: #ffffff;
+
+  --flow-line: rgba(112, 70, 83, .16);
+  --flow-line-strong: rgba(112, 70, 83, .32);
+  --flow-edge: rgba(255, 255, 255, .9);
+  --flow-glow: rgba(112, 70, 83, .18);
+
+  --flow-success: #17644f;
+  --flow-warning: #8f4e09;
+  --flow-danger: #b42318;
+  --flow-info: #275b9a;
+
+  --flow-ativo-bg: linear-gradient(180deg, #865a69 0%, #704653 100%);
+  --flow-ativo-text: #ffffff;
+  --flow-ativo-borda: rgba(88, 51, 64, .6);
+
+  --flow-chrome: rgba(69, 49, 59, .96);
+  --flow-chrome-text: #efe4e9;
+  --flow-chrome-text-forte: #ffffff;
+  --flow-chrome-hover: rgba(255, 255, 255, .1);
+  --flow-chrome-inset: rgba(255, 255, 255, .09);
+  --flow-chrome-line: rgba(255, 255, 255, .16);
+  --flow-chrome-ativo-bg: linear-gradient(180deg, #d1a5ab 0%, #c08d94 100%);
+  --flow-chrome-ativo-text: #2a1419;
+  --flow-chrome-ativo-borda: rgba(255, 255, 255, .35);
+
+  --flow-shadow-panel: 0 16px 36px rgba(69, 49, 59, .1), 0 2px 6px rgba(69, 49, 59, .06);
+  --flow-shadow-float: 0 16px 36px rgba(69, 49, 59, .22);
+  --flow-shadow-modal: 0 28px 70px rgba(69, 49, 59, .28);
+
+  --flow-veu:
+    linear-gradient(180deg, rgba(232, 214, 221, .12) 0%, rgba(232, 214, 221, .26) 100%);
+  --flow-brilho: radial-gradient(ellipse 30% 40% at 30% 20%, rgba(255, 255, 255, .45), transparent 70%);
+}
+
+:root[data-modo='claro'][data-tema='conjunto'][data-contexto='app'] {
+  --flow-veu:
+    linear-gradient(180deg, rgba(226, 222, 214, .24) 0%, rgba(226, 222, 214, .42) 40%, rgba(226, 222, 214, .36) 100%);
+  --flow-brilho: radial-gradient(ellipse 34% 22% at 52% 6%, rgba(255, 255, 255, .4), transparent 70%);
+}
+
+/* Sem backdrop-filter: as superfícies translúcidas viram opacas (leitura garantida).
+   :root repetido só para vencer qualquer combinação de tema e modo acima. */
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  :root:root:root:root {
+    --flow-surface: var(--flow-surface-solid);
+    --flow-surface-raised: var(--flow-surface-raised-solid);
+    --flow-field: var(--flow-field-solid);
+  }
+}

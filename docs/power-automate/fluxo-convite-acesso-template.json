@@ -1,0 +1,362 @@
+{
+  "$schema": "https://schema.management.azure.com/providers/Microsoft.Logic/schemas/2016-06-01/workflowdefinition.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "$authentication": {
+      "defaultValue": {},
+      "type": "SecureObject"
+    },
+    "$connections": {
+      "defaultValue": {},
+      "type": "Object"
+    }
+  },
+  "triggers": {
+    "Quando_uma_requisicao_HTTP_chegar": {
+      "type": "Request",
+      "kind": "Http",
+      "runtimeConfiguration": {
+        "secureData": {
+          "properties": [
+            "outputs"
+          ]
+        }
+      },
+      "inputs": {
+        "schema": {
+          "type": "object",
+          "required": [
+            "versao",
+            "evento",
+            "idempotency_key",
+            "canal",
+            "destinatario",
+            "acao"
+          ],
+          "properties": {
+            "versao": {
+              "type": "integer"
+            },
+            "evento": {
+              "type": "string"
+            },
+            "idempotency_key": {
+              "type": "string",
+              "minLength": 1
+            },
+            "canal": {
+              "type": "string"
+            },
+            "destinatario": {
+              "type": "object",
+              "required": [
+                "email"
+              ],
+              "properties": {
+                "email": {
+                  "type": "string"
+                }
+              }
+            },
+            "acao": {
+              "type": "object",
+              "required": [
+                "url"
+              ],
+              "properties": {
+                "url": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "actions": {
+    "Inicializar_origem_do_app": {
+      "type": "InitializeVariable",
+      "runAfter": {},
+      "inputs": {
+        "variables": [
+          {
+            "name": "AppBaseUrl",
+            "type": "string",
+            "value": "https://SUBSTITUA-PELA-ORIGEM-DO-APLICATIVO.invalid"
+          }
+        ]
+      }
+    },
+    "Verificar_evento": {
+      "type": "If",
+      "runAfter": {
+        "Inicializar_origem_do_app": [
+          "Succeeded"
+        ]
+      },
+      "expression": {
+        "and": [
+          {
+            "equals": [
+              "@triggerBody()?['versao']",
+              1
+            ]
+          },
+          {
+            "equals": [
+              "@triggerBody()?['evento']",
+              "convite_acesso"
+            ]
+          }
+        ]
+      },
+      "actions": {
+        "Verificar_canal": {
+          "type": "If",
+          "runAfter": {},
+          "expression": {
+            "equals": [
+              "@triggerBody()?['canal']",
+              "email"
+            ]
+          },
+          "actions": {
+            "Verificar_destinatario": {
+              "type": "If",
+              "runAfter": {},
+              "expression": {
+                "and": [
+                  {
+                    "equals": [
+                      "@length(split(triggerBody()?['destinatario']?['email'], '@'))",
+                      2
+                    ]
+                  },
+                  {
+                    "endsWith": [
+                      "@toLower(triggerBody()?['destinatario']?['email'])",
+                      "@@azime.com.br"
+                    ]
+                  }
+                ]
+              },
+              "actions": {
+                "Verificar_link": {
+                  "type": "If",
+                  "runAfter": {},
+                  "expression": {
+                    "and": [
+                      {
+                        "startsWith": [
+                          "@triggerBody()?['acao']?['url']",
+                          "@concat(variables('AppBaseUrl'), '/definir-senha?token_hash=')"
+                        ]
+                      },
+                      {
+                        "or": [
+                          {
+                            "endsWith": [
+                              "@triggerBody()?['acao']?['url']",
+                              "&type=invite"
+                            ]
+                          },
+                          {
+                            "endsWith": [
+                              "@triggerBody()?['acao']?['url']",
+                              "&type=recovery"
+                            ]
+                          }
+                        ]
+                      },
+                      {
+                        "equals": [
+                          "@length(split(triggerBody()?['acao']?['url'], '?'))",
+                          2
+                        ]
+                      },
+                      {
+                        "equals": [
+                          "@length(split(triggerBody()?['acao']?['url'], '&'))",
+                          2
+                        ]
+                      },
+                      {
+                        "not": {
+                          "contains": [
+                            "@toLower(triggerBody()?['acao']?['url'])",
+                            "javascript:"
+                          ]
+                        }
+                      },
+                      {
+                        "not": {
+                          "contains": [
+                            "@toLower(triggerBody()?['acao']?['url'])",
+                            "\""
+                          ]
+                        }
+                      },
+                      {
+                        "not": {
+                          "contains": [
+                            "@toLower(triggerBody()?['acao']?['url'])",
+                            "<"
+                          ]
+                        }
+                      }
+                    ]
+                  },
+                  "actions": {
+                    "Enviar_email_(V2)": {
+                      "runAfter": {},
+                      "type": "OpenApiConnection",
+                      "runtimeConfiguration": {
+                        "secureData": {
+                          "properties": [
+                            "inputs",
+                            "outputs"
+                          ]
+                        }
+                      },
+                      "inputs": {
+                        "parameters": {
+                          "emailMessage/To": "@triggerBody()?['destinatario']?['email']",
+                          "emailMessage/Subject": "Convite de acesso ao Reverso",
+                          "emailMessage/Body": "@concat('<p>Olá,</p><p>Você foi convidado(a) a acessar o <b>Reverso</b>, o sistema de logística reversa.</p><p>Para começar, defina a sua senha do Reverso. Ela é só deste sistema e não substitui a sua senha Microsoft:</p><p><a href=\"', replace(triggerBody()?['acao']?['url'], '&', '&amp;'), '\">Definir minha senha</a></p><p>O link é pessoal, de uso único e tem validade limitada. Não o encaminhe. Se você não esperava este convite, ignore esta mensagem.</p><p>Depois, entre no Reverso com o seu e-mail corporativo e a senha que você criou.</p>')",
+                          "emailMessage/Importance": "Normal"
+                        },
+                        "retryPolicy": {
+                          "type": "none"
+                        },
+                        "host": {
+                          "apiId": "/providers/Microsoft.PowerApps/apis/shared_office365",
+                          "connectionName": "shared_office365",
+                          "operationId": "SendEmailV2"
+                        },
+                        "authentication": "@parameters('$authentication')"
+                      }
+                    },
+                    "Responder_convite_concluido": {
+                      "runAfter": {
+                        "Enviar_email_(V2)": [
+                          "Succeeded"
+                        ]
+                      },
+                      "type": "Response",
+                      "kind": "Http",
+                      "inputs": {
+                        "statusCode": 200,
+                        "body": {
+                          "status": "connector_action_succeeded",
+                          "communication_id": "@triggerBody()?['idempotency_key']",
+                          "canal": "email"
+                        }
+                      }
+                    },
+                    "Responder_convite_indeterminado": {
+                      "runAfter": {
+                        "Enviar_email_(V2)": [
+                          "Failed",
+                          "TimedOut"
+                        ]
+                      },
+                      "type": "Response",
+                      "kind": "Http",
+                      "inputs": {
+                        "statusCode": 502,
+                        "body": {
+                          "status": "connector_action_failed",
+                          "communication_id": "@triggerBody()?['idempotency_key']",
+                          "canal": "email",
+                          "retryable": false
+                        }
+                      }
+                    }
+                  },
+                  "else": {
+                    "actions": {
+                      "Responder_link_invalido": {
+                        "runAfter": {},
+                        "type": "Response",
+                        "kind": "Http",
+                        "inputs": {
+                          "statusCode": 400,
+                          "body": {
+                            "status": "invalid_link",
+                            "communication_id": "@triggerBody()?['idempotency_key']",
+                            "canal": "email",
+                            "retryable": false,
+                            "error_code": "invalid_link"
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              },
+              "else": {
+                "actions": {
+                  "Responder_destinatario_invalido": {
+                    "runAfter": {},
+                    "type": "Response",
+                    "kind": "Http",
+                    "inputs": {
+                      "statusCode": 400,
+                      "body": {
+                        "status": "invalid_recipient",
+                        "communication_id": "@triggerBody()?['idempotency_key']",
+                        "canal": "email",
+                        "retryable": false,
+                        "error_code": "invalid_recipient"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "else": {
+            "actions": {
+              "Responder_canal_invalido": {
+                "runAfter": {},
+                "type": "Response",
+                "kind": "Http",
+                "inputs": {
+                  "statusCode": 400,
+                  "body": {
+                    "status": "invalid_channel",
+                    "communication_id": "@triggerBody()?['idempotency_key']",
+                    "canal": "@triggerBody()?['canal']",
+                    "retryable": false,
+                    "error_code": "invalid_channel"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "else": {
+        "actions": {
+          "Responder_evento_invalido": {
+            "runAfter": {},
+            "type": "Response",
+            "kind": "Http",
+            "inputs": {
+              "statusCode": 400,
+              "body": {
+                "status": "invalid_event",
+                "communication_id": "@triggerBody()?['idempotency_key']",
+                "canal": "@triggerBody()?['canal']",
+                "retryable": false,
+                "error_code": "invalid_event"
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "outputs": {}
+}

@@ -1,0 +1,13 @@
+{
+  "name": "forms-codigo-reverso-testes-banco",
+  "private": true,
+  "type": "module",
+  "description": "Testes das migrations e regras de banco (RLS, triggers, aprovação) num PostgreSQL local temporário.",
+  "scripts": {
+    "test": "node --test --test-concurrency=1 --test-reporter=spec"
+  },
+  "devDependencies": {
+    "embedded-postgres": "17.10.0-beta.17",
+    "pg": "8.23.1"
+  }
+}

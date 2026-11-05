@@ -1,0 +1,479 @@
+{
+  "$schema": "https://schema.management.azure.com/providers/Microsoft.Logic/schemas/2016-06-01/workflowdefinition.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "$authentication": {
+      "defaultValue": {},
+      "type": "SecureObject"
+    },
+    "$connections": {
+      "defaultValue": {},
+      "type": "Object"
+    }
+  },
+  "triggers": {
+    "Quando_uma_requisicao_HTTP_chegar": {
+      "type": "Request",
+      "kind": "Http",
+      "inputs": {
+        "schema": {
+          "type": "object",
+          "required": [
+            "versao",
+            "evento",
+            "idempotency_key",
+            "canal",
+            "destinatario",
+            "mensagem",
+            "acao"
+          ],
+          "properties": {
+            "versao": {
+              "type": "integer"
+            },
+            "evento": {
+              "type": "string"
+            },
+            "idempotency_key": {
+              "type": "string"
+            },
+            "canal": {
+              "type": "string"
+            },
+            "destinatario": {
+              "type": "object",
+              "required": [
+                "id",
+                "email"
+              ],
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "email": {
+                  "type": "string"
+                }
+              }
+            },
+            "pedido": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "identificacao": {
+                  "type": "string"
+                },
+                "empresa": {
+                  "type": "string"
+                },
+                "setor": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "motivo": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "data_solicitacao": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                }
+              }
+            },
+            "cliente": {
+              "type": "object",
+              "properties": {
+                "codigo": {
+                  "type": "string"
+                },
+                "nome": {
+                  "type": "string"
+                }
+              }
+            },
+            "codigo_rastreio": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "validade": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "emitida_em": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "postagem_em": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "evento_em": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "justificativa": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "mensagem": {
+              "type": "object",
+              "required": [
+                "assunto",
+                "corpo_html"
+              ],
+              "properties": {
+                "assunto": {
+                  "type": "string"
+                },
+                "corpo_html": {
+                  "type": "string"
+                }
+              }
+            },
+            "acao": {
+              "type": "object",
+              "required": [
+                "rotulo",
+                "url"
+              ],
+              "properties": {
+                "rotulo": {
+                  "type": "string"
+                },
+                "url": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "actions": {
+    "Inicializar_origem_do_app": {
+      "type": "InitializeVariable",
+      "runAfter": {},
+      "inputs": {
+        "variables": [
+          {
+            "name": "AppBaseUrl",
+            "type": "string",
+            "value": "https://SUBSTITUA-PELA-ORIGEM-DO-APLICATIVO.invalid"
+          }
+        ]
+      }
+    },
+    "Verificar_evento": {
+      "type": "If",
+      "runAfter": {
+        "Inicializar_origem_do_app": [
+          "Succeeded"
+        ]
+      },
+      "expression": {
+        "and": [
+          {
+            "equals": [
+              "@triggerBody()?['versao']",
+              1
+            ]
+          },
+          {
+            "contains": [
+              "@createArray('pedido_criado', 'aprovacao_pendente', 'pedido_aprovado', 'pedido_rejeitado', 'emissao_pendente', 'etiqueta_disponivel', 'postagem_confirmada', 'recebimento_confirmado')",
+              "@triggerBody()?['evento']"
+            ]
+          }
+        ]
+      },
+      "actions": {
+        "Verificar_link": {
+          "type": "If",
+          "runAfter": {},
+          "expression": {
+            "and": [
+              {
+                "startsWith": [
+                  "@triggerBody()?['acao']?['url']",
+                  "@concat(variables('AppBaseUrl'), '/admin/')"
+                ]
+              },
+              {
+                "not": {
+                  "contains": [
+                    "@toLower(triggerBody()?['acao']?['url'])",
+                    "javascript:"
+                  ]
+                }
+              }
+            ]
+          },
+          "actions": {
+            "Verificar_conteudo": {
+              "type": "If",
+              "runAfter": {},
+              "expression": {
+                "and": [
+                  {
+                    "not": {
+                      "contains": [
+                        "@toLower(triggerBody()?['mensagem']?['corpo_html'])",
+                        "<script"
+                      ]
+                    }
+                  },
+                  {
+                    "not": {
+                      "contains": [
+                        "@toLower(triggerBody()?['mensagem']?['corpo_html'])",
+                        "javascript:"
+                      ]
+                    }
+                  },
+                  {
+                    "not": {
+                      "contains": [
+                        "@toLower(triggerBody()?['mensagem']?['corpo_html'])",
+                        "<iframe"
+                      ]
+                    }
+                  }
+                ]
+              },
+              "actions": {
+                "Escolher_canal": {
+                  "type": "Switch",
+                  "expression": "@triggerBody()?['canal']",
+                  "cases": {
+                    "email": {
+                      "case": "email",
+                      "actions": {
+                        "Enviar_email_(V2)": {
+                          "runAfter": {},
+                          "type": "OpenApiConnection",
+                          "inputs": {
+                            "parameters": {
+                              "emailMessage/To": "@triggerBody()?['destinatario']?['email']",
+                              "emailMessage/Subject": "@triggerBody()?['mensagem']?['assunto']",
+                              "emailMessage/Body": "@triggerBody()?['mensagem']?['corpo_html']",
+                              "emailMessage/Importance": "@if(or(equals(triggerBody()?['evento'], 'aprovacao_pendente'), equals(triggerBody()?['evento'], 'emissao_pendente')), 'High', 'Normal')"
+                            },
+                            "retryPolicy": {
+                              "type": "none"
+                            },
+                            "host": {
+                              "apiId": "/providers/Microsoft.PowerApps/apis/shared_office365",
+                              "connectionName": "shared_office365",
+                              "operationId": "SendEmailV2"
+                            },
+                            "authentication": "@parameters('$authentication')"
+                          }
+                        },
+                        "Responder_email_concluido": {
+                          "runAfter": {
+                            "Enviar_email_(V2)": [
+                              "Succeeded"
+                            ]
+                          },
+                          "type": "Response",
+                          "kind": "Http",
+                          "inputs": {
+                            "statusCode": 200,
+                            "body": {
+                              "status": "connector_action_succeeded",
+                              "communication_id": "@triggerBody()?['idempotency_key']",
+                              "canal": "email"
+                            }
+                          }
+                        },
+                        "Responder_email_indeterminado": {
+                          "runAfter": {
+                            "Enviar_email_(V2)": [
+                              "Failed",
+                              "TimedOut"
+                            ]
+                          },
+                          "type": "Response",
+                          "kind": "Http",
+                          "inputs": {
+                            "statusCode": 502,
+                            "body": {
+                              "status": "connector_action_failed",
+                              "communication_id": "@triggerBody()?['idempotency_key']",
+                              "canal": "email",
+                              "retryable": false
+                            }
+                          }
+                        }
+                      }
+                    },
+                    "teams": {
+                      "case": "teams",
+                      "actions": {
+                        "Postar_mensagem_no_chat_do_Teams": {
+                          "runAfter": {},
+                          "type": "OpenApiConnection",
+                          "inputs": {
+                            "parameters": {
+                              "poster": "Flow bot",
+                              "location": "Chat with Flow bot",
+                              "body/recipient": "@triggerBody()?['destinatario']?['email']",
+                              "body/messageBody": "@triggerBody()?['mensagem']?['corpo_html']"
+                            },
+                            "retryPolicy": {
+                              "type": "none"
+                            },
+                            "host": {
+                              "apiId": "/providers/Microsoft.PowerApps/apis/shared_teams",
+                              "connectionName": "shared_teams",
+                              "operationId": "PostMessageToConversation"
+                            },
+                            "authentication": "@parameters('$authentication')"
+                          }
+                        },
+                        "Responder_teams_concluido": {
+                          "runAfter": {
+                            "Postar_mensagem_no_chat_do_Teams": [
+                              "Succeeded"
+                            ]
+                          },
+                          "type": "Response",
+                          "kind": "Http",
+                          "inputs": {
+                            "statusCode": 200,
+                            "body": {
+                              "status": "connector_action_succeeded",
+                              "communication_id": "@triggerBody()?['idempotency_key']",
+                              "canal": "teams"
+                            }
+                          }
+                        },
+                        "Responder_teams_indeterminado": {
+                          "runAfter": {
+                            "Postar_mensagem_no_chat_do_Teams": [
+                              "Failed",
+                              "TimedOut"
+                            ]
+                          },
+                          "type": "Response",
+                          "kind": "Http",
+                          "inputs": {
+                            "statusCode": 502,
+                            "body": {
+                              "status": "connector_action_failed",
+                              "communication_id": "@triggerBody()?['idempotency_key']",
+                              "canal": "teams",
+                              "retryable": false
+                            }
+                          }
+                        }
+                      }
+                    }
+                  },
+                  "default": {
+                    "actions": {
+                      "Responder_canal_invalido": {
+                        "runAfter": {},
+                        "type": "Response",
+                        "kind": "Http",
+                        "inputs": {
+                          "statusCode": 400,
+                          "body": {
+                            "status": "invalid_channel",
+                            "communication_id": "@triggerBody()?['idempotency_key']",
+                            "canal": "@triggerBody()?['canal']",
+                            "retryable": false,
+                            "error_code": "invalid_channel"
+                          }
+                        }
+                      }
+                    }
+                  },
+                  "runAfter": {}
+                }
+              },
+              "else": {
+                "actions": {
+                  "Responder_conteudo_invalido": {
+                    "runAfter": {},
+                    "type": "Response",
+                    "kind": "Http",
+                    "inputs": {
+                      "statusCode": 400,
+                      "body": {
+                        "status": "invalid_content",
+                        "communication_id": "@triggerBody()?['idempotency_key']",
+                        "canal": "@triggerBody()?['canal']",
+                        "retryable": false,
+                        "error_code": "invalid_content"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "else": {
+            "actions": {
+              "Responder_link_invalido": {
+                "runAfter": {},
+                "type": "Response",
+                "kind": "Http",
+                "inputs": {
+                  "statusCode": 400,
+                  "body": {
+                    "status": "invalid_link",
+                    "communication_id": "@triggerBody()?['idempotency_key']",
+                    "canal": "@triggerBody()?['canal']",
+                    "retryable": false,
+                    "error_code": "invalid_link"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "else": {
+        "actions": {
+          "Responder_evento_invalido": {
+            "runAfter": {},
+            "type": "Response",
+            "kind": "Http",
+            "inputs": {
+              "statusCode": 400,
+              "body": {
+                "status": "invalid_event",
+                "communication_id": "@triggerBody()?['idempotency_key']",
+                "canal": "@triggerBody()?['canal']",
+                "retryable": false,
+                "error_code": "invalid_event"
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "outputs": {}
+}

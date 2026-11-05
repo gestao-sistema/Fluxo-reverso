@@ -1,0 +1,7 @@
+[auth]
+enable_signup = false
+site_url = "http://localhost:5173"
+additional_redirect_urls = ["http://localhost:5173/definir-senha"]
+
+[functions.comunicacao-etiqueta]
+verify_jwt = true

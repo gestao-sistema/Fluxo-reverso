@@ -1,0 +1,55 @@
+/* Módulo de não conformidades (NC) — complementa design.css com os mesmos tokens. */
+.nc-page {display:flex;flex-direction:column;gap:18px}
+.nc-grid {display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:15px 16px;padding:4px 22px 22px}
+.nc-grid .filter-field {min-width:0}
+.nc-field-wide {grid-column:1/-1}
+.nc-textarea {height:auto;min-height:92px;padding:10px 12px;resize:vertical;line-height:1.5}
+.nc-calc {min-height:42px;display:flex;align-items:center;padding:0 12px;border:1px dashed var(--flow-line-strong);border-radius:var(--flow-radius-control);background:var(--flow-surface-inset);color:var(--flow-text);font-size:14px;font-weight:650;font-variant-numeric:tabular-nums}
+.nc-calc-tag {margin-left:6px;color:var(--flow-accent);font-size:12px;letter-spacing:.06em;font-weight:700;text-transform:uppercase}
+.nc-required {color:var(--flow-danger)}
+.nc-erro {color:var(--flow-danger);font-size:12px;margin:0}
+.nc-dica {color:var(--flow-text-3);font-size:12px;margin:0}
+.nc-field-invalid {border-color:color-mix(in srgb,var(--flow-danger) 70%,transparent)!important;background:var(--flow-danger-soft)!important}
+.nc-actions {display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.nc-actions-right {display:flex;align-items:center;gap:9px;flex-wrap:wrap;margin-left:auto}
+.nc-tag {display:inline-block;margin-left:7px;padding:2px 7px;border-radius:var(--flow-radius-pill);background:var(--flow-accent-soft);color:var(--flow-accent);font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;vertical-align:middle}
+.nc-aviso {margin:0 22px 18px;padding:11px 14px;border-radius:var(--flow-radius-control);background:var(--flow-warning-soft);border:1px solid color-mix(in srgb,var(--flow-warning) 32%,transparent);color:var(--flow-warning);font-size:14px;line-height:1.55}
+.nc-info {margin:0 22px 18px;padding:11px 14px;border-radius:var(--flow-radius-control);background:var(--flow-info-soft);border:1px solid color-mix(in srgb,var(--flow-info) 30%,transparent);color:var(--flow-info);font-size:14px;line-height:1.55}
+.nc-row-link {cursor:pointer}
+.nc-row-link a {color:var(--flow-accent);text-decoration:none}
+.nc-row-link a:hover {text-decoration:underline}
+
+/* Linha do tempo */
+.nc-timeline {list-style:none;margin:0;padding:4px 22px 20px}
+.nc-timeline li {position:relative;padding:0 0 16px 24px}
+.nc-timeline li::before {content:'';position:absolute;left:5px;top:14px;bottom:0;width:1px;background:var(--flow-line-strong)}
+.nc-timeline li:last-child::before {display:none}
+.nc-timeline-dot {position:absolute;left:0;top:4px;width:11px;height:11px;border-radius:50%;background:var(--flow-text-3);box-shadow:0 0 0 3px var(--flow-surface-inset)}
+.nc-timeline li.is-nota .nc-timeline-dot {background:var(--flow-accent);box-shadow:0 0 0 3px var(--flow-accent-soft),0 0 10px var(--flow-glow)}
+.nc-timeline-text {font-size:14px;color:var(--flow-text-2);margin:0;line-height:1.5}
+.nc-timeline-text strong {color:var(--flow-text)}
+.nc-timeline-meta {font-size:13px;color:var(--flow-text-3);margin-top:2px}
+.nc-nota-form {display:flex;flex-direction:column;gap:9px;padding:0 22px 21px}
+
+/* Painel */
+.nc-kpis {display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:13px}
+.nc-kpis-4 {grid-template-columns:repeat(4,minmax(0,1fr))}
+.nc-kpis .kpi-card {min-height:124px}
+.nc-kpis .kpi-value {font-size:24px}
+.nc-tabela td.nc-num,.nc-tabela th.nc-num {text-align:right;white-space:nowrap}
+.nc-tabela tr.nc-total td {font-weight:700;color:var(--flow-text);background:var(--flow-accent-soft)}
+.nc-tabela tr.nc-vazio td {color:var(--flow-text-3)}
+.nc-barra {display:flex;align-items:center;gap:8px;justify-content:flex-end}
+.nc-barra span {display:block;height:6px;border-radius:6px;background:var(--flow-fill);min-width:2px}
+.nc-barra-trilho {width:64px;height:6px;border-radius:6px;background:var(--flow-accent-soft);display:flex;justify-content:flex-start;overflow:hidden}
+
+/* Listas */
+.nc-chips {display:flex;flex-wrap:wrap;gap:8px;padding:2px 22px 16px}
+.nc-chip {display:inline-flex;align-items:center;gap:8px;padding:7px 12px;border:1px solid var(--flow-line);border-radius:var(--flow-radius-pill);background:var(--flow-surface-inset);font-size:14px;color:var(--flow-text-2)}
+.nc-chip.is-inativo {color:var(--flow-text-3);background:transparent;text-decoration:line-through}
+.nc-add {display:flex;gap:9px;padding:0 22px 21px;flex-wrap:wrap}
+.nc-add .field-control {flex:1;min-width:180px}
+
+@media(max-width:1300px) {.nc-kpis {grid-template-columns:repeat(3,minmax(0,1fr))}.nc-kpis-4 {grid-template-columns:repeat(4,minmax(0,1fr))}}
+@media(max-width:1080px) {.nc-kpis-4 {grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:760px) {.nc-kpis {grid-template-columns:repeat(2,minmax(0,1fr))}.nc-grid {padding:4px 16px 18px;grid-template-columns:1fr}.nc-aviso,.nc-info {margin:0 16px 16px}.nc-timeline {padding:4px 16px 16px}.nc-nota-form,.nc-chips,.nc-add {padding-left:16px;padding-right:16px}}

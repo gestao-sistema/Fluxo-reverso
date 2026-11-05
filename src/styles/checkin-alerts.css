@@ -1,0 +1,63 @@
+.checkin-alerts {
+  display: grid;
+  gap: 7px;
+  padding: 12px 14px;
+  border-radius: var(--flow-radius-card);
+  color: var(--flow-text);
+}
+
+.checkin-alerts-heading,
+.checkin-alerts-title {
+  display: flex;
+  align-items: center;
+}
+
+.checkin-alerts-heading {
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 23px;
+  padding: 0 2px 3px;
+}
+
+.checkin-alerts-title { gap: 8px; color: var(--flow-warning); }
+.checkin-alerts-title h2 { margin: 0; color: var(--flow-text); font-size: 14px; font-weight: 650; }
+.checkin-alerts-count { min-width: 20px; padding: 1px 6px; border-radius: var(--flow-radius-pill); color: var(--flow-on-fill); background: var(--flow-warning); text-align: center; font-size: 12px; font-weight: 700; }
+.checkin-alerts-progress { color: var(--flow-text-3); font-size: 12px; }
+
+.checkin-alert-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  min-width: 0;
+  padding: 9px 11px;
+  border: 1px solid var(--flow-line);
+  border-radius: var(--flow-radius-control);
+  color: var(--flow-text);
+  background: var(--flow-surface-nested);
+  font-size: 14px;
+  line-height: 1.45;
+}
+
+.checkin-alert-row > svg { flex: 0 0 auto; margin-top: 1px; color: var(--flow-text-3); }
+.checkin-alert-row.is-warning { border-color: var(--flow-warning); }
+.checkin-alert-row.is-warning > svg { color: var(--flow-warning); }
+.checkin-alert-row.is-blocked { border-color: var(--flow-danger); background: var(--flow-danger-soft); }
+.checkin-alert-row.is-blocked > svg { color: var(--flow-danger); }
+.checkin-alert-row.is-info > svg { color: var(--flow-info); }
+.checkin-alert-copy { min-width: 0; }
+.checkin-alert-copy p { margin: 0; color: var(--flow-text); overflow-wrap: anywhere; }
+.checkin-alert-copy strong { font-weight: 700; }
+.checkin-alert-copy .checkin-alert-description { margin-top: 2px; color: var(--flow-text-2); }
+.checkin-alert-copy > button,
+.checkin-alert-details li button { padding: 0; border: 0; color: var(--flow-accent); background: transparent; font: inherit; font-weight: 650; text-decoration: underline; text-underline-offset: 2px; cursor: pointer; }
+.checkin-alert-copy > button:disabled { opacity: .65; cursor: wait; }
+.checkin-alert-details { margin-top: 4px; color: var(--flow-text-2); }
+.checkin-alert-details summary { width: fit-content; color: var(--flow-text-3); font-size: 12px; cursor: pointer; }
+.checkin-alert-details summary:hover { color: var(--flow-accent); }
+.checkin-alert-details ul { display: grid; gap: 4px; margin: 6px 0 0; padding: 0; list-style: none; }
+.checkin-alert-details li { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; color: var(--flow-text-2); font-size: 12px; }
+
+@media (max-width: 640px) {
+  .checkin-alerts { padding: 9px; }
+  .checkin-alert-row { padding: 8px 9px; }
+}
