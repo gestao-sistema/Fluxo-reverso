@@ -133,6 +133,7 @@ function renderNav(itens?: NavItem[]) {
 beforeEach(() => {
   visibilidade = 'visible';
   Object.defineProperty(document, 'visibilityState', { configurable: true, get: () => visibilidade });
+  Object.defineProperty(document.documentElement, 'clientWidth', { configurable: true, value: 1280 });
   vi.stubGlobal('ResizeObserver', class {
     observe() {}
     unobserve() {}
