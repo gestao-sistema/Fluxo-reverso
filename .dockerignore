@@ -5,6 +5,11 @@ dist
 .env
 .env.local
 .env.*.local
+.claude
+.serena
+.vscode
+.github
+teste.txt
 *.log
 .DS_Store
 *.md

@@ -408,16 +408,9 @@ Dados via `useSolicitacoes.ts` (hook com cache, polling 15s e invalidação).
 
 ## Deploy
 
-### Railway - Stack Comum
+### Railway (produção)
 
-1. Conecte repositório
-2. Build Command: `npm run build`
-3. Output Directory: `dist`
-4. Adicione variáveis de ambiente (`VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`)
-
-### Docker
-
-O `Dockerfile` é multi-stage: `node:22-alpine` faz o build (recebe `VITE_SUPABASE_URL` e `VITE_SUPABASE_ANON_KEY` como build args) e `nginx:alpine` serve o `dist` na porta 80, com fallback de SPA (`nginx.conf`). Veja também `DEPLOY_RAILWAY.md`.
+O frontend é publicado pelo `Dockerfile`: `node:22-alpine` faz o build e `nginx:alpine` serve o `dist` na porta informada pela variável `PORT` do Railway, com fallback de SPA (`nginx.conf`) e health check em `/healthz`. Variáveis obrigatórias (`VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`), procedimento de publicação e verificações estão em [docs/RAILWAY.md](docs/RAILWAY.md).
 
 ### Ordem de deploy da versão com NC e fluxo de aprovação por setor
 
