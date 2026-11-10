@@ -179,14 +179,15 @@ Rollback do frontend não desfaz banco nem funções. Por isso, a ordem da seç�
 
 ## 10. Validação local realizada (preparação)
 
-As validações de build e teste abaixo foram feitas em um export limpo do commit `ec2d552`, com somente os arquivos versionados daquela preparação.
+As validações abaixo foram feitas em um checkout limpo do commit `31d1ff1`, com apenas arquivos versionados. Os valores Supabase usados no build eram placeholders; não houve conexão a serviços reais.
 
-- `npm ci`: aprovado; instalação limpa pelo `package-lock.json` (259 pacotes).
-- `npm run build`: aprovado com placeholders de teste para `VITE_SUPABASE_URL` e `VITE_SUPABASE_ANON_KEY`. Inclui o validador de ambiente, `tsc -b` e `vite build`.
-- `npm run lint`: exit 0, com seis avisos existentes em `src/lib/etiquetaPdf.ts`.
-- `npm test`: **não passou integralmente**. Na execução completa mais recente, 13 testes falharam e 649 passaram (662 no total; 6 arquivos falharam). Comparação isolada: nove falhas determinísticas em `conviteFluxoTemplate.test.ts` (1), `deleteSolicitacao.test.ts` (5) e `perfil.test.ts` (3) também ocorriam no commit-base `6e49885`. Outras falhas em `ApprovalQueuePage`, `UsuariosPage`, `rotaDefinirSenha` e `UsuariosPageConvite` variaram entre rodadas completas (timeouts e expectativas de interação) e passaram quando isoladas. `verificacaoAmbienteProducao.test.ts` passou isolado. Portanto, a suíte continua bloqueada por falhas já presentes na base e por timeouts instáveis.
-- `src/test/verificacaoAmbienteProducao.test.ts`: validou ausência de configuração, valores de teste válidos e recusa de chave secreta/service_role.
-- Estado das migrations em produção: **não consultado**. A consulta somente leitura e a comparação com os arquivos locais continuam pendentes (seção 5.2).
-- Imagem Docker, sintaxe do Nginx e execução do servidor de produção: **não validadas localmente**. Docker e Nginx não estão instalados, e o WSL presente não tem uma distribuição/subsistema Linux instalado. Não foi usado `vite preview` como substituto do servidor de produção.
+- `npm ci`: aprovado pelo `package-lock.json` (259 pacotes). O `npm audit` reportou 8 vulnerabilidades no total (3 moderadas e 5 altas). Entre dependências de produção, `xlsx` e `zod` têm avisos altos; o audit não oferece correção sem atualização major para `zod` e não indica correção disponível para `xlsx`. Revisar esses avisos antes de publicar.
+- `npm run build`: aprovado com placeholders de `VITE_SUPABASE_URL` e `VITE_SUPABASE_ANON_KEY`; executou o validador de ambiente, `tsc -b` e `vite build`.
+- Verificação do bundle: seis marcadores e textos de demonstração (controles, dados e contas demo) não apareceram nos assets JavaScript gerados.
+- `npm run lint`: exit 0, com 7 avisos: um `react(only-export-components)` em `src/context/ContadorAprovacoesContext.tsx` e seis escapes desnecessários já existentes em `src/lib/etiquetaPdf.ts`.
+- Testes focados das aprovações, fila, avisos e classificação/vínculo da NC: 60 passaram em 5 arquivos.
+- `npm test -- --run --reporter=dot`: 878 passaram e 1 falhou (879 no total). A falha restante, `conviteFluxoTemplate.test.ts`, também ocorre no commit-base `6e49885`. Testes que dependiam exclusivamente do serviço/fixtures demo foram removidos do conjunto versionado; a cobertura unitária e de migrations de produção foi mantida.
+- Estado das migrations em produção: **não consultado**. As migrations locais ainda precisam ser comparadas com o histórico do Supabase por uma consulta somente leitura antes de ordenar/publicar banco e frontend (seção 5.2).
+- Imagem Docker, sintaxe do Nginx e execução do servidor de produção: **não validadas localmente**. Docker não está disponível e o WSL presente não tem uma distribuição Linux instalada. Não foi usado `vite preview` como substituto do servidor de produção.
 
-Antes de publicar, valide a imagem Docker e o Nginx no Railway ou em um ambiente Docker disponível, depois rode os pedidos HTTP da seção 7. A resposta de health check local/de plataforma confirma apenas que o Nginx responde, não que login, banco ou integrações funcionem.
+Antes de publicar, resolva a sequência das migrations e revise os avisos de dependências de produção. Valide também a imagem Docker e o Nginx no Railway ou em ambiente Docker disponível, depois rode os pedidos HTTP da seção 7. A resposta do health check confirma apenas que o Nginx responde, não que login, banco ou integrações funcionem.
