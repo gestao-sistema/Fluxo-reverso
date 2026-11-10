@@ -9,12 +9,21 @@ const mocks = vi.hoisted(() => ({
   },
   getNotificacoesEmissao: vi.fn(),
   marcarNotificacaoEmissaoLida: vi.fn(),
+  listarAvisos: vi.fn(async () => []),
+  contarAvisosNaoLidos: vi.fn(async () => 0),
+  marcarAvisoLido: vi.fn(async () => true),
 }));
 
 vi.mock('../context/AuthContext', () => ({ useAuth: () => ({ user: mocks.user }) }));
 vi.mock('../services/apiService', () => ({ default: {
   getNotificacoesEmissao: mocks.getNotificacoesEmissao,
   marcarNotificacaoEmissaoLida: mocks.marcarNotificacaoEmissaoLida,
+} }));
+
+vi.mock('../services/avisosReversoService', () => ({ default: {
+  listarAvisos: mocks.listarAvisos,
+  contarAvisosNaoLidos: mocks.contarAvisosNaoLidos,
+  marcarAvisoLido: mocks.marcarAvisoLido,
 } }));
 
 import NotificacoesEmissaoBell from '../components/admin/NotificacoesEmissaoBell';

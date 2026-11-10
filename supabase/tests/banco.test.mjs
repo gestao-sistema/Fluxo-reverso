@@ -1206,8 +1206,8 @@ describe('base — não conformidades', () => {
       await como(
         c1,
         u.editorNc,
-        `insert into public.nao_conformidades (numero, importada, created_by, empresa, origem)
-         values (3, true, $1, 'Trice', 'Outro') returning numero, importada, created_by`,
+        `insert into public.nao_conformidades (numero, importada, created_by, empresa, origem, descricao)
+         values (3, true, $1, 'Trice', 'Outro', 'Registro de teste') returning numero, importada, created_by`,
         [u.admin.id]
       )
     ).rows[0];
@@ -1235,13 +1235,14 @@ describe('base — não conformidades', () => {
   });
 
   it('valores fora das listas são recusados', async () => {
-    const erro = await falha(como(c1, u.admin, "insert into public.nao_conformidades (empresa, origem) values ('Empresa X', 'Outro')"));
+    const erro = await falha(como(c1, u.admin, "insert into public.nao_conformidades (empresa, origem, descricao) values ('Empresa X', 'Outro', 'Teste')"));
     assert.match(erro?.message ?? '', /Empresa \/ contrato fora da lista/);
   });
 
   it('tela "nc" consulta e não edita; formulário não lê a tabela de NC', async () => {
     assert.ok((await como(c1, u.consultaNc, 'select count(*)::int as n from public.vw_nao_conformidades')).rows[0].n > 0);
-    assert.equal((await como(c1, u.consultaNc, "update public.nao_conformidades set cliente = 'x' returning id")).rows.length, 0);
+    // Consulta não grava: sem UPDATE na tabela (42501), a instrução nem chega a alterar linha
+    assert.equal((await falha(como(c1, u.consultaNc, "update public.nao_conformidades set cliente = 'x' returning id")))?.code, '42501');
     assert.equal((await como(c1, u.solicitanteAlinare, 'select count(*)::int as n from public.nao_conformidades')).rows[0].n, 0);
   });
 
@@ -1267,7 +1268,7 @@ describe('base — não conformidades', () => {
       await como(
         c1,
         u.editorNc,
-        "insert into public.nao_conformidades (empresa, cliente, origem, status) values ('Alinare', 'Cliente Fechada', 'Outro', 'Encerrada') returning id"
+        "insert into public.nao_conformidades (empresa, cliente, origem, status, descricao) values ('Alinare', 'Cliente Fechada', 'Outro', 'Encerrada', 'Teste') returning id"
       )
     ).rows[0];
     const erro = await falha(novaReversa(u.solicitanteAlinare, 'Alinare', ncFechada.id));
@@ -1275,7 +1276,9 @@ describe('base — não conformidades', () => {
   });
 
   it('empresa da NC trava depois da primeira reversa', async () => {
-    const erro = await falha(como(c1, u.editorNc, "update public.nao_conformidades set empresa = 'Azime' where id = $1", [nc.alinare.id]));
+    // Gravação pela função de edição (único caminho de UPDATE do papel authenticated); o gatilho recusa a troca
+    const versao = (await q('select updated_at::text as versao from public.nao_conformidades where id = $1', [nc.alinare.id]))[0].versao;
+    const erro = await falha(como(c1, u.editorNc, 'select * from public.nc_salvar_edicao($1::uuid, $2::timestamptz, $3::jsonb, $4)', [nc.alinare.id, versao, JSON.stringify({ empresa: 'Azime' }), null]));
     assert.match(erro?.message ?? '', /não pode mudar/);
   });
 
@@ -1334,6 +1337,8 @@ describe('script único do SQL Editor', () => {
         `)
       ).rows[0];
       assert.match(funcao.retorno, /endereco_destino_troca/);
+      // Classificação da NC na fila (migration 20261109130000)
+      assert.match(funcao.retorno, /nc_tipo_problema[\s\S]*nc_causador/);
       assert.equal(funcao.authenticated, true);
       assert.equal(funcao.anon, false);
       // Contrato final da comunicação, reconciliação e relatórios (migrations 20261027*).

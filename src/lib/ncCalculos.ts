@@ -4,8 +4,11 @@
 // para mostrar o resultado enquanto o usuário digita e para montar o painel.
 // ─────────────────────────────────────────────────────────────────────────────
 
-import { STATUS_NC } from '../types';
+import { SITUACOES_CUSTO_NC, STATUS_NC } from '../types';
 import type { ListaNc, ListasNc, NaoConformidade, NcCampos, NcOrigem, StatusNc } from '../types';
+import { classificacaoPendente } from './ncClassificacao';
+import { cobrirCusto, resumirGrupoCusto, somarCusto } from './ncCustos';
+import type { CoberturaCusto, ResumoGrupoCusto } from './ncCustos';
 
 type Custos = Pick<NcCampos, 'custo_produto' | 'custo_frete_adicional' | 'custo_multa_outros'>;
 
@@ -80,6 +83,9 @@ export function opcoesComAtual(opcoes: string[], atual: string | null): string[]
 }
 
 // ── Painel (PAINEL_NC) ───────────────────────────────────────────────────────
+// Base: todas as NCs com data da ocorrência no período ("registradas"). Pendentes de
+// classificação entram na base e aparecem à parte (classificadas x pendentes); nenhuma
+// NC é excluída para fazer os números coincidirem. Custos: regra de src/lib/ncCustos.ts.
 
 export interface FiltroPainelNc {
   /** YYYY-MM-DD; vazio = sem limite */
@@ -96,7 +102,16 @@ export interface LinhaPainelNc {
   valor: string;
   qtd: number;
   pct: number;
-  custoLiquido: number;
+  /** Custo líquido dos registros com valor; null quando nenhum tem valor (nunca zero por ausência). */
+  custoLiquido: number | null;
+  /** Registros com valor de custo (situação diferente de Não). */
+  comValor: number;
+  /** Registros com valor e algum campo de custo vazio. */
+  parciais: number;
+  /** Texto do custo na tabela: o valor, ou o estado quando não há valor. */
+  rotuloCusto: string;
+  /** Cobertura do custo do grupo, ex.: "2 de 3 com valor · 1 parcial". */
+  detalheCusto: string | null;
   horas: number;
   emAberto: number;
 }
@@ -106,17 +121,42 @@ export interface LinhaMesPainelNc {
   rotulo: string;
   qtd: number;
   evitaveis: number;
-  custoLiquido: number;
+  custoLiquido: number | null;
+  comValor: number;
+  rotuloCusto: string;
+  detalheCusto: string | null;
 }
 
 export interface IndicadoresNc {
+  /** Todas as NCs do período. */
   registradas: number;
+  classificadas: number;
+  pendentes: number;
   emAberto: number;
+  /** Proporção de "Sim" entre os registros com evitável definido (regra de origem antiga, sem mudança). */
   pctEvitaveis: number;
-  custoTotal: number;
-  valorReembolsado: number;
-  custoLiquido: number;
-  custoLiquidoMedio: number;
+  /** Denominador do percentual: registros com evitável definido (Sim, Não ou A avaliar). */
+  evitaveisBase: number;
+  evitaveisSim: number;
+  evitaveisNao: number;
+  evitaveisAvaliar: number;
+  /** Registros sem evitável (sem origem antiga). */
+  evitaveisSemInformacao: number;
+  /** Soma dos custos totais registrados; null sem nenhum valor registrado. */
+  custoTotal: number | null;
+  /** Soma dos reembolsos informados; null se nenhum foi informado (vazio não é zero). */
+  valorReembolsado: number | null;
+  reembolsoInformado: number;
+  comValorSemReembolso: number;
+  /** Soma do custo líquido dos registros com valor; null sem valor. */
+  custoLiquido: number | null;
+  /** Custo líquido registrado ÷ total de NCs registradas (inclui as sem custo). null sem valor. */
+  custoLiquidoPorNc: number | null;
+  /** Custo líquido registrado ÷ NCs com valor registrado. null sem valor. */
+  custoLiquidoMedioComValor: number | null;
+  comValor: number;
+  parciais: number;
+  cobertura: CoberturaCusto;
   horasTratativa: number;
   diasMediosEmAberto: number;
   comReversa: number;
@@ -132,20 +172,31 @@ export interface PainelNc {
   porResolucao: LinhaPainelNc[];
   porStatus: LinhaPainelNc[];
   porMes: LinhaMesPainelNc[];
+  /** Registros novos: classificação explícita (tipo, causador, área de tratativa e situação do custo). */
+  porTipoProblema: LinhaPainelNc[];
+  porCausador: LinhaPainelNc[];
+  porAreaTratativa: LinhaPainelNc[];
+  porSituacaoCusto: LinhaPainelNc[];
 }
 
 export const NAO_INFORMADO = 'Não informado';
 export const SEM_STATUS = 'Sem status';
+/** Linhas dos registros novos nas tabelas que dependem da origem antiga (ou sem classificação nova). */
+export const SEM_ORIGEM_ANTIGA = 'Sem origem antiga (registro novo)';
+export const SEM_TIPO = 'Sem tipo (a revisar)';
+export const SEM_CAUSADOR = 'Sem causador (a revisar)';
+export const NAO_ATRIBUIDA = 'Não atribuída';
+export const SEM_SITUACAO_CUSTO = 'Não informado';
 const MESES = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
 
-const somar = (ncs: NaoConformidade[], valor: (nc: NaoConformidade) => number | null) =>
-  arredondar(ncs.reduce((soma, nc) => soma + (valor(nc) ?? 0), 0));
+/** Soma de horas: tempo não informado não entra na soma (e não vira zero na exibição). */
+const somaNumeros = (valores: Array<number | null | undefined>) =>
+  arredondar(valores.reduce<number>((soma, v) => soma + (typeof v === 'number' ? v : 0), 0));
 
-/** O painel conta só linhas com origem preenchida e data da ocorrência dentro do período. */
+/** NCs com data da ocorrência dentro do período e da empresa (classificadas ou não). */
 export function ncsDoPeriodo(ncs: NaoConformidade[], filtro: FiltroPainelNc): NaoConformidade[] {
   return ncs.filter(
     (nc) =>
-      !!nc.origem &&
       !!nc.data_ocorrencia &&
       (!filtro.dataInicio || nc.data_ocorrencia >= filtro.dataInicio) &&
       (!filtro.dataFim || nc.data_ocorrencia <= filtro.dataFim) &&
@@ -167,14 +218,21 @@ function agrupar(
     const valor = chave(nc);
     grupos.set(valor, [...(grupos.get(valor) ?? []), nc]);
   }
-  return [...grupos.entries()].map(([valor, itens]) => ({
-    valor,
-    qtd: itens.length,
-    pct: base.length ? itens.length / base.length : 0,
-    custoLiquido: somar(itens, (nc) => nc.custo_liquido),
-    horas: somar(itens, (nc) => nc.tempo_tratativa_min) / 60,
-    emAberto: itens.filter((nc) => ncEmAberto(nc.status)).length,
-  }));
+  return [...grupos.entries()].map(([valor, itens]) => {
+    const custo: ResumoGrupoCusto = resumirGrupoCusto(itens);
+    return {
+      valor,
+      qtd: itens.length,
+      pct: base.length ? itens.length / base.length : 0,
+      custoLiquido: custo.liquido,
+      comValor: custo.comValor,
+      parciais: custo.parciais,
+      rotuloCusto: custo.rotulo,
+      detalheCusto: custo.detalhe,
+      horas: somaNumeros(itens.map((nc) => nc.tempo_tratativa_min)) / 60,
+      emAberto: itens.filter((nc) => ncEmAberto(nc.status)).length,
+    };
+  });
 }
 
 export function calcularPainelNc(
@@ -185,8 +243,17 @@ export function calcularPainelNc(
 ): PainelNc {
   const base = ncsDoPeriodo(ncs, filtro);
   const registradas = base.length;
+  const classificadas = base.filter((nc) => !classificacaoPendente(nc)).length;
+  const cobertura = cobrirCusto(base);
+  const soma = somarCusto(base);
   const comReversa = base.filter((nc) => nc.qtd_reversas > 0).length;
-  const custoLiquidoTotal = somar(base, (nc) => nc.custo_liquido);
+
+  // Evitável é da origem antiga. A regra de cálculo é a mesma de antes: "A avaliar" conta
+  // no denominador. Registros sem origem antiga aparecem como "sem informação".
+  const comEvitavel = base.filter((nc) => nc.evitavel !== null);
+  const evitaveisSim = comEvitavel.filter((nc) => nc.evitavel === 'Sim').length;
+  const evitaveisNao = comEvitavel.filter((nc) => nc.evitavel === 'Não').length;
+  const evitaveisAvaliar = comEvitavel.filter((nc) => nc.evitavel === 'A avaliar').length;
 
   // Dias médios: só ocorrências com status preenchido
   const dias = base
@@ -201,7 +268,6 @@ export function calcularPainelNc(
 
   const doAno = ncs.filter(
     (nc) =>
-      !!nc.origem &&
       !!nc.data_ocorrencia?.startsWith(`${filtro.ano}-`) &&
       (!filtro.empresa || nc.empresa === filtro.empresa)
   );
@@ -209,31 +275,52 @@ export function calcularPainelNc(
   return {
     indicadores: {
       registradas,
+      classificadas,
+      pendentes: registradas - classificadas,
       emAberto: base.filter((nc) => ncEmAberto(nc.status)).length,
-      pctEvitaveis: registradas ? base.filter((nc) => nc.evitavel === 'Sim').length / registradas : 0,
-      custoTotal: somar(base, (nc) => nc.custo_total),
-      valorReembolsado: somar(base, (nc) => nc.valor_reembolsado),
-      custoLiquido: custoLiquidoTotal,
-      custoLiquidoMedio: registradas ? arredondar(custoLiquidoTotal / registradas) : 0,
-      horasTratativa: somar(base, (nc) => nc.tempo_tratativa_min) / 60,
+      pctEvitaveis: comEvitavel.length ? evitaveisSim / comEvitavel.length : 0,
+      evitaveisBase: comEvitavel.length,
+      evitaveisSim,
+      evitaveisNao,
+      evitaveisAvaliar,
+      evitaveisSemInformacao: registradas - comEvitavel.length,
+      custoTotal: soma.total,
+      valorReembolsado: soma.reembolso,
+      reembolsoInformado: cobertura.reembolsoInformado,
+      comValorSemReembolso: cobertura.comValorSemReembolso,
+      custoLiquido: soma.liquido,
+      custoLiquidoPorNc: soma.liquido !== null && registradas ? arredondar(soma.liquido / registradas) : null,
+      custoLiquidoMedioComValor: soma.liquido !== null && soma.comValor ? arredondar(soma.liquido / soma.comValor) : null,
+      comValor: soma.comValor,
+      parciais: soma.parciais,
+      cobertura,
+      horasTratativa: somaNumeros(base.map((nc) => nc.tempo_tratativa_min)) / 60,
       diasMediosEmAberto: dias.length ? dias.reduce((a, b) => a + b, 0) / dias.length : 0,
       comReversa,
       pctComReversa: registradas ? comReversa / registradas : 0,
     },
-    porOrigem: agrupar(base, (nc) => nc.origem ?? NAO_INFORMADO, origensAtivas),
-    porArea: agrupar(base, (nc) => nc.area_responsavel ?? NAO_INFORMADO, valoresDaLista(listas, 'area')),
+    porOrigem: agrupar(base, (nc) => nc.origem ?? SEM_ORIGEM_ANTIGA, origensAtivas),
+    porArea: agrupar(base, (nc) => nc.area_responsavel ?? SEM_ORIGEM_ANTIGA, valoresDaLista(listas, 'area')),
     porEmpresa: agrupar(base, (nc) => nc.empresa ?? NAO_INFORMADO, valoresDaLista(listas, 'empresa')),
     porTipoSaida: agrupar(base, (nc) => nc.tipo_saida ?? NAO_INFORMADO, valoresDaLista(listas, 'tipo_saida')),
     porResolucao: agrupar(base, (nc) => nc.resolucao ?? NAO_INFORMADO, valoresDaLista(listas, 'resolucao')),
     porStatus: agrupar(base, (nc) => nc.status ?? SEM_STATUS, [...STATUS_NC]),
+    porTipoProblema: agrupar(base, (nc) => nc.tipo_problema ?? SEM_TIPO, valoresDaLista(listas, 'tipo_problema')),
+    porCausador: agrupar(base, (nc) => nc.causador ?? SEM_CAUSADOR, valoresDaLista(listas, 'causador')),
+    porAreaTratativa: agrupar(base, (nc) => nc.area_tratativa ?? NAO_ATRIBUIDA, valoresDaLista(listas, 'area')),
+    porSituacaoCusto: agrupar(base, (nc) => nc.custo_situacao ?? SEM_SITUACAO_CUSTO, [...SITUACOES_CUSTO_NC]),
     porMes: MESES.map((rotulo, i) => {
       const itens = doAno.filter((nc) => Number(nc.data_ocorrencia!.slice(5, 7)) === i + 1);
+      const custo = resumirGrupoCusto(itens);
       return {
         mes: i + 1,
         rotulo,
         qtd: itens.length,
         evitaveis: itens.filter((nc) => nc.evitavel === 'Sim').length,
-        custoLiquido: somar(itens, (nc) => nc.custo_liquido),
+        custoLiquido: custo.liquido,
+        comValor: custo.comValor,
+        rotuloCusto: custo.rotulo,
+        detalheCusto: custo.detalhe,
       };
     }),
   };
@@ -249,6 +336,7 @@ export function anosComOcorrencia(ncs: NaoConformidade[]): number[] {
 
 const moeda = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' });
 
+/** Valor em reais; null vira traço (use o rótulo de ncCustos quando houver um estado do custo). */
 export function formatarMoeda(v: number | null | undefined): string {
   return v === null || v === undefined ? '—' : moeda.format(v);
 }

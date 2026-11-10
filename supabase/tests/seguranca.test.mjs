@@ -325,9 +325,12 @@ describe('decisão, histórico e exclusão', () => {
     assert.ok(await falha(como(c1, u.adminPedidos, 'delete from public.solicitacoes_reverso where id = $1', [r.alinare.id])));
   });
 
-  it('usuário comum não apaga reversa', async () => {
-    const apagadas = await linhas(u.solicitanteAlinare, 'delete from public.solicitacoes_reverso where id = $1 returning id', [r.alinare.id]);
-    assert.equal(apagadas.length, 0);
+  it('usuário comum não apaga reversa: o DELETE é recusado pelo privilégio (a Lixeira substituiu o apagamento) e a linha continua', async () => {
+    // Desde a Lixeira, authenticated não tem DELETE na tabela: a recusa vem antes da RLS (42501)
+    const erro = await falha(linhas(u.solicitanteAlinare, 'delete from public.solicitacoes_reverso where id = $1 returning id', [r.alinare.id]));
+    assert.equal(erro?.code, '42501');
+    const [{ total }] = (await db.query('select count(*)::int as total from public.solicitacoes_reverso where id = $1', [r.alinare.id])).rows;
+    assert.equal(total, 1, 'a reversa continua no banco');
   });
 });
 

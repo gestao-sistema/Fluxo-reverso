@@ -15,11 +15,11 @@ type Card = { label: string; value: number; hint: string; icon: LucideIcon; colo
 
 export default function SummaryCards({ kpis, loading, activeStatuses, onToggle }: Props) {
   const cards: Card[] = [
-    { label:'Total de solicitações', value:kpis.total, hint:'Registros no período', icon:Package, color:'var(--flow-ice)', soft:'color-mix(in srgb, var(--flow-ice) 14%, transparent)', status:null },
-    { label:'Aguardando aprovação', value:kpis.aguardandoAprovacao, hint:'Na fila do setor aprovador', icon:BadgeCheck, color:'#ffad33', soft:'color-mix(in srgb, var(--flow-warning) 14%, transparent)', status:'aguardando_aprovacao' },
+    { label:'Total de solicitações', value:kpis.total, hint:'Registros no período', icon:Package, color:'var(--flow-accent)', soft:'color-mix(in srgb, var(--flow-accent) 14%, transparent)', status:null },
+    { label:'Aguardando aprovação', value:kpis.aguardandoAprovacao, hint:'Na fila do setor aprovador', icon:BadgeCheck, color:'var(--flow-warning)', soft:'color-mix(in srgb, var(--flow-warning) 14%, transparent)', status:'aguardando_aprovacao' },
     { label:'Aguardando etiqueta', value:kpis.pendentes, hint:'Solicitações aprovadas', icon:Clock3, color:'var(--flow-warning)', soft:'color-mix(in srgb, var(--flow-warning) 18%, transparent)', status:'pendente' },
-    { label:'Aguardando check-in', value:kpis.etiquetaGerada, hint:'Etiqueta dos Correios vinculada', icon:Tag, color:'#4599ff', soft:'color-mix(in srgb, var(--flow-ice) 14%, transparent)', status:'etiqueta_gerada' },
-    { label:'Postados', value:kpis.postados, hint:'Enviados pelos clientes', icon:PackageCheck, color:'var(--flow-ice-hover)', soft:'color-mix(in srgb, var(--flow-ice-hover) 14%, transparent)', status:'postado' },
+    { label:'Aguardando check-in', value:kpis.etiquetaGerada, hint:'Etiqueta dos Correios vinculada', icon:Tag, color:'var(--flow-info)', soft:'color-mix(in srgb, var(--flow-info) 14%, transparent)', status:'etiqueta_gerada' },
+    { label:'Postados', value:kpis.postados, hint:'Enviados pelos clientes', icon:PackageCheck, color:'var(--flow-success)', soft:'color-mix(in srgb, var(--flow-success) 14%, transparent)', status:'postado' },
     { label:'Em trânsito', value:kpis.emTransito, hint:'No fluxo de transporte', icon:Truck, color:'var(--flow-orange)', soft:'color-mix(in srgb, var(--flow-orange) 14%, transparent)', status:'em_transito' },
     { label:'Concluídos', value:kpis.concluidos, hint:'Processos finalizados', icon:CheckCircle2, color:'var(--flow-success)', soft:'color-mix(in srgb, var(--flow-success) 14%, transparent)', status:'concluido' },
   ];

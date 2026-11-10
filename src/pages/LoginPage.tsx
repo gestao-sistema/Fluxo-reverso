@@ -66,7 +66,7 @@ export default function LoginPage(){
           {erro&&<div role="alert" className="login-error">{erro}</div>}
           <button type="submit" disabled={enviando} className="login-submit">{enviando?<Loader2 className="animate-spin" size={18}/>:<KeyRound size={17}/>} Acessar plataforma <ArrowRight size={16}/></button>
         </form>
-        {demoDisponivel() && <button type="button" className="login-demo" onClick={abrirDemonstracao}><FlaskConical size={17}/><span><strong>Iniciar demonstração</strong></span><ArrowRight size={16}/></button>}
+        {import.meta.env.DEV && demoDisponivel() && <button type="button" className="login-demo" onClick={abrirDemonstracao}><FlaskConical size={17}/><span><strong>Iniciar demonstração</strong></span><ArrowRight size={16}/></button>}
       </div>
     </section>
   </div>;

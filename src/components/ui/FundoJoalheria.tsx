@@ -56,7 +56,7 @@ export default function FundoJoalheria() {
     let largura = 0;
     let altura = 0;
     let particulas: Particula[] = [];
-    let cor = '232, 196, 132';
+    let cor = '198, 196, 199';
     let tempo = 0;
     let ultimo = 0;
     let rafId = 0;

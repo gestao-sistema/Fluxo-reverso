@@ -1,0 +1,38 @@
+/* Contador "Aguardando sua análise" nos itens do menu. Absoluto no item do dock: não altera a largura medida. */
+.flow-nav-badge {
+  position: absolute;
+  top: 5px;
+  left: calc(50% + 7px);
+  min-width: 18px;
+  height: 18px;
+  display: grid;
+  place-items: center;
+  padding: 0 5px;
+  border-radius: var(--flow-radius-pill);
+  color: var(--flow-on-fill);
+  background: var(--flow-accent);
+  box-shadow: 0 0 0 2px var(--flow-chrome);
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1;
+  pointer-events: none;
+}
+
+.flow-nav-badge.is-alerta {
+  background: var(--flow-danger);
+}
+
+/* Indicador discreto no botão "Mais": há pendências em um destino que está dentro do menu */
+.flow-nav-badge.is-ponto {
+  min-width: 8px;
+  width: 8px;
+  height: 8px;
+  padding: 0;
+}
+
+/* Dentro do menu "Mais" o contador fica ao lado do nome, no fluxo normal */
+.flow-nav-sheet-link .flow-nav-badge {
+  position: static;
+  margin-left: auto;
+  box-shadow: none;
+}

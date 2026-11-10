@@ -65,6 +65,8 @@ Uma flag interna **não basta sozinha**: a RPC liga a flag, e o trigger ainda co
 ## Limitações conhecidas
 
 - NC: o escopo é por tela (`nc`, `nc-edit`), não por empresa. Mantido como está nesta etapa.
+- NC, proteção no servidor (migration `20261109160000`, ainda não aplicada no remoto): `authenticated` não tem UPDATE direto em `nao_conformidades`. Toda alteração passa por `nc_salvar_edicao`, que confere a permissão (`pode_editar_nc()`), a versão (NC001) e a justificativa das correções (NC002), e grava a trilha financeira. Criação e importação usam INSERT; a exclusão é só do administrador (política `nc_delete`).
+- Funções de gatilho não são executáveis pela API (migration `20261109170000`). `authenticated` não tem TRUNCATE, REFERENCES nem TRIGGER nas tabelas de `public` (migration `20261109180000`).
 - Edge Functions: a autorização do endpoint dos Correios e de `admin-usuarios` é tratada à parte (`supabase/functions/`).
 - Frontend: as telas chamam as RPCs de aprovação, emissão e recebimento; qualquer outra gravação continua sujeita ao trigger `validar_etapa_por_setor`.
 - Testes de RLS rodam em Postgres 17 real (`embedded-postgres`), com os papéis `anon` e `authenticated`, mas **não** contra o projeto Supabase de produção nem pela API PostgREST.

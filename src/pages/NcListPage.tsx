@@ -1,6 +1,7 @@
 // ── Lista de não conformidades ───────────────────────────────────────────────
 // Registro da Expedição (REGISTRO_NC): filtros, exportação no layout da
-// planilha e importação do histórico (admin).
+// planilha e importação do histórico (admin). Registros novos aparecem pelo tipo do
+// problema e pela origem / causador, com ou sem origem antiga.
 // ─────────────────────────────────────────────────────────────────────────────
 
 import { useMemo, useState } from 'react';
@@ -14,28 +15,37 @@ import { useAuth } from '../context/AuthContext';
 import { useEmpresaDaTela } from '../context/TemaContext';
 import { useNaoConformidades } from '../hooks/useNaoConformidades';
 import { podeEditarNc } from '../lib/perfil';
-import { SEM_STATUS, diasEmAberto, formatarDataBr, formatarMoeda, valoresDaLista } from '../lib/ncCalculos';
+import { SEM_STATUS, diasEmAberto, formatarDataBr, valoresDaLista } from '../lib/ncCalculos';
 import { exportarPlanilhaNc } from '../lib/ncPlanilha';
 import { exportarRelatorioMensalNc } from '../lib/ncRelatorioMensal';
+import { SEM_FILTROS_NC, filtrarNcs, temFiltroNc } from '../lib/ncFiltros';
+import type { FiltrosNc } from '../lib/ncFiltros';
+import { ROTULOS_FILTRO_CUSTO, descreverCusto } from '../lib/ncCustos';
+import type { FiltroCusto } from '../lib/ncCustos';
 import { STATUS_NC, isAdmin } from '../types';
+import type { NaoConformidade } from '../types';
 import '../styles/nc.css';
 
-interface Filtros {
-  dataInicio: string;
-  dataFim: string;
-  empresa: string;
-  status: string;
-  origem: string;
-  busca: string;
+/**
+ * Custo líquido da linha, com a mesma regra do detalhe (ausência não vira zero). A situação
+ * aparece em linha pequena abaixo do valor: a tabela não ganha coluna nova.
+ */
+function CustoLinha({ nc }: { nc: NaoConformidade }) {
+  const custo = descreverCusto(nc.custo_situacao, nc);
+  const detalhe = [nc.custo_situacao ?? 'Não informado', custo.notaReembolso].filter(Boolean).join(' · ');
+  return (
+    <>
+      {custo.rotuloLiquido}
+      <span className="nc-vazio" style={{ display: 'block', fontSize: 11 }}>{detalhe}</span>
+    </>
+  );
 }
-
-const SEM_FILTRO: Filtros = { dataInicio: '', dataFim: '', empresa: '', status: '', origem: '', busca: '' };
 
 export default function NcListPage() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const { ncs, listas, loading, erro, recarregar } = useNaoConformidades();
-  const [filtros, setFiltros] = useState<Filtros>(SEM_FILTRO);
+  const [filtros, setFiltros] = useState<FiltrosNc>(SEM_FILTROS_NC);
   // Só o tema visual acompanha a empresa exibida no filtro
   useEmpresaDaTela(filtros.empresa || null);
   const [mesRelatorio, setMesRelatorio] = useState(() => {
@@ -46,21 +56,7 @@ export default function NcListPage() {
   const editar = user ? podeEditarNc(user) : false;
   const admin = user ? isAdmin(user) : false;
 
-  const filtradas = useMemo(() => {
-    const termo = filtros.busca.trim().toLowerCase();
-    return ncs.filter(
-      (nc) =>
-        (!filtros.dataInicio || (nc.data_ocorrencia ?? '') >= filtros.dataInicio) &&
-        (!filtros.dataFim || (nc.data_ocorrencia !== null && nc.data_ocorrencia <= filtros.dataFim)) &&
-        (!filtros.empresa || nc.empresa === filtros.empresa) &&
-        (!filtros.status || (filtros.status === SEM_STATUS ? nc.status === null : nc.status === filtros.status)) &&
-        (!filtros.origem || nc.origem === filtros.origem) &&
-        (!termo ||
-          [nc.codigo, nc.cliente, nc.nf, nc.rastreio, nc.novo_rastreio, nc.romaneio, nc.vendedora].some((v) =>
-            v?.toLowerCase().includes(termo)
-          ))
-    );
-  }, [ncs, filtros]);
+  const filtradas = useMemo(() => filtrarNcs(ncs, filtros), [ncs, filtros]);
 
   const exportar = () => {
     if (!filtradas.length) {
@@ -68,7 +64,7 @@ export default function NcListPage() {
       return;
     }
     exportarPlanilhaNc(filtradas);
-    toast.success('Planilha exportada no layout da REGISTRO_NC.');
+    toast.success('Planilha exportada: 36 colunas do layout da REGISTRO_NC e a coluna adicional "Reversas geradas".');
   };
 
   const exportarMensal = () => {
@@ -84,7 +80,7 @@ export default function NcListPage() {
     toast.success('Relatório mensal exportado com os valores registrados.');
   };
 
-  const temFiltro = Object.values(filtros).some(Boolean);
+  const temFiltro = temFiltroNc(filtros);
   const origens = [...listas.origens].sort((a, b) => a.ordem - b.ordem).map((o) => o.nome);
 
   return (
@@ -94,7 +90,7 @@ export default function NcListPage() {
         eyebrow="QUALIDADE / NÃO CONFORMIDADES"
         title="Não conformidades"
         description="Registre e acompanhe toda não conformidade da Expedição, com ou sem reversa."
-        action={editar && <Link to="/admin/nc/nova" className="btn-primary"><Plus size={15} /> Nova NC</Link>}
+        action={editar && <Link to="/admin/nc/nova" className="btn-primary"><Plus size={15} /> Registrar ocorrência</Link>}
       />
 
       <section className="filter-panel" aria-label="Filtros de não conformidades">
@@ -115,6 +111,20 @@ export default function NcListPage() {
             </select>
           </div>
           <div className="filter-field">
+            <label className="field-label" htmlFor="nc-tipo">Tipo do problema</label>
+            <select id="nc-tipo" className="field-control" value={filtros.tipo} onChange={(e) => setFiltros({ ...filtros, tipo: e.target.value })}>
+              <option value="">Todos</option>
+              {valoresDaLista(listas, 'tipo_problema').map((v) => <option key={v} value={v}>{v}</option>)}
+            </select>
+          </div>
+          <div className="filter-field">
+            <label className="field-label" htmlFor="nc-causador">Origem / causador</label>
+            <select id="nc-causador" className="field-control" value={filtros.causador} onChange={(e) => setFiltros({ ...filtros, causador: e.target.value })}>
+              <option value="">Todos</option>
+              {valoresDaLista(listas, 'causador').map((v) => <option key={v} value={v}>{v}</option>)}
+            </select>
+          </div>
+          <div className="filter-field">
             <label className="field-label" htmlFor="nc-status">Status da NC</label>
             <select id="nc-status" className="field-control" value={filtros.status} onChange={(e) => setFiltros({ ...filtros, status: e.target.value })}>
               <option value="">Todos</option>
@@ -123,18 +133,31 @@ export default function NcListPage() {
             </select>
           </div>
           <div className="filter-field">
-            <label className="field-label" htmlFor="nc-origem">Origem</label>
+            <label className="field-label" htmlFor="nc-custo">Custo</label>
+            <select id="nc-custo" className="field-control" value={filtros.custo} onChange={(e) => setFiltros({ ...filtros, custo: e.target.value as FiltroCusto })}>
+              {(Object.keys(ROTULOS_FILTRO_CUSTO) as FiltroCusto[]).map((f) => <option key={f} value={f}>{ROTULOS_FILTRO_CUSTO[f]}</option>)}
+            </select>
+          </div>
+          <div className="filter-field">
+            <label className="field-label" htmlFor="nc-origem">Origem antiga</label>
             <select id="nc-origem" className="field-control" value={filtros.origem} onChange={(e) => setFiltros({ ...filtros, origem: e.target.value })}>
               <option value="">Todas</option>
               {origens.map((v) => <option key={v} value={v}>{v}</option>)}
             </select>
+          </div>
+          <div className="filter-field">
+            <span className="field-label">Classificação</span>
+            <label className="flex items-center gap-2 text-sm" htmlFor="nc-pendente">
+              <input id="nc-pendente" type="checkbox" checked={filtros.pendente} onChange={(e) => setFiltros({ ...filtros, pendente: e.target.checked })} />
+              Só sem tipo ou causador
+            </label>
           </div>
           <div className="filter-field is-search">
             <label className="field-label" htmlFor="nc-busca">Buscar</label>
             <input id="nc-busca" type="search" className="field-control" placeholder="ID, cliente, vendedora, NF, romaneio ou rastreio" value={filtros.busca} onChange={(e) => setFiltros({ ...filtros, busca: e.target.value })} />
           </div>
           <div className="filter-actions">
-            {temFiltro && <button type="button" className="btn-secondary" onClick={() => setFiltros(SEM_FILTRO)}><RotateCcw size={13} /> Limpar</button>}
+            {temFiltro && <button type="button" className="btn-secondary" onClick={() => setFiltros(SEM_FILTROS_NC)}><RotateCcw size={13} /> Limpar</button>}
           </div>
         </div>
       </section>
@@ -177,8 +200,9 @@ export default function NcListPage() {
                   <th>Ocorrência</th>
                   <th>Empresa</th>
                   <th>Cliente</th>
-                  <th>Origem</th>
-                  <th>Área</th>
+                  <th>Tipo do problema</th>
+                  <th>Origem / causador</th>
+                  <th>Tratativa</th>
                   <th>Status</th>
                   <th>Resolução</th>
                   <th>Custo líquido</th>
@@ -196,11 +220,21 @@ export default function NcListPage() {
                     <td>{formatarDataBr(nc.data_ocorrencia)}</td>
                     <td>{nc.empresa ?? '—'}</td>
                     <td><span className="record-truncate">{nc.cliente ?? '—'}</span></td>
-                    <td><span className="record-truncate" title={nc.origem ?? undefined}>{nc.origem ?? '—'}</span></td>
-                    <td>{nc.area_responsavel ?? '—'}</td>
+                    <td>
+                      {nc.tipo_problema ? (
+                        <span className="record-truncate">{nc.tipo_problema}</span>
+                      ) : (
+                        <span className="nc-vazio">Não informado</span>
+                      )}
+                      {nc.origem && (
+                        <span className="nc-origem-antiga record-truncate" title={nc.origem}>Origem antiga: {nc.origem}</span>
+                      )}
+                    </td>
+                    <td>{nc.causador ?? <span className="nc-vazio">Não informada</span>}</td>
+                    <td>{nc.area_tratativa ?? <span className="nc-vazio">Não atribuída</span>}</td>
                     <td><NcStatusBadge status={nc.status} /></td>
                     <td>{nc.resolucao ?? '—'}</td>
-                    <td style={{ whiteSpace: 'nowrap' }}>{formatarMoeda(nc.custo_liquido)}</td>
+                    <td style={{ whiteSpace: 'nowrap' }}><CustoLinha nc={nc} /></td>
                     <td>{diasEmAberto(nc) ?? '—'}</td>
                     <td>{nc.qtd_reversas}</td>
                   </tr>

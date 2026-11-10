@@ -1,36 +1,15 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 vi.mock('../lib/supabase', () => ({
-  supabase: { from: vi.fn(), storage: { from: vi.fn() } },
+  supabase: { from: vi.fn(), rpc: vi.fn(), storage: { from: vi.fn() } },
 }));
 
 import { supabase } from '../lib/supabase';
 import apiService from '../services/apiService';
 
-function chainBuilder(final: { data: unknown; error: unknown }) {
-  const obj: Record<string, ReturnType<typeof vi.fn>> = {};
-  const self: any = new Proxy(obj, {
-    get(_t, prop: string | symbol) {
-      const key = String(prop);
-      if (key === 'then') {
-        return (resolve: any, reject: any) => Promise.resolve(final).then(resolve, reject);
-      }
-      if (key === 'single' || key === 'maybeSingle') {
-        if (!(key in obj)) {
-          obj[key] = vi.fn(() => Promise.resolve(final));
-        }
-        return obj[key];
-      }
-      if (!(key in obj)) {
-        obj[key] = vi.fn(() => self);
-      }
-      return obj[key];
-    },
-  });
-  return self;
-}
-
-// Bucket de etiquetas: list/remove
+// Regra vigente: apagar um pedido é movê-lo para a Lixeira (RPC inutilizar_chamado). Nada é
+// removido da tabela nem do bucket de etiquetas, e o pedido pode ser restaurado depois.
+// Bucket de etiquetas: list/remove (usados aqui só para provar que os PDFs não são tocados).
 let bucket: { list: ReturnType<typeof vi.fn>; remove: ReturnType<typeof vi.fn> };
 
 beforeEach(() => {
@@ -42,43 +21,45 @@ beforeEach(() => {
   (supabase.storage.from as ReturnType<typeof vi.fn>).mockImplementation(() => bucket);
 });
 
-describe('apiService.deleteSolicitacao', () => {
-  it('sucesso: resolve sem erro e chama .delete() com .eq(id)', async () => {
-    const mock = chainBuilder({ data: null, error: null });
-    (supabase.from as ReturnType<typeof vi.fn>).mockImplementation(() => mock);
+describe('apiService.deleteSolicitacao (move para a Lixeira)', () => {
+  it('sucesso: resolve sem erro, chama a RPC inutilizar_chamado com o id e não faz exclusão física', async () => {
+    (supabase.rpc as ReturnType<typeof vi.fn>).mockResolvedValue({ data: null, error: null });
 
     await expect(apiService.deleteSolicitacao('uuid-1')).resolves.toBeUndefined();
-    expect(mock.delete).toHaveBeenCalled();
-    expect(mock.eq).toHaveBeenCalledWith('id', 'uuid-1');
+    expect(supabase.rpc).toHaveBeenCalledWith('inutilizar_chamado', { p_solicitacao_id: 'uuid-1' });
+    expect(supabase.from).not.toHaveBeenCalled();
     expect(bucket.remove).not.toHaveBeenCalled();
   });
 
-  it('apaga os PDFs de etiqueta antes da reversa', async () => {
-    const mock = chainBuilder({ data: null, error: null });
-    (supabase.from as ReturnType<typeof vi.fn>).mockImplementation(() => mock);
+  it('mantém os PDFs de etiqueta: a Lixeira não remove documentos, para a reversa poder ser restaurada', async () => {
+    (supabase.rpc as ReturnType<typeof vi.fn>).mockResolvedValue({ data: null, error: null });
     bucket.list.mockResolvedValue({ data: [{ name: '1-etiqueta.pdf' }, { name: '2-orfa.pdf' }], error: null });
 
     await apiService.deleteSolicitacao('uuid-1');
-    expect(supabase.storage.from).toHaveBeenCalledWith('etiquetas');
-    expect(bucket.list).toHaveBeenCalledWith('uuid-1');
-    expect(bucket.remove).toHaveBeenCalledWith(['uuid-1/1-etiqueta.pdf', 'uuid-1/2-orfa.pdf']);
-    expect(bucket.remove.mock.invocationCallOrder[0]).toBeLessThan(mock.delete.mock.invocationCallOrder[0]);
+    expect(supabase.storage.from).not.toHaveBeenCalled();
+    expect(bucket.list).not.toHaveBeenCalled();
+    expect(bucket.remove).not.toHaveBeenCalled();
+    expect(supabase.rpc).toHaveBeenCalledWith('inutilizar_chamado', { p_solicitacao_id: 'uuid-1' });
   });
 
-  it('falha ao apagar a etiqueta: não apaga a reversa', async () => {
-    const mock = chainBuilder({ data: null, error: null });
-    (supabase.from as ReturnType<typeof vi.fn>).mockImplementation(() => mock);
-    bucket.list.mockResolvedValue({ data: [{ name: '1-etiqueta.pdf' }], error: null });
-    bucket.remove.mockResolvedValue({ data: null, error: { message: 'new row violates row-level security policy' } });
+  it('sem permissão para a Lixeira: mostra a mensagem do banco e não altera o pedido nem os documentos', async () => {
+    (supabase.rpc as ReturnType<typeof vi.fn>).mockResolvedValue({
+      data: null,
+      error: { code: '42501', message: 'Somente administradores podem mover chamados para a Lixeira.' },
+    });
 
-    await expect(apiService.deleteSolicitacao('uuid-1')).rejects.toThrow('row-level security');
+    await expect(apiService.deleteSolicitacao('uuid-1')).rejects.toThrow(
+      'Somente administradores podem mover chamados para a Lixeira.'
+    );
     expect(supabase.from).not.toHaveBeenCalled();
+    expect(bucket.remove).not.toHaveBeenCalled();
   });
 
   it('erro do supabase: lança Error com a mensagem', async () => {
-    (supabase.from as ReturnType<typeof vi.fn>).mockImplementation(() =>
-      chainBuilder({ data: null, error: { message: 'foreign key violation' } })
-    );
+    (supabase.rpc as ReturnType<typeof vi.fn>).mockResolvedValue({
+      data: null,
+      error: { message: 'foreign key violation' },
+    });
 
     await expect(apiService.deleteSolicitacao('uuid-1')).rejects.toThrow(
       'foreign key violation'
@@ -86,12 +67,13 @@ describe('apiService.deleteSolicitacao', () => {
   });
 
   it('erro sem mensagem: usa fallback', async () => {
-    (supabase.from as ReturnType<typeof vi.fn>).mockImplementation(() =>
-      chainBuilder({ data: null, error: { message: '' } })
-    );
+    (supabase.rpc as ReturnType<typeof vi.fn>).mockResolvedValue({
+      data: null,
+      error: { message: '' },
+    });
 
     await expect(apiService.deleteSolicitacao('uuid-1')).rejects.toThrow(
-      'Erro ao apagar solicitação.'
+      'Erro ao mover o chamado para a Lixeira.'
     );
   });
 });

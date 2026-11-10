@@ -14,7 +14,8 @@ import { EMPRESAS_REVERSA, EVITAVEL_OPCOES, LISTA_NC_LABEL, STATUS_NC } from '..
 import type { Evitavel, ListaNc, ListasNc, NcOrigem } from '../types';
 import '../styles/nc.css';
 
-const LISTAS: ListaNc[] = ['area', 'tipo_saida', 'resolucao', 'empresa', 'como_identificada', 'reembolso'];
+// Classificação atual primeiro (tipo do problema e origem / causador); as demais listas em seguida
+const LISTAS: ListaNc[] = ['tipo_problema', 'causador', 'area', 'tipo_saida', 'resolucao', 'empresa', 'como_identificada', 'reembolso'];
 
 const NOVA_ORIGEM: NcOrigem = { nome: '', area: '', evitavel: 'A avaliar', ordem: 0, ativo: true };
 
@@ -109,7 +110,7 @@ export default function NcListasPage() {
         icon={ListChecks}
         eyebrow="QUALIDADE / NÃO CONFORMIDADES"
         title="Listas de NC"
-        description="Opções de preenchimento da NC. A área responsável e o “evitável” de cada origem são propostas — ajuste conforme a validação da gestão."
+        description="Opções do registro de NC. Tipo do problema e origem / causador são a classificação atual; as origens antigas ficam para os registros anteriores."
       />
 
       {carregando ? (
@@ -119,9 +120,9 @@ export default function NcListasPage() {
           <section className="surface-panel" style={{ overflow: 'hidden' }} aria-label="Origens da não conformidade">
             <div className="panel-heading">
               <div>
-                <span className="panel-kicker">ORIGENS</span>
-                <h2 className="panel-title">Origem da não conformidade</h2>
-                <p className="panel-desc">A área responsável e o “evitável internamente” da origem alimentam o registro e o painel.</p>
+                <span className="panel-kicker">ORIGENS ANTIGAS</span>
+                <h2 className="panel-title">Origem da não conformidade (registros antigos)</h2>
+                <p className="panel-desc">Usada pelos registros anteriores e pelo painel de origem antiga. Novos registros usam Tipo do problema e Origem / causador.</p>
               </div>
             </div>
             <div className="data-table-wrap">

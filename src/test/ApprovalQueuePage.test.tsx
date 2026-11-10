@@ -340,3 +340,56 @@ describe('ApprovalQueuePage', () => {
     await waitFor(() => expect(screen.queryByText('RV-11111111')).not.toBeInTheDocument());
   });
 });
+
+describe('ApprovalQueuePage: classificação da NC vinculada', () => {
+  const comNcNova = record('33333333-3333-4333-8333-333333333333', 'Alinare', {
+    nc_codigo: 'NC-2404',
+    nc_origem: null,
+    nc_tipo_problema: 'Endereço incorreto',
+    nc_causador: 'Comercial',
+    nc_descricao: 'Endereço digitado pela vendedora difere do pedido.',
+  });
+  const comNcAntiga = record('44444444-4444-4444-8444-444444444444', 'Alinare', {
+    nc_codigo: 'NC-2403',
+    nc_origem: 'Erro de separação',
+    nc_tipo_problema: null,
+    nc_causador: null,
+    nc_descricao: 'Conferência identificou divergência no pedido enviado.',
+  });
+  const semNc = record('55555555-5555-4555-8555-555555555555', 'Alinare');
+
+  async function abrirReversa(ticket: string) {
+    const user = userEvent.setup();
+    await screen.findByText(ticket);
+    await user.click(screen.getByRole('button', { name: new RegExp(ticket) }));
+  }
+
+  it('mostra tipo do problema e origem / causador da NC nova, sem origem antiga', async () => {
+    queue = [comNcNova];
+    renderPage();
+    await abrirReversa('RV-33333333');
+    const referencia = (await screen.findByText('Referência vinculada: NC-2404')).closest('.approval-nc-context') as HTMLElement;
+    expect(referencia).toHaveTextContent('Tipo do problema: Endereço incorreto');
+    expect(referencia).toHaveTextContent('Origem / causador: Comercial');
+    expect(referencia).not.toHaveTextContent('Origem antiga');
+    expect(referencia).toHaveTextContent('Endereço digitado pela vendedora difere do pedido.');
+  });
+
+  it('NC antiga mantém a origem histórica e não mostra tipo nem causador', async () => {
+    queue = [comNcAntiga];
+    renderPage();
+    await abrirReversa('RV-44444444');
+    const referencia = (await screen.findByText('Referência vinculada: NC-2403')).closest('.approval-nc-context') as HTMLElement;
+    expect(referencia).toHaveTextContent('Origem antiga: Erro de separação');
+    expect(referencia).not.toHaveTextContent('Tipo do problema');
+    expect(referencia).not.toHaveTextContent('Origem / causador');
+  });
+
+  it('reversa sem NC não mostra bloco de referência', async () => {
+    queue = [semNc];
+    renderPage();
+    await abrirReversa('RV-55555555');
+    expect(await screen.findByText('Endereço solicitado completo')).toBeInTheDocument();
+    expect(screen.queryByText(/Referência vinculada/)).not.toBeInTheDocument();
+  });
+});

@@ -145,7 +145,7 @@ Aplicar **só** `20261028110000` não basta: sem `20261028100000` a função nov
 
 **3. Publicar `admin-usuarios`**: `supabase functions deploy admin-usuarios --project-ref <ref>`. Só **depois** do passo 1 completo: a versão nova chama RPCs que só existem após as migrations. A ação legada `create` continua funcionando. Sem nenhum segredo de convite, a função **salva o cadastro e não envia nada** (estado "preparado").
 
-**4. Secrets dos convites** (`supabase secrets set --env-file <arquivo fora do repositório>`; não deixar valores no histórico do shell): `APP_BASE_URL`, `SMTP_HOST`, `SMTP_PORT`, `SMTP_SECURE`, `SMTP_USER`, `SMTP_FROM` e `SMTP_PASS` (somente pelo armazenamento seguro). `CONVITE_TRANSPORTE` é independente e deve continuar `simulado` até validar SMTP e habilitar um único teste. As notificações usam `NOTIFICACAO_EMAIL_TRANSPORTE`, também independente. Não altere `ETIQUETA_TRANSPORTE` nem o agendamento.
+**4. Secrets dos convites** (`supabase secrets set --env-file <arquivo fora do repositório>`; não deixar valores no histórico do shell): `APP_BASE_URL`, `SMTP_HOST`, `SMTP_PORT`, `SMTP_SECURE`, `SMTP_USER`, `SMTP_FROM` e `SMTP_PASS` (somente pelo armazenamento seguro). `CONVITE_TRANSPORTE` é independente e deve continuar `simulado` até validar SMTP e habilitar um único teste. As notificações dos pedidos usam `ETIQUETA_TRANSPORTE`, outro controle independente. Não altere `ETIQUETA_TRANSPORTE` nem o agendamento para mexer nos convites.
 
 **5. Front-end local**: `npm run dev` (origem `http://localhost:5173`). O `.env` aponta para o projeto de produção: use **somente conta fictícia** e não envie convite a pessoa real. A rota `/definir-senha` e a tela de usuários já estão no código; sem a migration `20261028120000` a retomada pela sessão simplesmente não encontra convite pendente (sem erro na tela).
 
@@ -153,7 +153,7 @@ Aplicar **só** `20261028110000` não basta: sem `20261028100000` a função nov
 
 **7. Teste futuro único**: após validação do runtime, SMTP AUTH, Send As, redirects e secrets, habilitar somente `CONVITE_TRANSPORTE=smtp` e enviar um único convite à caixa corporativa controlada previamente escolhida. Confirmar a definição de senha, o login e o bloqueio de acesso antes da senha. Não reenviar resultado SMTP indeterminado sem reconciliação explícita.
 
-**Desfazer**: voltar `CONVITE_TRANSPORTE` para `simulado` desabilita somente convites; voltar `NOTIFICACAO_EMAIL_TRANSPORTE` para `simulado` desabilita somente o e-mail da fila. Não altere `ETIQUETA_TRANSPORTE` nem o agendamento. As migrations são aditivas; reverta o código por publicação coordenada, sem descartar o histórico SMTP.
+**Desfazer**: voltar `CONVITE_TRANSPORTE` para `simulado` desabilita somente convites. Para parar as notificações dos pedidos, o controle é `ETIQUETA_TRANSPORTE` (`NOTIFICACAO_EMAIL_TRANSPORTE` não é lida por nenhuma função). Não altere `ETIQUETA_TRANSPORTE` nem o agendamento para desfazer convites. As migrations são aditivas; reverta o código por publicação coordenada, sem descartar o histórico SMTP.
 
 ## O que ainda depende de serviços reais
 

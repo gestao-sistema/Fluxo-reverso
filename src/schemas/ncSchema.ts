@@ -6,7 +6,9 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import { z } from 'zod';
-import { STATUS_NC } from '../types';
+import { SITUACOES_CUSTO_NC, STATUS_NC } from '../types';
+import { MENSAGEM_CUSTO_NAO_COM_VALOR, temValorRegistrado } from '../lib/ncClassificacao';
+import { hojeIso } from '../lib/ncCalculos';
 
 // Remove só tags de verdade: "valor < 100" continua inteiro
 const semTags = (v: string) => v.replace(/<\/?[a-zA-Z][^>]*>/g, '').trim();
@@ -49,7 +51,8 @@ const minutos = z.string().transform((v, ctx) => {
   return n;
 });
 
-export const ncSchema = z
+/** Campos do formulário, cada um com a sua regra. A edição valida campo a campo usando este objeto. */
+export const ncSchemaCampos = z
   .object({
     // Identificação
     data_ocorrencia: data.refine((v) => v !== null, 'Informe a data da ocorrência.'),
@@ -64,7 +67,8 @@ export const ncSchema = z
     data_postagem: data,
     // Classificação
     tipo_saida: texto(100),
-    origem: obrigatorio('Selecione a origem da não conformidade.'),
+    // Origem antiga: só existe em registros anteriores. Registro novo não a preenche.
+    origem: texto(100),
     como_identificada: texto(100),
     // Ocorrência e resolução
     status_correios: texto(300),
@@ -86,17 +90,68 @@ export const ncSchema = z
     tempo_tratativa_min: minutos,
     status: z.union([z.literal(''), z.enum(STATUS_NC)]).transform((v) => v || null),
     data_encerramento: data,
-  })
-  .superRefine((d, ctx) => {
-    const inicio = d.data_identificacao ?? d.data_ocorrencia;
-    if (d.data_encerramento && inicio && d.data_encerramento < inicio) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        path: ['data_encerramento'],
-        message: 'O encerramento não pode ser antes da identificação (ou da ocorrência).',
-      });
-    }
+    // Classificação separada: opcional enquanto o formulário atual não a envia (o banco aceita nulo)
+    tipo_problema: texto(100).optional(),
+    causador: texto(100).optional(),
+    area_registro: texto(100).optional(),
+    area_tratativa: texto(100).optional(),
+    custo_situacao: z.union([z.literal(''), z.enum(SITUACOES_CUSTO_NC)]).transform((v) => v || null).optional(),
   });
+
+/**
+ * Regras que envolvem mais de um campo. Na edição, valem só quando um dos campos envolvidos
+ * mudou: campos intocados (inclusive de registros antigos) não são revalidados.
+ */
+export function mensagensCruzadas(
+  d: {
+    data_identificacao?: string | null;
+    data_ocorrencia?: string | null;
+    data_encerramento?: string | null;
+    custo_situacao?: string | null;
+    custo_produto?: number | null;
+    custo_frete_adicional?: number | null;
+    custo_multa_outros?: number | null;
+    valor_reembolsado?: number | null;
+  },
+  alterados?: ReadonlySet<string>
+): Array<{ campo: string; mensagem: string }> {
+  const toca = (campos: string[]) => !alterados || campos.some((campo) => alterados.has(campo));
+  const saida: Array<{ campo: string; mensagem: string }> = [];
+  const inicio = d.data_identificacao ?? d.data_ocorrencia;
+  if (toca(['data_encerramento', 'data_identificacao', 'data_ocorrencia']) && d.data_encerramento && inicio && d.data_encerramento < inicio) {
+    saida.push({ campo: 'data_encerramento', mensagem: 'O encerramento não pode ser antes da identificação (ou da ocorrência).' });
+  }
+  if (toca(['custo_situacao', 'custo_produto', 'custo_frete_adicional', 'custo_multa_outros', 'valor_reembolsado'])
+    && d.custo_situacao === 'Não' && temValorRegistrado(d)) {
+    saida.push({ campo: 'custo_situacao', mensagem: MENSAGEM_CUSTO_NAO_COM_VALOR });
+  }
+  return saida;
+}
+
+/** Esquema completo: abertura e validação do registro inteiro. */
+export const ncSchema = ncSchemaCampos.superRefine((d, ctx) => {
+  for (const { campo, mensagem } of mensagensCruzadas(d)) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: [campo], message: mensagem });
+  }
+});
+
+/**
+ * Abertura simplificada: além do esquema comum, exige empresa, data, tipo do problema, causador
+ * e situação do custo; "Outro" pede descrição; a data da ocorrência não pode ser futura.
+ */
+export const ncAberturaSchema = ncSchema.superRefine((d, ctx) => {
+  const exigir = (campo: string, message: string) =>
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: [campo], message });
+  if (!d.tipo_problema) exigir('tipo_problema', 'Selecione o tipo do problema.');
+  if (!d.causador) exigir('causador', 'Informe a origem / causador. Use "A apurar" se não souber.');
+  if (!d.custo_situacao) exigir('custo_situacao', 'Informe se houve custo.');
+  if (d.tipo_problema === 'Outro' && !(d.descricao ?? '').trim()) {
+    exigir('descricao', 'Descreva o problema quando o tipo for Outro.');
+  }
+  if (d.data_ocorrencia && d.data_ocorrencia > hojeIso()) {
+    exigir('data_ocorrencia', 'A data da ocorrência não pode ser futura.');
+  }
+});
 
 /** Valores crus do formulário (texto). */
 export type NcFormInput = z.input<typeof ncSchema>;

@@ -126,7 +126,7 @@ export default function PerfilButton() {
               {efeitosPausados ? <Play size={15} aria-hidden="true" /> : <Pause size={15} aria-hidden="true" />}
               {efeitosPausados ? 'Retomar efeitos de fundo' : 'Pausar efeitos de fundo'}
             </button>
-            {isDemo && <button type="button" role="menuitem" onClick={() => { demoDados.resetar(); window.location.reload(); }} className="profile-menu-item" title="Restaurar os dados fictícios">
+            {import.meta.env.DEV && isDemo && <button type="button" role="menuitem" onClick={() => { demoDados.resetar(); window.location.reload(); }} className="profile-menu-item" title="Restaurar os dados fictícios">
               <RotateCcw size={15} aria-hidden="true" />
               Reiniciar demonstração
             </button>}

@@ -27,6 +27,7 @@ import apiService from '../../services/apiService';
 import ncService from '../../services/ncService';
 import { useAuth } from '../../context/AuthContext';
 import { formatarDataBr } from '../../lib/ncCalculos';
+import { textoClassificacaoVinculada } from '../../lib/ncVinculoReverso';
 import LeitorEtiqueta from './LeitorEtiqueta';
 import type { CamposEtiqueta } from '../../lib/etiquetaPdf';
 import { statusEfetivo } from '../../lib/situacaoPedido';
@@ -418,7 +419,7 @@ export default function ReverseLogisticsForm({ empresa }: ReverseLogisticsFormPr
                   <option value="">Sem NC vinculada</option>
                   {opcoesNc.map((o) => (
                     <option key={o.id} value={o.id}>
-                      {`${o.codigo} · ${formatarDataBr(o.data_ocorrencia)} · ${o.cliente ?? 'cliente não informada'}${o.origem ? ` · ${o.origem}` : ''}`}
+                      {`${o.codigo} · ${formatarDataBr(o.data_ocorrencia)} · ${o.cliente ?? 'cliente não informada'} · ${textoClassificacaoVinculada(o)}`}
                     </option>
                   ))}
                 </select>

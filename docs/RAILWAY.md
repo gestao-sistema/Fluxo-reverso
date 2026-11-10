@@ -46,7 +46,7 @@ Nomes lidos pelo código. Valores reais ficam no painel e nunca no Git. O modelo
 Regras:
 
 - No Dockerfile, as duas variáveis são declaradas como `ARG` no estágio de build. Sem isso o Railway não as entrega ao build. Qualquer alteração exige **novo deploy**, porque o valor é gravado no JavaScript.
-- O build **falha** com mensagem clara se faltar uma delas ou se a chave for `service_role`/`sb_secret_`. Nenhum fallback para dados simulados: o modo demonstração só existe com `import.meta.env.DEV` (servidor de desenvolvimento).
+- O build **falha** com mensagem clara se faltar uma delas ou se a chave for `service_role`/`sb_secret_`. Não há fallback para dados simulados em produção: o Vite substitui as importações de `src/demo` por `src/build/demo-disabled.ts` e remove os controles e dados de demonstração do bundle. O modo demo continua disponível no servidor de desenvolvimento (`import.meta.env.DEV`).
 - Nenhuma variável com nome contendo `SERVICE`, `SECRET`, `PASSWORD`, `SENHA`, `DATABASE`, `PRIVAT` ou `TOKEN` pode ter prefixo `VITE_`. O validador recusa.
 
 ### 3.2 Supabase (Edge Functions: Secrets do projeto, não do Railway)

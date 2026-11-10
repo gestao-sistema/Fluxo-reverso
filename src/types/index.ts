@@ -251,6 +251,9 @@ export interface SolicitacaoAprovacao extends Solicitacao {
   nc_codigo?: string | null;
   nc_origem?: string | null;
   nc_descricao?: string | null;
+  /** Classificação da NC vinculada (registro novo). Ausente em respostas antigas da fila. */
+  nc_tipo_problema?: string | null;
+  nc_causador?: string | null;
 }
 
 /**
@@ -501,8 +504,8 @@ export const EVITAVEL_OPCOES = ['Sim', 'Não', 'A avaliar'] as const;
 
 export type Evitavel = (typeof EVITAVEL_OPCOES)[number];
 
-/** Listas editáveis da NC (tabela nc_listas). */
-export type ListaNc = 'area' | 'tipo_saida' | 'resolucao' | 'empresa' | 'como_identificada' | 'reembolso';
+/** Listas editáveis da NC (tabela nc_listas). tipo_problema e causador: classificação separada (20261109100000). */
+export type ListaNc = 'area' | 'tipo_saida' | 'resolucao' | 'empresa' | 'como_identificada' | 'reembolso' | 'tipo_problema' | 'causador';
 
 export const LISTA_NC_LABEL: Record<ListaNc, string> = {
   area: 'Áreas',
@@ -511,7 +514,14 @@ export const LISTA_NC_LABEL: Record<ListaNc, string> = {
   empresa: 'Empresa / contrato',
   como_identificada: 'Como foi identificada',
   reembolso: 'Reembolso Correios?',
+  tipo_problema: 'Tipo do problema',
+  causador: 'Origem / causador',
 };
+
+/** Situação do custo da NC. Nula = não informada (nunca significa "Não" nem custo zero). */
+export const SITUACOES_CUSTO_NC = ['Sim', 'Não', 'Em apuração'] as const;
+
+export type SituacaoCustoNc = (typeof SITUACOES_CUSTO_NC)[number];
 
 /** Origem da NC com a área responsável e se era evitável (LISTAS_NC, colunas A–C). */
 export interface NcOrigem {
@@ -570,8 +580,20 @@ export interface NcCampos {
   data_encerramento: string | null;
 }
 
+/** Classificação separada da NC (20261109100000). Opcional: o formulário atual ainda não a envia; o banco aceita nulo. */
+export interface NcClassificacao {
+  tipo_problema?: string | null;
+  causador?: string | null;
+  area_registro?: string | null;
+  area_tratativa?: string | null;
+  custo_situacao?: SituacaoCustoNc | null;
+}
+
+/** Campos gravados de uma NC, com a classificação separada. */
+export type NcGravacao = NcCampos & NcClassificacao;
+
 /** NC lida de vw_nao_conformidades: campos digitados + calculados. */
-export interface NaoConformidade extends NcCampos {
+export interface NaoConformidade extends NcCampos, NcClassificacao {
   id: string;
   numero: number;
   /** ID da planilha: NC-0001 */
@@ -586,6 +608,8 @@ export interface NaoConformidade extends NcCampos {
   evitavel: Evitavel | null;
   dias_em_aberto: number | null;
   qtd_reversas: number;
+  /** Tipo ou causador ainda sem valor (vw_nao_conformidades). Presente quando a visão é lida. */
+  classificacao_pendente?: boolean;
 }
 
 /** Item da linha do tempo da NC: evento automático ou anotação. */
@@ -605,8 +629,12 @@ export interface NcOpcaoReversa {
   codigo: string;
   data_ocorrencia: string | null;
   cliente: string | null;
+  /** Origem antiga; registros novos não têm. */
   origem: string | null;
   status: StatusNc;
+  /** Classificação explícita (registro novo). */
+  tipo_problema?: string | null;
+  causador?: string | null;
 }
 
 // ── Comunicações automáticas: reconciliação administrativa ───────────────────

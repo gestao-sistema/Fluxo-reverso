@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import {
   AlertTriangle,
   CheckCircle2,
@@ -17,7 +17,10 @@ import toast from 'react-hot-toast';
 import { useSearchParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useEmpresaDaTela } from '../context/TemaContext';
+import { useContadorAprovacoes } from '../context/ContadorAprovacoesContext';
 import { podeAprovarReversa } from '../lib/perfil';
+import { chaveEscopoAprovacao } from '../lib/aprovacoesPendentes';
+import { itensClassificacaoVinculada } from '../lib/ncVinculoReverso';
 import apiService, { HistoricoSolicitacaoError, SolicitacaoAlteradaError } from '../services/apiService';
 import type {
   Empresa,
@@ -201,6 +204,20 @@ export default function ApprovalQueuePage() {
   const savingRef = useRef(false);
   recordsRef.current = records;
   expandedRef.current = expandedId;
+  // O contador do menu lê esta mesma fila (sem consulta extra): enquanto a página está aberta, ela é a fonte.
+  // Cada fila é publicada com o escopo (pessoa e empresas) em que foi carregada; dado de outro escopo é ignorado.
+  const { publicarFila, publicarFalha, registrarPaginaAtiva } = useContadorAprovacoes();
+  const [escopoDosRegistros, setEscopoDosRegistros] = useState<string | null>(null);
+  const [escopoDoErro, setEscopoDoErro] = useState<string | null>(null);
+  // Troca de pessoa ou das empresas liberadas: a lista da sessão anterior sai da tela antes da próxima pintura
+  const escopoAtual = chaveEscopoAprovacao(user);
+  useLayoutEffect(() => {
+    setRecords([]);
+    setExpandedId(null);
+    setEscopoDosRegistros(null);
+    setEscopoDoErro(null);
+    setLoading(true);
+  }, [escopoAtual]);
 
   // Link das comunicações (?solicitacaoId=): abre o pedido na fila. Se ele já foi decidido ou não é
   // mais seu, o aviso informa isso em vez de mostrar uma tarefa que perdeu pertinência.
@@ -231,11 +248,13 @@ export default function ApprovalQueuePage() {
   const reloadQueue = useCallback(async (quiet = false) => {
     if (!user || permittedCompanies.length === 0) {
       setRecords([]);
+      setEscopoDosRegistros(null);
       setExpandedId(null);
       setLoading(false);
       setRefreshing(false);
       return;
     }
+    const escopoDaConsulta = chaveEscopoAprovacao(user);
     const sequence = ++requestSequence.current;
     if (quiet) setRefreshing(true);
     else setLoading(true);
@@ -246,6 +265,7 @@ export default function ApprovalQueuePage() {
       const current = recordsRef.current.find((record) => record.id === currentId);
       const fresh = allowed.find((record) => record.id === currentId);
       setRecords(allowed);
+      setEscopoDosRegistros(escopoDaConsulta);
       setQueueError('');
       setQueueNotice('');
 
@@ -282,6 +302,7 @@ export default function ApprovalQueuePage() {
     } catch (error) {
       if (sequence !== requestSequence.current) return;
       setQueueError(error instanceof Error ? error.message : 'Não foi possível carregar a fila.');
+      setEscopoDoErro(escopoDaConsulta);
     } finally {
       if (sequence === requestSequence.current) {
         setLoading(false);
@@ -298,6 +319,18 @@ export default function ApprovalQueuePage() {
       window.clearInterval(interval);
     };
   }, [reloadQueue]);
+
+  // Contador do menu: a página é a fonte enquanto estiver aberta. Aprovar ou rejeitar remove o registro desta lista,
+  // e a contagem acompanha essa mesma lista (sem consulta extra).
+  useEffect(() => registrarPaginaAtiva(), [registrarPaginaAtiva]);
+  useEffect(() => {
+    if (loading) return;
+    if (queueError) {
+      if (escopoDoErro) publicarFalha(escopoDoErro);
+    } else if (escopoDosRegistros) {
+      publicarFila(escopoDosRegistros, records);
+    }
+  }, [loading, queueError, records, escopoDosRegistros, escopoDoErro, publicarFila, publicarFalha]);
 
   const companyRecords = useMemo(
     () => records.filter((record) => company === 'Ambas' || record.empresa === company),
@@ -371,6 +404,7 @@ export default function ApprovalQueuePage() {
         fetchQueue(),
       ]);
       setRecords(queue);
+      setEscopoDosRegistros(chaveEscopoAprovacao(user));
       if (!latest) {
         setExpandedId(null);
         setQueueNotice(`${ticketCode(original.id)} não está mais disponível para este perfil. A fila foi atualizada.`);
@@ -649,7 +683,10 @@ export default function ApprovalQueuePage() {
                         )}
                         {record.nc_codigo && (
                           <div className="approval-detail-block approval-nc-context">
-                            <div className="approval-detail-label">Referência vinculada: {record.nc_codigo}{record.nc_origem ? ` · ${record.nc_origem}` : ''}</div>
+                            <div className="approval-detail-label">Referência vinculada: {record.nc_codigo}</div>
+                            {itensClassificacaoVinculada({ tipo_problema: record.nc_tipo_problema, causador: record.nc_causador, origem: record.nc_origem }).map((item) => (
+                              <p key={item.rotulo}><strong>{item.rotulo}:</strong> {item.valor}</p>
+                            ))}
                             {record.nc_descricao && <p>{record.nc_descricao}</p>}
                           </div>
                         )}

@@ -34,6 +34,14 @@
 --   20261030100000_auditoria_aprovadores_usuario_opcional.sql
 --   20261030110000_corrigir_fk_exclusao_historico_reversa.sql
 --   20261030120000_lixeira_chamados.sql
+--   20261109100000_nc_classificacao_separada.sql
+--   20261109120000_nc_registro_classificacao.sql
+--   20261109130000_fila_aprovacao_classificacao_nc.sql
+--   20261109140000_nc_edicao_versao_auditoria.sql
+--   20261109150000_avisos_ciclo_reverso.sql
+--   20261109160000_nc_edicao_somente_pelo_servidor.sql
+--   20261109170000_privilegios_funcoes_de_gatilho.sql
+--   20261109180000_privilegios_tabelas_authenticated.sql
 -- Não edite à mão: altere as migrations e gere de novo com
 -- node supabase/scripts/gerar-sql-editor.mjs
 -- Aplicar somente no projeto existente que já contém public.solicitacoes_reverso.
@@ -9422,6 +9430,1115 @@ revoke all on function public.listar_notificacoes_emissao() from public, anon;
 grant execute on function public.listar_notificacoes_emissao() to authenticated;
 
 commit;
+
+-- ============================================================
+-- SOURCE: supabase/migrations/20261109100000_nc_classificacao_separada.sql
+-- ============================================================
+-- ============================================================
+-- Não conformidades: classificação separada (incremental)
+-- ------------------------------------------------------------
+-- A "origem" (nc_origens) mistura o problema e o setor: "Erro expedição –
+-- endereço incorreto" é o problema "Endereço incorreto" causado pela Expedição.
+-- Esta migration acrescenta, sem apagar nem reescrever nada:
+--   tipo_problema  → Tipo do problema (lista 'tipo_problema')
+--   causador       → Origem / causador (lista 'causador')
+--   area_registro  → Área que registrou (lista 'area')
+--   area_tratativa → Área responsável pela tratativa (lista 'area'; nunca uma pessoa)
+--   custo_situacao → 'Sim' | 'Não' | 'Em apuração'; nulo = não informada
+-- Continuam como estão: origem, area_responsavel e evitavel (derivados da
+-- origem), os cálculos, a planilha e o vínculo opcional NC ↔ reversa.
+--
+-- Mapeamento automático (nc_classificacao_legada): só o inequívoco. Origens
+-- ambíguas ficam com o tipo nulo e aparecem em
+-- vw_nao_conformidades.classificacao_pendente. Só preenche campos vazios.
+-- Não toca em solicitacoes_reverso.setor (usado na aprovação do reverso).
+--
+-- Requer: 20261030120000_lixeira_chamados.sql
+-- Idempotente: pode ser executada mais de uma vez sem alterar o que já foi gravado.
+-- ============================================================
+
+-- 1. Listas novas. Valores existentes ficam como estão (ordem e ativo preservados).
+alter table public.nc_listas drop constraint if exists nc_listas_lista_check;
+alter table public.nc_listas
+  add constraint nc_listas_lista_check check (
+    lista in ('area', 'tipo_saida', 'resolucao', 'empresa', 'como_identificada', 'reembolso', 'tipo_problema', 'causador')
+  );
+
+insert into public.nc_listas (lista, valor, ordem)
+select v.lista, v.valor, v.ordem
+from (values
+  ('tipo_problema', 'Endereço incorreto', 1),
+  ('tipo_problema', 'Mercadoria trocada ou embalada junto', 2),
+  ('tipo_problema', 'Etiqueta ou pré-postagem', 3),
+  ('tipo_problema', 'Embalagem inadequada / avaria por embalagem', 4),
+  ('tipo_problema', 'Atraso de postagem', 5),
+  ('tipo_problema', 'Postagem duplicada', 6),
+  ('tipo_problema', 'Postagem sem NF', 7),
+  ('tipo_problema', 'Erro de faturamento / NF', 8),
+  ('tipo_problema', 'Tipo de frete incorreto (CIF/FOB)', 9),
+  ('tipo_problema', 'Frete não cobrado na venda', 10),
+  ('tipo_problema', 'Reverso sem autorização', 11),
+  ('tipo_problema', 'Frete carona', 12),
+  ('tipo_problema', 'Mercadoria apreendida', 13),
+  ('tipo_problema', 'Extravio', 14),
+  ('tipo_problema', 'Avaria no transporte', 15),
+  ('tipo_problema', 'Entregue para a pessoa errada', 16),
+  ('tipo_problema', 'Consta entregue / não entregue no local', 17),
+  ('tipo_problema', 'Endereço não localizado', 18),
+  ('tipo_problema', 'Entregador não atendido', 19),
+  ('tipo_problema', 'Cliente desconhecido', 20),
+  ('tipo_problema', 'Entregue, porém cliente afirma que não recebeu', 21),
+  ('tipo_problema', 'Mercadoria devolvida pelo destinatário', 22),
+  ('tipo_problema', 'Não retirada no prazo', 23),
+  ('tipo_problema', 'Erro da/o cliente', 24),
+  ('tipo_problema', 'Peça de outra marca recebida', 25),
+  ('tipo_problema', 'Outro', 26),
+  ('causador', 'Expedição', 1),
+  ('causador', 'Financeiro', 2),
+  ('causador', 'Comercial', 3),
+  ('causador', 'Expedição e Financeiro', 4),
+  ('causador', 'Correios', 5),
+  ('causador', 'Outro transportador', 6),
+  ('causador', 'Fiscalização', 7),
+  ('causador', 'Cliente / destinatário', 8),
+  ('causador', 'A apurar', 9)
+) as v (lista, valor, ordem)
+where true
+on conflict (lista, valor) do nothing;
+
+-- 2. Colunas novas (nulas: a NC existente e o formulário atual continuam válidos).
+alter table public.nao_conformidades
+  add column if not exists tipo_problema text,
+  add column if not exists causador text,
+  add column if not exists area_registro text,
+  add column if not exists area_tratativa text,
+  add column if not exists custo_situacao text;
+
+alter table public.nao_conformidades drop constraint if exists nao_conformidades_custo_situacao_check;
+alter table public.nao_conformidades
+  add constraint nao_conformidades_custo_situacao_check
+  check (custo_situacao is null or custo_situacao in ('Sim', 'Não', 'Em apuração'));
+
+comment on column public.nao_conformidades.origem is 'Legado: origem composta (problema e setor juntos). Mantida para a fila de aprovação, o painel e a planilha. Novas telas usam tipo_problema e causador.';
+comment on column public.nao_conformidades.tipo_problema is 'Tipo do problema (lista tipo_problema). Nulo = ainda não classificado (ver vw_nao_conformidades.classificacao_pendente).';
+comment on column public.nao_conformidades.causador is 'Origem / causador: quem deu causa (lista causador). Não é a área que registrou nem a que trata.';
+comment on column public.nao_conformidades.area_registro is 'Área que registrou a NC (lista area). Não é a responsável pela tratativa nem o causador.';
+comment on column public.nao_conformidades.area_tratativa is 'Área responsável pela tratativa (lista area). Sempre área, nunca pessoa; nulo = não atribuída.';
+comment on column public.nao_conformidades.custo_situacao is 'Sim, Não ou Em apuração. Nulo só em registros sem decisão: nunca significa Não nem custo zero. Mudar a situação não apaga valores.';
+
+-- 3. Mapeamento das origens antigas: só o inequívoco. Tipo ou causador nulos = revisar.
+create or replace function public.nc_classificacao_legada(p_origem text)
+returns table (tipo_problema text, causador text)
+language sql
+immutable
+set search_path = ''
+as $$
+  select m.tipo_problema, m.causador
+  from (values
+    ('Erro expedição – endereço incorreto', 'Endereço incorreto', 'Expedição'),
+    ('Erro expedição – mercadoria trocada ou embalada junto', 'Mercadoria trocada ou embalada junto', 'Expedição'),
+    ('Erro expedição – etiqueta ou pré-postagem', 'Etiqueta ou pré-postagem', 'Expedição'),
+    ('Embalagem inadequada / avaria por embalagem', 'Embalagem inadequada / avaria por embalagem', 'Expedição'),
+    ('Atraso de postagem', 'Atraso de postagem', 'Expedição'),
+    ('Postagem duplicada', 'Postagem duplicada', 'Expedição'),
+    ('Postagem sem NF', 'Postagem sem NF', 'Expedição'),
+    ('Erro de faturamento / NF (destinatário ou endereço)', null::text, 'Financeiro'),
+    ('Erro da expedição e do financeiro', null::text, 'Expedição e Financeiro'),
+    ('Erro vendedora – endereço incorreto', 'Endereço incorreto', 'Comercial'),
+    ('Tipo de frete incorreto (CIF/FOB)', 'Tipo de frete incorreto (CIF/FOB)', 'Comercial'),
+    ('Frete não cobrado na venda', 'Frete não cobrado na venda', 'Comercial'),
+    ('Reverso sem autorização', 'Reverso sem autorização', 'Comercial'),
+    ('Frete carona (pacote de terceiro com pedido da marca)', 'Frete carona', 'Comercial'),
+    ('Mercadoria apreendida (fiscalização)', 'Mercadoria apreendida', 'Fiscalização'),
+    ('Extravio Correios', 'Extravio', 'Correios'),
+    ('Avaria no transporte', 'Avaria no transporte', 'Correios'),
+    ('Entregue para a pessoa errada', 'Entregue para a pessoa errada', 'Correios'),
+    ('Consta entregue / não entregue no local', 'Consta entregue / não entregue no local', 'Correios'),
+    ('Endereço não localizado', 'Endereço não localizado', 'Correios'),
+    ('Entregador não atendido', 'Entregador não atendido', 'Cliente / destinatário'),
+    ('Cliente desconhecido', 'Cliente desconhecido', 'Cliente / destinatário'),
+    ('Entregue, porém cliente afirma que não recebeu', 'Entregue, porém cliente afirma que não recebeu', 'Cliente / destinatário'),
+    ('Mercadoria devolvida pelo destinatário', 'Mercadoria devolvida pelo destinatário', 'Cliente / destinatário'),
+    ('Não retirada no prazo (aguardando retirada)', 'Não retirada no prazo', 'Cliente / destinatário'),
+    ('Erro da/o cliente', 'Erro da/o cliente', 'Cliente / destinatário'),
+    ('Peça de outra marca recebida', 'Peça de outra marca recebida', 'Cliente / destinatário'),
+    ('Outro', 'Outro', 'A apurar')
+  ) as m (origem, tipo_problema, causador)
+  where m.origem = p_origem;
+$$;
+
+-- 4. Origem gravada sem a classificação nova (formulário atual, importação):
+--    preenche só os campos vazios, nunca sobrescreve.
+create or replace function public.nc_classificar_origem_legada() returns trigger
+language plpgsql
+set search_path = ''
+as $$
+declare
+  v_tipo text;
+  v_causador text;
+begin
+  if new.origem is null or (tg_op = 'UPDATE' and new.origem is not distinct from old.origem) then
+    return new;
+  end if;
+  select m.tipo_problema, m.causador into v_tipo, v_causador
+  from public.nc_classificacao_legada(new.origem) m;
+  new.tipo_problema := coalesce(new.tipo_problema, v_tipo);
+  new.causador := coalesce(new.causador, v_causador);
+  return new;
+end;
+$$;
+
+drop trigger if exists trg_nc_classificar_origem_legada on public.nao_conformidades;
+create trigger trg_nc_classificar_origem_legada before insert or update of origem on public.nao_conformidades
+  for each row execute function public.nc_classificar_origem_legada();
+
+-- 5. Situação do custo. Ausência de valor não vira "Não" nem custo zero.
+create or replace function public.nc_validar_custo_situacao() returns trigger
+language plpgsql
+set search_path = ''
+as $$
+declare
+  v_com_custo boolean;
+  v_com_valor boolean;
+begin
+  v_com_custo := coalesce(new.custo_produto, 0) > 0
+    or coalesce(new.custo_frete_adicional, 0) > 0
+    or coalesce(new.custo_multa_outros, 0) > 0;
+  v_com_valor := v_com_custo or coalesce(new.valor_reembolsado, 0) > 0;
+
+  if tg_op = 'INSERT' then
+    if new.custo_situacao is null then
+      new.custo_situacao := case when v_com_custo then 'Sim' else 'Em apuração' end;
+    end if;
+  else
+    if old.custo_situacao is not null and new.custo_situacao is null then
+      raise exception 'A situação do custo não pode voltar a ficar sem informação.' using errcode = '23514';
+    end if;
+    if new.custo_situacao is distinct from old.custo_situacao and (
+         (old.custo_produto is not null and new.custo_produto is null)
+      or (old.custo_frete_adicional is not null and new.custo_frete_adicional is null)
+      or (old.custo_multa_outros is not null and new.custo_multa_outros is null)
+      or (old.valor_reembolsado is not null and new.valor_reembolsado is null)
+    ) then
+      raise exception 'Mudar a situação do custo não apaga valores já registrados.' using errcode = '23514';
+    end if;
+  end if;
+
+  if new.custo_situacao = 'Não' and v_com_valor then
+    raise exception 'Situação do custo "Não" exige custos sem valor: há valores registrados.' using errcode = '23514';
+  end if;
+  return new;
+end;
+$$;
+
+drop trigger if exists trg_nc_custo_situacao on public.nao_conformidades;
+create trigger trg_nc_custo_situacao before insert or update on public.nao_conformidades
+  for each row execute function public.nc_validar_custo_situacao();
+
+-- 6. Valores das listas, inclusive os novos. Mesma regra dos campos antigos:
+--    só confere quando o campo entra ou muda, para não travar registros antigos.
+create or replace function public.nc_validar_listas() returns trigger
+language plpgsql
+set search_path = ''
+as $$
+begin
+  if tg_op = 'INSERT' or new.empresa is distinct from old.empresa then
+    perform public.nc_exigir_valor_da_lista('empresa', new.empresa, 'Empresa / contrato');
+  end if;
+  if tg_op = 'INSERT' or new.tipo_saida is distinct from old.tipo_saida then
+    perform public.nc_exigir_valor_da_lista('tipo_saida', new.tipo_saida, 'Tipo de saída');
+  end if;
+  if tg_op = 'INSERT' or new.resolucao is distinct from old.resolucao then
+    perform public.nc_exigir_valor_da_lista('resolucao', new.resolucao, 'Resolução');
+  end if;
+  if tg_op = 'INSERT' or new.como_identificada is distinct from old.como_identificada then
+    perform public.nc_exigir_valor_da_lista('como_identificada', new.como_identificada, 'Como foi identificada');
+  end if;
+  if tg_op = 'INSERT' or new.reembolso_correios is distinct from old.reembolso_correios then
+    perform public.nc_exigir_valor_da_lista('reembolso', new.reembolso_correios, 'Reembolso Correios?');
+  end if;
+  if tg_op = 'INSERT' or new.tipo_problema is distinct from old.tipo_problema then
+    perform public.nc_exigir_valor_da_lista('tipo_problema', new.tipo_problema, 'Tipo do problema');
+  end if;
+  if tg_op = 'INSERT' or new.causador is distinct from old.causador then
+    perform public.nc_exigir_valor_da_lista('causador', new.causador, 'Origem / causador');
+  end if;
+  if tg_op = 'INSERT' or new.area_registro is distinct from old.area_registro then
+    perform public.nc_exigir_valor_da_lista('area', new.area_registro, 'Área que registrou');
+  end if;
+  if tg_op = 'INSERT' or new.area_tratativa is distinct from old.area_tratativa then
+    perform public.nc_exigir_valor_da_lista('area', new.area_tratativa, 'Área responsável pela tratativa');
+  end if;
+  return new;
+end;
+$$;
+
+-- 7. Linha do tempo: passa a registrar também os campos novos (o restante é o mesmo).
+create or replace function public.nc_registrar_historico() returns trigger
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  v_nome text := public.nc_usuario_nome();
+  v_rotulos constant jsonb := '{
+    "data_ocorrencia": "Data da ocorrência",
+    "data_identificacao": "Data de identificação",
+    "empresa": "Empresa / contrato",
+    "cliente": "Cliente",
+    "vendedora": "Vendedora",
+    "romaneio": "Romaneio",
+    "valor_romaneio": "Valor do romaneio",
+    "nf": "NF",
+    "rastreio": "Rastreio",
+    "data_postagem": "Data de postagem",
+    "tipo_saida": "Tipo de saída",
+    "origem": "Origem da não conformidade",
+    "como_identificada": "Como foi identificada",
+    "status_correios": "Status no Correios",
+    "descricao": "Descrição / observação",
+    "novo_rastreio": "Novo rastreio",
+    "valor_declarado": "Valor declarado do produto",
+    "valor_venda": "Valor da venda",
+    "frete_original": "Frete original",
+    "custo_produto": "Custo — produto",
+    "custo_frete_adicional": "Custo — frete adicional",
+    "custo_multa_outros": "Custo — multa / outros",
+    "reembolso_correios": "Reembolso Correios?",
+    "numero_pi": "Nº do pedido de indenização (PI)",
+    "valor_reembolsado": "Valor reembolsado",
+    "tempo_tratativa_min": "Tempo de tratativa (min)",
+    "data_encerramento": "Data de encerramento",
+    "tipo_problema": "Tipo do problema",
+    "causador": "Origem / causador",
+    "area_registro": "Área que registrou",
+    "area_tratativa": "Área responsável pela tratativa",
+    "custo_situacao": "Situação do custo"
+  }'::jsonb;
+  v_novo jsonb;
+  v_antigo jsonb;
+  v_campos text[] := '{}';
+  v_chave text;
+begin
+  if tg_op = 'INSERT' then
+    insert into public.nc_historico (nc_id, user_nome, acao)
+    values (new.id, v_nome, case when new.importada then 'NC importada da planilha' else 'NC registrada' end);
+    return new;
+  end if;
+
+  if new.status is distinct from old.status then
+    insert into public.nc_historico (nc_id, user_nome, acao)
+    values (new.id, v_nome, 'Status: ' || coalesce(old.status, 'sem status') || ' → ' || coalesce(new.status, 'sem status'));
+  end if;
+
+  if new.resolucao is distinct from old.resolucao then
+    insert into public.nc_historico (nc_id, user_nome, acao)
+    values (new.id, v_nome, 'Resolução: ' || coalesce(new.resolucao, 'removida'));
+  end if;
+
+  v_novo := to_jsonb(new);
+  v_antigo := to_jsonb(old);
+  for v_chave in select k from jsonb_object_keys(v_rotulos) as k order by k loop
+    if (v_novo -> v_chave) is distinct from (v_antigo -> v_chave) then
+      v_campos := v_campos || (v_rotulos ->> v_chave);
+    end if;
+  end loop;
+
+  if cardinality(v_campos) > 0 then
+    insert into public.nc_historico (nc_id, user_nome, acao)
+    values (new.id, v_nome, 'Dados atualizados: ' || array_to_string(v_campos, ', '));
+  end if;
+
+  return new;
+end;
+$$;
+
+-- 8. Classificação dos registros existentes: só campos vazios, só o inequívoco.
+update public.nao_conformidades nc
+set tipo_problema = coalesce(nc.tipo_problema, (
+      select m.tipo_problema from public.nc_classificacao_legada(nc.origem) m)),
+    causador = coalesce(nc.causador, (
+      select m.causador from public.nc_classificacao_legada(nc.origem) m))
+where nc.origem is not null
+  and exists (
+    select 1 from public.nc_classificacao_legada(nc.origem) m
+    where (nc.tipo_problema is null and m.tipo_problema is not null)
+       or (nc.causador is null and m.causador is not null)
+  );
+
+-- Situação do custo: só onde há custo positivo registrado. O resto fica nulo (não informada).
+update public.nao_conformidades
+set custo_situacao = 'Sim'
+where custo_situacao is null
+  and (
+    coalesce(custo_produto, 0) > 0
+    or coalesce(custo_frete_adicional, 0) > 0
+    or coalesce(custo_multa_outros, 0) > 0
+  );
+
+-- 9. Visão: mesmos campos calculados de antes, mais a pendência de classificação.
+--    Recriada (não "replace") porque nc.* passa a incluir as colunas novas.
+drop view if exists public.vw_nao_conformidades;
+create view public.vw_nao_conformidades with (security_invoker = true) as
+select
+  nc.*,
+  'NC-' || lpad(nc.numero::text, greatest(4, length(nc.numero::text)), '0') as codigo,
+  case when nc.origem is null then null else coalesce(o.area, 'A definir') end as area_responsavel,
+  case when nc.origem is null then null else coalesce(o.evitavel, 'A avaliar') end as evitavel,
+  case
+    when nc.data_ocorrencia is null and nc.data_identificacao is null then null
+    else coalesce(nc.data_encerramento, current_date) - coalesce(nc.data_identificacao, nc.data_ocorrencia)
+  end as dias_em_aberto,
+  (select count(*)::integer from public.solicitacoes_reverso r where r.nc_id = nc.id) as qtd_reversas,
+  (nc.tipo_problema is null or nc.causador is null) as classificacao_pendente
+from public.nao_conformidades nc
+left join public.nc_origens o on o.nome = nc.origem;
+
+revoke all on public.vw_nao_conformidades from anon;
+grant select on public.vw_nao_conformidades to authenticated;
+
+-- ============================================================
+-- SOURCE: supabase/migrations/20261109120000_nc_registro_classificacao.sql
+-- ============================================================
+-- ============================================================
+-- Não conformidades: registro novo com classificação explícita (incremental)
+-- ------------------------------------------------------------
+-- Uma NC registrada pela aplicação (não importada da planilha) precisa de
+-- tipo do problema e de origem / causador. Quando o tipo é "Outro", a descrição
+-- é obrigatória. Nada disso é inventado: a origem antiga continua como está e a
+-- classificação nova só vem do mapeamento inequívoco (20261109100000).
+--
+-- Também impede que tipo ou causador voltem a ficar sem informação, e faz
+-- ncs_para_reversa devolver tipo e causador (a NC aparece no formulário da
+-- reversa mesmo sem origem antiga).
+--
+-- A importação da planilha (importada = true, feita pelo administrador) segue
+-- as mesmas regras de antes: o histórico entra como veio.
+--
+-- Requer: 20261109100000_nc_classificacao_separada.sql
+-- Idempotente: pode ser executada mais de uma vez.
+-- ============================================================
+
+-- 1. Regra de registro novo e de conservação da classificação.
+--    Roda depois de nc_proteger_campos (define importada) e de
+--    nc_classificar_origem_legada (preenche o que o mapeamento der).
+create or replace function public.nc_validar_classificacao_registro() returns trigger
+language plpgsql
+set search_path = ''
+as $$
+begin
+  if tg_op = 'INSERT' then
+    if new.importada then
+      return new;
+    end if;
+    if new.tipo_problema is null then
+      raise exception 'Informe o tipo do problema.' using errcode = '23514';
+    end if;
+    if new.causador is null then
+      raise exception 'Informe a origem / causador (use A apurar se não souber).' using errcode = '23514';
+    end if;
+  else
+    if old.tipo_problema is not null and new.tipo_problema is null then
+      raise exception 'O tipo do problema não pode voltar a ficar sem informação.' using errcode = '23514';
+    end if;
+    if old.causador is not null and new.causador is null then
+      raise exception 'A origem / causador não pode voltar a ficar sem informação.' using errcode = '23514';
+    end if;
+  end if;
+
+  -- "Outro" exige descrição quando o tipo entra ou a descrição muda. Registros
+  -- antigos sem descrição continuam editáveis enquanto esses dois campos não mudam.
+  if new.tipo_problema = 'Outro'
+     and (tg_op = 'INSERT'
+          or new.tipo_problema is distinct from old.tipo_problema
+          or new.descricao is distinct from old.descricao)
+     and btrim(coalesce(new.descricao, '')) = '' then
+    raise exception 'Descreva o problema quando o tipo for Outro.' using errcode = '23514';
+  end if;
+  return new;
+end;
+$$;
+
+drop trigger if exists trg_nc_validar_classificacao_registro on public.nao_conformidades;
+create trigger trg_nc_validar_classificacao_registro before insert or update on public.nao_conformidades
+  for each row execute function public.nc_validar_classificacao_registro();
+
+-- 2. ncs_para_reversa devolve também tipo e causador. Muda a assinatura (novas
+--    colunas no fim), então a função é recriada. Continua sem custos.
+drop function if exists public.ncs_para_reversa(text);
+
+create function public.ncs_para_reversa(p_empresa text)
+returns table (id uuid, numero integer, codigo text, data_ocorrencia date, cliente text, origem text, status text, tipo_problema text, causador text)
+language sql
+stable
+security definer
+set search_path = ''
+as $$
+  select
+    nc.id,
+    nc.numero,
+    'NC-' || lpad(nc.numero::text, greatest(4, length(nc.numero::text)), '0'),
+    nc.data_ocorrencia,
+    nc.cliente,
+    nc.origem,
+    nc.status,
+    nc.tipo_problema,
+    nc.causador
+  from public.nao_conformidades nc
+  where nc.empresa = p_empresa
+    and nc.status in ('Aberta', 'Em tratativa')
+    and (public.pode_ver_nc() or p_empresa = any (public.empresas_formulario()))
+  order by nc.numero desc;
+$$;
+
+revoke execute on function public.ncs_para_reversa(text) from public, anon;
+grant execute on function public.ncs_para_reversa(text) to authenticated;
+
+-- ============================================================
+-- SOURCE: supabase/migrations/20261109130000_fila_aprovacao_classificacao_nc.sql
+-- ============================================================
+-- ============================================================
+-- Fila de aprovação da reversa: tipo do problema e origem / causador da NC vinculada
+-- ------------------------------------------------------------
+-- A fila devolvia só a origem antiga da NC (nc_origem). Uma NC registrada depois da
+-- classificação separada não tem origem antiga, então a aprovação não mostrava o que a
+-- NC é. Esta migration acrescenta nc_tipo_problema e nc_causador no fim do retorno.
+-- As colunas que já existiam mantêm nome, tipo e ordem.
+--
+-- Não muda quem vê a fila (usuario_pode_aprovar_reversa), o filtro, a ordem, a
+-- autoaprovação nem o vínculo: a NC continua lida por r.nc_id, como antes.
+--
+-- Muda a assinatura (colunas novas no fim), então a função é recriada. O drop apaga os
+-- privilégios anteriores; eles são refeitos no fim: anon e public sem execução.
+--
+-- Requer: 20261109100000_nc_classificacao_separada.sql (colunas tipo_problema e causador).
+-- Idempotente: pode ser executada mais de uma vez.
+-- ============================================================
+
+drop function if exists public.fila_aprovacao_reversas();
+
+create function public.fila_aprovacao_reversas()
+returns table (
+  id uuid,
+  empresa text,
+  created_at timestamptz,
+  data_solicitacao date,
+  solicitante text,
+  setor text,
+  codigo_cliente integer,
+  nome_cliente text,
+  endereco_postagem text,
+  endereco_destino_troca text,
+  motivo text,
+  justificativa_outros text,
+  solicitado_por_nome text,
+  aprovacao_versao integer,
+  nc_id uuid,
+  nc_codigo text,
+  nc_origem text,
+  nc_descricao text,
+  proprio_pedido boolean,
+  pode_aprovar boolean,
+  nc_tipo_problema text,
+  nc_causador text
+)
+language sql stable security definer
+set search_path = ''
+as $$
+  select
+    r.id, r.empresa, r.created_at, r.data_solicitacao, r.solicitante, r.setor,
+    r.codigo_cliente, r.nome_cliente, r.endereco_postagem, r.endereco_destino_troca,
+    r.motivo, r.justificativa_outros, r.solicitado_por_nome, r.aprovacao_versao,
+    r.nc_id,
+    case when nc.numero is null then null
+      else 'NC-' || lpad(nc.numero::text, greatest(4, length(nc.numero::text)), '0') end,
+    nc.origem, nc.descricao, p.proprio,
+    not p.proprio or coalesce((select c.permitir_autoaprovacao from public.aprovacao_config c where c.id), false),
+    nc.tipo_problema, nc.causador
+  from public.solicitacoes_reverso r
+  left join public.nao_conformidades nc on nc.id = r.nc_id
+  cross join lateral (
+    select coalesce(r.solicitado_por = auth.uid(), false)
+      or coalesce(r.aprovacao_versao_por = auth.uid(), false) as proprio
+  ) p
+  where r.aprovacao_status = 'aguardando_aprovacao'
+    and r.inutilizada_em is null
+    and public.usuario_pode_aprovar_reversa(r.empresa, r.setor)
+  order by r.created_at, r.id;
+$$;
+
+revoke execute on function public.fila_aprovacao_reversas() from public, anon;
+grant execute on function public.fila_aprovacao_reversas() to authenticated, service_role;
+
+-- ============================================================
+-- SOURCE: supabase/migrations/20261109140000_nc_edicao_versao_auditoria.sql
+-- ============================================================
+-- Não conformidades: fechamento da edição (versão, gravação só do alterado e trilha financeira).
+--
+-- 1. updated_at passa a ser a versão da linha: gravado com clock_timestamp() (instante da escrita),
+--    e não com now() (início da transação), para que a versão nunca volte a um valor antigo.
+-- 2. nc_salvar_edicao: grava só os campos enviados, sob bloqueio da linha, e recusa a gravação
+--    quando a versão enviada não é mais a atual (NC001). A comparação e o UPDATE são um único
+--    comando dentro da função, então nenhuma gravação concorrente passa entre eles.
+-- 3. nc_auditoria_financeira: trilha append-only dos valores anteriores e posteriores de custos,
+--    reembolso e situação, com autor, data e justificativa. Gravada pelo banco, não pelo navegador.
+-- 4. Correção de valor já registrado (inclusive para zero ou vazio) exige justificativa (NC002).
+-- Migração incremental: não altera as migrations anteriores nem os dados existentes.
+-- ─────────────────────────────────────────────────────────────────────────────
+
+-- 1. Versão da linha com o instante da escrita (mesmo corpo de 20261020130100, updated_at com clock_timestamp())
+create or replace function public.nc_proteger_campos() returns trigger
+language plpgsql security definer
+set search_path = ''
+as $$
+begin
+  if tg_op = 'INSERT' then
+    if new.numero is null or (auth.uid() is not null and not public.is_admin()) then
+      new.numero := nextval('public.nc_numero_seq');
+      new.importada := false;
+    end if;
+    if auth.uid() is not null then
+      new.created_by := auth.uid();
+    end if;
+    new.created_at := now();
+    new.updated_at := now();
+    return new;
+  end if;
+
+  new.numero := old.numero;
+  new.importada := old.importada;
+  new.created_at := old.created_at;
+  new.created_by := old.created_by;
+  new.updated_at := clock_timestamp();
+
+  if new.empresa is distinct from old.empresa
+     and exists (select 1 from public.solicitacoes_reverso r where r.nc_id = old.id) then
+    raise exception 'Esta NC já tem reversa vinculada: a empresa / contrato não pode mudar.' using errcode = '23514';
+  end if;
+
+  return new;
+end;
+$$;
+
+-- 3. Trilha financeira (append-only; sem chave estrangeira para sobreviver à exclusão da NC)
+create table if not exists public.nc_auditoria_financeira (
+  id uuid primary key default gen_random_uuid(),
+  nc_id uuid not null,
+  campo text not null check (campo in ('custo_produto', 'custo_frete_adicional', 'custo_multa_outros', 'valor_reembolsado', 'custo_situacao')),
+  tipo_alteracao text not null check (tipo_alteracao in ('preenchimento', 'correcao')),
+  valor_anterior numeric(12, 2),
+  valor_posterior numeric(12, 2),
+  texto_anterior text,
+  texto_posterior text,
+  motivo text,
+  origem text not null default 'direta' check (origem in ('edicao', 'direta')),
+  autor_id uuid,
+  autor_nome text not null default 'Sistema',
+  criado_em timestamptz not null default clock_timestamp(),
+  constraint nc_auditoria_valor_ou_texto check (
+    (campo = 'custo_situacao' and valor_anterior is null and valor_posterior is null)
+    or (campo <> 'custo_situacao' and texto_anterior is null and texto_posterior is null)
+  )
+);
+
+comment on table public.nc_auditoria_financeira is 'Valores anteriores e posteriores de custos, reembolso e situação do custo. Gravada pelo banco; não é apagada nem alterada.';
+
+create index if not exists idx_nc_auditoria_nc on public.nc_auditoria_financeira (nc_id, criado_em);
+
+alter table public.nc_auditoria_financeira enable row level security;
+
+drop policy if exists "nc_auditoria_select" on public.nc_auditoria_financeira;
+create policy "nc_auditoria_select" on public.nc_auditoria_financeira
+  for select to authenticated using ((select public.pode_ver_nc()));
+
+revoke all on public.nc_auditoria_financeira from public, anon, authenticated;
+grant select on public.nc_auditoria_financeira to authenticated;
+
+create or replace function public.nc_auditar_alteracao_financeira() returns trigger
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  v_motivo text := nullif(btrim(coalesce(current_setting('nc.motivo_correcao', true), '')), '');
+  v_origem text := case when current_setting('nc.origem_alteracao', true) = 'edicao' then 'edicao' else 'direta' end;
+  v_autor_id uuid := auth.uid();
+  v_autor_nome text := public.nc_usuario_nome();
+begin
+  if old.custo_produto is distinct from new.custo_produto then
+    insert into public.nc_auditoria_financeira (nc_id, campo, tipo_alteracao, valor_anterior, valor_posterior, motivo, origem, autor_id, autor_nome)
+    values (new.id, 'custo_produto', case when old.custo_produto is null then 'preenchimento' else 'correcao' end,
+            old.custo_produto, new.custo_produto, v_motivo, v_origem, v_autor_id, v_autor_nome);
+  end if;
+  if old.custo_frete_adicional is distinct from new.custo_frete_adicional then
+    insert into public.nc_auditoria_financeira (nc_id, campo, tipo_alteracao, valor_anterior, valor_posterior, motivo, origem, autor_id, autor_nome)
+    values (new.id, 'custo_frete_adicional', case when old.custo_frete_adicional is null then 'preenchimento' else 'correcao' end,
+            old.custo_frete_adicional, new.custo_frete_adicional, v_motivo, v_origem, v_autor_id, v_autor_nome);
+  end if;
+  if old.custo_multa_outros is distinct from new.custo_multa_outros then
+    insert into public.nc_auditoria_financeira (nc_id, campo, tipo_alteracao, valor_anterior, valor_posterior, motivo, origem, autor_id, autor_nome)
+    values (new.id, 'custo_multa_outros', case when old.custo_multa_outros is null then 'preenchimento' else 'correcao' end,
+            old.custo_multa_outros, new.custo_multa_outros, v_motivo, v_origem, v_autor_id, v_autor_nome);
+  end if;
+  if old.valor_reembolsado is distinct from new.valor_reembolsado then
+    insert into public.nc_auditoria_financeira (nc_id, campo, tipo_alteracao, valor_anterior, valor_posterior, motivo, origem, autor_id, autor_nome)
+    values (new.id, 'valor_reembolsado', case when old.valor_reembolsado is null then 'preenchimento' else 'correcao' end,
+            old.valor_reembolsado, new.valor_reembolsado, v_motivo, v_origem, v_autor_id, v_autor_nome);
+  end if;
+  if old.custo_situacao is distinct from new.custo_situacao then
+    insert into public.nc_auditoria_financeira (nc_id, campo, tipo_alteracao, texto_anterior, texto_posterior, motivo, origem, autor_id, autor_nome)
+    values (new.id, 'custo_situacao', case when old.custo_situacao is null then 'preenchimento' else 'correcao' end,
+            old.custo_situacao, new.custo_situacao, v_motivo, v_origem, v_autor_id, v_autor_nome);
+  end if;
+  return null;
+end;
+$$;
+
+revoke all on function public.nc_auditar_alteracao_financeira() from public, anon, authenticated;
+
+drop trigger if exists trg_nc_auditoria_financeira on public.nao_conformidades;
+create trigger trg_nc_auditoria_financeira after update on public.nao_conformidades
+  for each row execute function public.nc_auditar_alteracao_financeira();
+
+-- 2. Gravação da edição: só os campos enviados, com a versão conferida na mesma transação
+create or replace function public.nc_salvar_edicao(
+  p_id uuid,
+  p_versao timestamptz,
+  p_campos jsonb,
+  p_motivo text default null
+) returns setof public.nao_conformidades
+language plpgsql
+security invoker
+set search_path = ''
+as $$
+declare
+  v_editaveis constant text[] := array[
+    'data_ocorrencia', 'data_identificacao', 'empresa', 'cliente', 'vendedora', 'romaneio', 'valor_romaneio',
+    'nf', 'rastreio', 'data_postagem', 'tipo_saida', 'origem', 'como_identificada', 'status_correios',
+    'descricao', 'resolucao', 'novo_rastreio', 'valor_declarado', 'valor_venda', 'frete_original',
+    'custo_produto', 'custo_frete_adicional', 'custo_multa_outros', 'reembolso_correios', 'numero_pi',
+    'valor_reembolsado', 'tempo_tratativa_min', 'status', 'data_encerramento', 'tipo_problema', 'causador',
+    'area_registro', 'area_tratativa', 'custo_situacao'
+  ];
+  v_financeiros constant text[] := array[
+    'custo_produto', 'custo_frete_adicional', 'custo_multa_outros', 'valor_reembolsado', 'custo_situacao'
+  ];
+  v_atual public.nao_conformidades%rowtype;
+  v_novo public.nao_conformidades%rowtype;
+  v_chave text;
+  v_campo text;
+  v_motivo text := nullif(btrim(coalesce(p_motivo, '')), '');
+  v_correcao boolean := false;
+begin
+  if p_versao is null then
+    raise exception 'A versão da não conformidade é obrigatória para gravar.' using errcode = 'NC004';
+  end if;
+  if not public.pode_editar_nc() then
+    raise exception 'Você não tem permissão para editar esta não conformidade.' using errcode = '42501';
+  end if;
+  if p_campos is null or jsonb_typeof(p_campos) <> 'object' then
+    raise exception 'As alterações devem ser enviadas como um objeto de campos.' using errcode = 'NC003';
+  end if;
+  for v_chave in select jsonb_object_keys(p_campos) loop
+    if not (v_chave = any (v_editaveis)) then
+      raise exception 'Campo não editável por esta operação: %', v_chave using errcode = 'NC003';
+    end if;
+  end loop;
+
+  -- Bloqueia a linha e lê a versão mais recente dela (READ COMMITTED reavalia após a trava)
+  select * into v_atual from public.nao_conformidades where id = p_id for update;
+  if not found then
+    raise exception 'Não conformidade não encontrada.' using errcode = 'NC005';
+  end if;
+  if v_atual.updated_at is distinct from p_versao then
+    raise exception 'Esta não conformidade foi alterada por outra pessoa depois que foi aberta. Nada foi gravado.' using errcode = 'NC001';
+  end if;
+
+  if p_campos = '{}'::jsonb then
+    return query select * from public.nao_conformidades where id = p_id;
+    return;
+  end if;
+
+  v_novo := jsonb_populate_record(v_atual, p_campos);
+
+  -- Correção: muda um valor ou a situação que já estavam registrados (zero e vazio contam como alteração)
+  foreach v_campo in array v_financeiros loop
+    if (to_jsonb(v_atual) ->> v_campo) is not null
+       and (to_jsonb(v_atual) ->> v_campo) is distinct from (to_jsonb(v_novo) ->> v_campo) then
+      v_correcao := true;
+    end if;
+  end loop;
+  if v_correcao and v_motivo is null then
+    raise exception 'Para corrigir um valor já registrado, informe a justificativa.' using errcode = 'NC002';
+  end if;
+  if v_motivo is not null and char_length(v_motivo) > 300 then
+    raise exception 'A justificativa deve ter até 300 caracteres.' using errcode = 'NC002';
+  end if;
+
+  -- Nada efetivamente mudou: não regrava (a versão continua a mesma)
+  if to_jsonb(v_novo) = to_jsonb(v_atual) then
+    return query select * from public.nao_conformidades where id = p_id;
+    return;
+  end if;
+
+  perform set_config('nc.motivo_correcao', coalesce(v_motivo, ''), true);
+  perform set_config('nc.origem_alteracao', 'edicao', true);
+
+  update public.nao_conformidades set
+    data_ocorrencia = v_novo.data_ocorrencia,
+    data_identificacao = v_novo.data_identificacao,
+    empresa = v_novo.empresa,
+    cliente = v_novo.cliente,
+    vendedora = v_novo.vendedora,
+    romaneio = v_novo.romaneio,
+    valor_romaneio = v_novo.valor_romaneio,
+    nf = v_novo.nf,
+    rastreio = v_novo.rastreio,
+    data_postagem = v_novo.data_postagem,
+    tipo_saida = v_novo.tipo_saida,
+    origem = v_novo.origem,
+    como_identificada = v_novo.como_identificada,
+    status_correios = v_novo.status_correios,
+    descricao = v_novo.descricao,
+    resolucao = v_novo.resolucao,
+    novo_rastreio = v_novo.novo_rastreio,
+    valor_declarado = v_novo.valor_declarado,
+    valor_venda = v_novo.valor_venda,
+    frete_original = v_novo.frete_original,
+    custo_produto = v_novo.custo_produto,
+    custo_frete_adicional = v_novo.custo_frete_adicional,
+    custo_multa_outros = v_novo.custo_multa_outros,
+    reembolso_correios = v_novo.reembolso_correios,
+    numero_pi = v_novo.numero_pi,
+    valor_reembolsado = v_novo.valor_reembolsado,
+    tempo_tratativa_min = v_novo.tempo_tratativa_min,
+    status = v_novo.status,
+    data_encerramento = v_novo.data_encerramento,
+    tipo_problema = v_novo.tipo_problema,
+    causador = v_novo.causador,
+    area_registro = v_novo.area_registro,
+    area_tratativa = v_novo.area_tratativa,
+    custo_situacao = v_novo.custo_situacao
+  where id = p_id;
+
+  return query select * from public.nao_conformidades where id = p_id;
+end;
+$$;
+
+revoke all on function public.nc_salvar_edicao(uuid, timestamptz, jsonb, text) from public, anon;
+grant execute on function public.nc_salvar_edicao(uuid, timestamptz, jsonb, text) to authenticated;
+
+-- ============================================================
+-- SOURCE: supabase/migrations/20261109150000_avisos_ciclo_reverso.sql
+-- ============================================================
+-- ============================================================
+-- Avisos internos do ciclo da reversa (sino) para solicitante e aprovadores
+-- ------------------------------------------------------------
+-- Os avisos nascem dos mesmos acontecimentos da fila de comunicação
+-- (reversa_comunicacoes_etiqueta), na mesma transação do acontecimento. Destinatário e
+-- ocorrência vêm da própria fila, então seguem as mesmas regras de quem é avisado
+-- (aprovador que não pode decidir não recebe; nada é gerado retroativamente). Não
+-- depende de e-mail, Teams nem da configuração do transporte externo.
+--
+-- - Uma linha por (destinatário, pedido, evento, ocorrência): os dois canais da fila
+--   (e-mail e Teams) de um mesmo acontecimento geram um único aviso.
+-- - emissao_pendente (Expedição) não entra aqui: a Expedição já recebe o aviso de
+--   emissão de reversa_notificacoes_emissao, gerado pela mesma aprovação.
+-- - Aprovação pendente deixa de valer quando a versão é decidida ou substituída
+--   (superado_em). O histórico (pedido criado, decisão, etiqueta, postagem, recebimento)
+--   continua valendo.
+-- - Listar, contar e marcar leitura conferem a autorização a cada chamada: destinatário
+--   = usuário atual e pode_ler_solicitacao (aprovação: reversa_aprovador_pode_decidir).
+--   Marcar leitura não aprova, não conclui e não altera o pedido.
+--
+-- Requer: 20261027100000_comunicacao_ciclo_pedido.sql (fila vigente),
+--         20261023100000_aprovacao_reversas.sql (solicitacoes_aprovacoes),
+--         20261023190000_aprovadores_empresa_setor.sql (aprovadores por setor).
+-- Idempotente: pode ser executada mais de uma vez.
+-- ============================================================
+
+create table if not exists public.reversa_avisos (
+  id uuid primary key default gen_random_uuid(),
+  destinatario_id uuid not null references auth.users (id) on delete cascade,
+  solicitacao_id uuid not null references public.solicitacoes_reverso (id) on delete cascade,
+  empresa text not null check (empresa in ('Alinare', 'Novitah')),
+  evento text not null check (evento in (
+    'pedido_criado', 'aprovacao_pendente', 'pedido_aprovado', 'pedido_rejeitado',
+    'etiqueta_disponivel', 'postagem_confirmada', 'recebimento_confirmado'
+  )),
+  ocorrencia_id uuid not null,
+  versao integer check (versao is null or versao > 0),
+  justificativa text check (justificativa is null or char_length(justificativa) <= 1000),
+  criado_em timestamptz not null default now(),
+  lido_em timestamptz,
+  superado_em timestamptz,
+  constraint reversa_avisos_ocorrencia_uk
+    unique (destinatario_id, solicitacao_id, evento, ocorrencia_id)
+);
+
+comment on table public.reversa_avisos is
+  'Avisos internos do ciclo da reversa para solicitante e aprovadores. Derivados da fila de comunicação na mesma transação; leitura não altera o pedido.';
+
+create index if not exists idx_reversa_avisos_destinatario_recente
+  on public.reversa_avisos (destinatario_id, criado_em desc);
+
+alter table public.reversa_avisos enable row level security;
+revoke all on table public.reversa_avisos from public, anon, authenticated;
+
+-- Quem pode ver um aviso agora. Aprovação pendente exige a autoridade de decisão
+-- sobre o pedido (empresa, setor e regra de autoaprovação); os demais, a leitura do pedido.
+create or replace function public.reversa_aviso_visivel(p_evento text, p_solicitacao_id uuid)
+returns boolean
+language sql
+stable
+security definer
+set search_path = ''
+as $$
+  select case
+    when p_evento = 'aprovacao_pendente'
+      then public.reversa_aprovador_pode_decidir(auth.uid(), p_solicitacao_id)
+    else public.pode_ler_solicitacao(p_solicitacao_id)
+  end;
+$$;
+revoke all on function public.reversa_aviso_visivel(text, uuid) from public, anon, authenticated, service_role;
+
+-- Gera o aviso a partir de cada linha nova da fila. Expedição e linhas sem destinatário
+-- ficam de fora. O dedupe por (destinatário, pedido, evento, ocorrência) absorve o segundo canal.
+create or replace function public.reversa_criar_aviso_de_comunicacao()
+returns trigger
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  v_justificativa text;
+  v_versao_texto text;
+begin
+  if new.destinatario_id is null or new.evento = 'emissao_pendente' then
+    return new;
+  end if;
+  if new.evento not in (
+    'pedido_criado', 'aprovacao_pendente', 'pedido_aprovado', 'pedido_rejeitado',
+    'etiqueta_disponivel', 'postagem_confirmada', 'recebimento_confirmado'
+  ) then
+    return new;
+  end if;
+
+  v_justificativa := nullif(btrim(coalesce(new.contexto ->> 'justificativa', '')), '');
+  if v_justificativa is null and new.evento in ('pedido_aprovado', 'pedido_rejeitado') then
+    -- Na fila, a ocorrência da decisão é a própria linha de solicitacoes_aprovacoes
+    select nullif(btrim(coalesce(a.justificativa, '')), '') into v_justificativa
+      from public.solicitacoes_aprovacoes a
+     where a.id = new.ocorrencia_id;
+  end if;
+
+  -- Sem exceção aqui: um contexto inesperado não pode impedir o acontecimento de negócio
+  v_versao_texto := new.contexto ->> 'versao';
+
+  insert into public.reversa_avisos
+    (destinatario_id, solicitacao_id, empresa, evento, ocorrencia_id, versao, justificativa)
+  values (
+    new.destinatario_id,
+    new.solicitacao_id,
+    new.empresa,
+    new.evento,
+    new.ocorrencia_id,
+    case when v_versao_texto ~ '^[0-9]{1,9}$' then v_versao_texto::integer end,
+    left(v_justificativa, 1000)
+  )
+  on conflict (destinatario_id, solicitacao_id, evento, ocorrencia_id) do nothing;
+
+  return new;
+end;
+$$;
+revoke all on function public.reversa_criar_aviso_de_comunicacao()
+  from public, anon, authenticated, service_role;
+
+drop trigger if exists reversa_avisos_de_comunicacao on public.reversa_comunicacoes_etiqueta;
+create trigger reversa_avisos_de_comunicacao
+  after insert on public.reversa_comunicacoes_etiqueta
+  for each row execute function public.reversa_criar_aviso_de_comunicacao();
+
+-- Decisão ou nova versão deixa de ser pendência: as aprovações pendentes anteriores
+-- (e, na decisão, as da própria versão) são superadas. Uma nova versão só supera as
+-- anteriores, nunca a própria rodada que acabou de ser avisada.
+create or replace function public.reversa_superar_avisos_de_aprovacao()
+returns trigger
+language plpgsql
+security definer
+set search_path = ''
+as $$
+begin
+  if new.evento not in ('aprovada', 'rejeitada', 'alterada', 'invalidada') then
+    return new;
+  end if;
+
+  update public.reversa_avisos a
+     set superado_em = now()
+   where a.solicitacao_id = new.solicitacao_id
+     and a.evento = 'aprovacao_pendente'
+     and a.superado_em is null
+     and (
+       a.versao < new.versao
+       or (a.versao <= new.versao and new.evento in ('aprovada', 'rejeitada'))
+     );
+
+  return new;
+end;
+$$;
+revoke all on function public.reversa_superar_avisos_de_aprovacao()
+  from public, anon, authenticated, service_role;
+
+drop trigger if exists reversa_avisos_supera_pendencias on public.solicitacoes_aprovacoes;
+create trigger reversa_avisos_supera_pendencias
+  after insert on public.solicitacoes_aprovacoes
+  for each row execute function public.reversa_superar_avisos_de_aprovacao();
+
+-- Lista do usuário atual: só os avisos dele que ainda podem ser vistos.
+create or replace function public.listar_avisos_reverso(p_limite integer default 50)
+returns table (
+  id uuid,
+  solicitacao_id uuid,
+  empresa text,
+  evento text,
+  versao integer,
+  justificativa text,
+  nome_cliente text,
+  criado_em timestamptz,
+  lido_em timestamptz,
+  superado_em timestamptz
+)
+language sql
+stable
+security definer
+set search_path = ''
+as $$
+  select a.id, a.solicitacao_id, a.empresa, a.evento, a.versao, a.justificativa,
+         r.nome_cliente, a.criado_em, a.lido_em, a.superado_em
+    from public.reversa_avisos a
+    join public.solicitacoes_reverso r on r.id = a.solicitacao_id
+   where auth.uid() is not null
+     and a.destinatario_id = auth.uid()
+     and public.reversa_aviso_visivel(a.evento, a.solicitacao_id)
+   order by a.criado_em desc, a.id desc
+   limit least(greatest(coalesce(p_limite, 50), 1), 100);
+$$;
+revoke all on function public.listar_avisos_reverso(integer) from public, anon, authenticated;
+grant execute on function public.listar_avisos_reverso(integer) to authenticated;
+
+-- Não lidos que ainda valem: superados não exigem ação e não entram na contagem.
+create or replace function public.contar_avisos_reverso_nao_lidos()
+returns integer
+language sql
+stable
+security definer
+set search_path = ''
+as $$
+  select case when auth.uid() is null then 0 else (
+    select count(*)::integer
+      from public.reversa_avisos a
+     where a.destinatario_id = auth.uid()
+       and a.lido_em is null
+       and a.superado_em is null
+       and public.reversa_aviso_visivel(a.evento, a.solicitacao_id)
+  ) end;
+$$;
+revoke all on function public.contar_avisos_reverso_nao_lidos() from public, anon, authenticated;
+grant execute on function public.contar_avisos_reverso_nao_lidos() to authenticated;
+
+-- Marca a leitura do próprio aviso. Não aprova, não conclui e não altera o pedido.
+create or replace function public.marcar_aviso_reverso_lido(p_aviso_id uuid)
+returns boolean
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  v_marcado boolean := false;
+begin
+  if auth.uid() is null then
+    return false;
+  end if;
+
+  update public.reversa_avisos a
+     set lido_em = coalesce(a.lido_em, now())
+   where a.id = p_aviso_id
+     and a.destinatario_id = auth.uid()
+     and public.reversa_aviso_visivel(a.evento, a.solicitacao_id);
+
+  v_marcado := found;
+  return v_marcado;
+end;
+$$;
+revoke all on function public.marcar_aviso_reverso_lido(uuid) from public, anon, authenticated;
+grant execute on function public.marcar_aviso_reverso_lido(uuid) to authenticated;
+
+-- ============================================================
+-- SOURCE: supabase/migrations/20261109160000_nc_edicao_somente_pelo_servidor.sql
+-- ============================================================
+-- Não conformidades: a edição passa só pela função nc_salvar_edicao (proteção no servidor).
+--
+-- Antes desta migration, o papel authenticated podia dar UPDATE direto na NC: a política nc_update
+-- aceitava qualquer coluna, sem conferir a versão (NC001) nem a justificativa (NC002), e a trilha
+-- financeira registrava a gravação com origem 'direta' e sem motivo. Reproduzido em
+-- supabase/tests/nc-protecao-servidor.test.mjs.
+--
+-- 1. authenticated perde o UPDATE na tabela: nenhuma gravação direta da NC passa (REST ou SQL).
+--    Os caminhos legítimos não usam esse privilégio: a edição usa nc_salvar_edicao (item 2); a criação
+--    usa INSERT; a importação usa INSERT ... ON CONFLICT DO NOTHING (não faz UPDATE); a exclusão usa
+--    DELETE, só para o admin (política nc_delete). Os UPDATEs das migrations rodam como dono.
+-- 2. nc_salvar_edicao passa a SECURITY DEFINER, para gravar com o privilégio do dono. A permissão
+--    continua conferida dentro da função (pode_editar_nc()), e search_path segue vazio. A função não
+--    recebe nenhuma flag do cliente: origem e motivo são definidos pelo próprio servidor.
+-- Migração incremental: não altera migrations anteriores nem os dados existentes.
+-- ─────────────────────────────────────────────────────────────────────────────
+
+revoke update on public.nao_conformidades from authenticated;
+
+alter function public.nc_salvar_edicao(uuid, timestamptz, jsonb, text) security definer;
+
+-- ============================================================
+-- SOURCE: supabase/migrations/20261109170000_privilegios_funcoes_de_gatilho.sql
+-- ============================================================
+-- Privilégios das funções de gatilho e da função auxiliar de classificação (correção incremental).
+--
+-- Funções de gatilho: o banco as dispara quando a tabela é gravada; a API não precisa chamá-las e o
+-- disparo não depende de EXECUTE de quem grava. Por isso o EXECUTE sai de PUBLIC, anon, authenticated
+-- e service_role, o que fecha a chamada direta por RPC sem mudar nenhum disparo:
+--   chamado_lixeira_proteger_atualizacao() (security definer)
+--   nc_validar_custo_situacao(), nc_classificar_origem_legada(), nc_validar_classificacao_registro()
+--   (security invoker)
+--
+-- Função auxiliar (não é gatilho): nc_classificacao_legada(text), immutable. O gatilho
+-- nc_classificar_origem_legada a chama com o papel de quem grava a NC; por isso authenticated e
+-- service_role mantêm o EXECUTE. PUBLIC e anon perdem.
+--
+-- Migração incremental: não altera migrations anteriores nem os dados existentes.
+-- ─────────────────────────────────────────────────────────────────────────────
+
+revoke all on function public.chamado_lixeira_proteger_atualizacao() from public, anon, authenticated, service_role;
+revoke all on function public.nc_validar_custo_situacao() from public, anon, authenticated, service_role;
+revoke all on function public.nc_classificar_origem_legada() from public, anon, authenticated, service_role;
+revoke all on function public.nc_validar_classificacao_registro() from public, anon, authenticated, service_role;
+
+revoke all on function public.nc_classificacao_legada(text) from public, anon;
+grant execute on function public.nc_classificacao_legada(text) to authenticated, service_role;
+
+-- ============================================================
+-- SOURCE: supabase/migrations/20261109180000_privilegios_tabelas_authenticated.sql
+-- ============================================================
+-- Privilégios de tabela: authenticated não tem TRUNCATE, REFERENCES nem TRIGGER nas tabelas de public.
+--
+-- O dump remoto (20260828171717_remote_commit.sql) concede ALL a anon e authenticated nas tabelas do
+-- schema public. A RLS e os privilégios explícitos (SELECT, INSERT, UPDATE, DELETE) controlam o acesso
+-- dos usuários, mas TRUNCATE não passa pela RLS, e REFERENCES e TRIGGER não são usados pela aplicação.
+-- Nenhum fluxo do sistema depende desses três privilégios para usuários: as migrations rodam como dono.
+--
+-- Correção incremental: afeta só as tabelas e views que já existem. Verificado por
+-- supabase/tests/seguranca.test.mjs ("authenticated não tem TRUNCATE, REFERENCES nem TRIGGER...").
+-- ─────────────────────────────────────────────────────────────────────────────
+
+revoke truncate, references, trigger on all tables in schema public from anon, authenticated;
 
 -- ============================================================
 -- Auditoria de telas (repetida da migration de permissões)

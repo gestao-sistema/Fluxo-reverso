@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   NAO_INFORMADO,
+  SEM_ORIGEM_ANTIGA,
   SEM_STATUS,
   anosComOcorrencia,
   calcularPainelNc,
@@ -114,74 +115,129 @@ describe('painel (PAINEL_NC)', () => {
     custo_produto: 100, valor_reembolsado: 100, tempo_tratativa_min: 90,
   });
   const c = nc({ origem: 'Mercadoria apreendida (fiscalização)', empresa: 'Alinare', data_ocorrencia: '2025-04-10', custo_multa_outros: 50 });
+  // Sem origem antiga e sem tipo nem causador: registro novo pendente de classificação
   const semOrigem = nc({ data_ocorrencia: '2026-10-02', empresa: 'Alinare', status: 'Aberta' });
   const semData = nc({ origem: 'Extravio Correios', empresa: 'Alinare', status: 'Aberta' });
   const ncs = [a, b, c, semOrigem, semData];
 
   const painel2026 = calcularPainelNc(ncs, { dataInicio: '2026-01-01', dataFim: '', ano: 2026 }, listas, HOJE);
 
-  it('conta só linhas com origem e data dentro do período', () => {
-    expect(painel2026.indicadores.registradas).toBe(2);
+  it('base: todas as NCs com data no período (pendentes entram); sem data ficam de fora', () => {
+    expect(painel2026.indicadores.registradas).toBe(3);
+    // a e b têm origem antiga mas não têm tipo nem causador: o banco as marca como pendentes
+    expect(painel2026.indicadores.classificadas).toBe(0);
+    expect(painel2026.indicadores.pendentes).toBe(3);
   });
 
   it('indicadores do período', () => {
     const i = painel2026.indicadores;
-    expect(i.emAberto).toBe(1);
+    expect(i.emAberto).toBe(2);
     expect(i.pctEvitaveis).toBe(0.5);
+    // Custos: a (10 + 5,5) e b (100); a NC sem valor não entra como zero
     expect(i.custoTotal).toBe(115.5);
     expect(i.valorReembolsado).toBe(103);
     expect(i.custoLiquido).toBe(12.5);
-    expect(i.custoLiquidoMedio).toBe(6.25);
+    // Custo líquido ÷ total de NCs registradas: 12,50 ÷ 3
+    expect(i.custoLiquidoPorNc).toBe(4.17);
+    // Média só entre NCs com valor registrado: 12,50 ÷ 2
+    expect(i.custoLiquidoMedioComValor).toBe(6.25);
+    expect(i.comValor).toBe(2);
+    expect(i.parciais).toBe(2);
     expect(i.horasTratativa).toBe(2);
-    // (15 + 5) / 2 — só ocorrências com status preenchido
-    expect(i.diasMediosEmAberto).toBe(10);
+    // (15 + 5 + 18) / 3 — só ocorrências com status preenchido
+    expect(i.diasMediosEmAberto).toBeCloseTo(12.67, 2);
     expect(i.comReversa).toBe(1);
-    expect(i.pctComReversa).toBe(0.5);
+    expect(i.pctComReversa).toBeCloseTo(1 / 3, 5);
   });
 
-  it('tabela por origem: origens ativas na ordem da lista, inclusive com zero', () => {
+  it('evitável: numerador, denominador e contagens; sem origem antiga é sem informação', () => {
+    const i = painel2026.indicadores;
+    expect([i.evitaveisSim, i.evitaveisNao, i.evitaveisAvaliar, i.evitaveisBase, i.evitaveisSemInformacao]).toEqual([1, 1, 0, 2, 1]);
+  });
+
+  it('cobertura do custo: categorias exclusivas que somam as registradas', () => {
+    const cobertura = painel2026.indicadores.cobertura;
+    expect(cobertura).toMatchObject({
+      registradas: 3, semCusto: 0, comValor: 2, valorNaoInformado: 0, aApurar: 0, semSituacaoSemValor: 1,
+      situacaoNaoInformada: 3, parciais: 2, reembolsoInformado: 2, comValorSemReembolso: 0,
+    });
+    expect(cobertura.semCusto + cobertura.comValor + cobertura.valorNaoInformado + cobertura.aApurar + cobertura.semSituacaoSemValor).toBe(3);
+  });
+
+  it('tabela por origem: origens ativas na ordem da lista, inclusive com zero; sem origem antiga no fim', () => {
     expect(painel2026.porOrigem.map((l) => [l.valor, l.qtd])).toEqual([
       ['Erro expedição – endereço incorreto', 1],
       ['Extravio Correios', 1],
       ['Mercadoria apreendida (fiscalização)', 0],
+      [SEM_ORIGEM_ANTIGA, 1],
     ]);
     const endereco = painel2026.porOrigem[0];
-    expect(endereco).toMatchObject({ pct: 0.5, custoLiquido: 12.5, horas: 0.5, emAberto: 1 });
+    expect(endereco.pct).toBeCloseTo(1 / 3, 5);
+    expect(endereco).toMatchObject({ custoLiquido: 12.5, horas: 0.5, emAberto: 1, rotuloCusto: 'R$ 12,50', detalheCusto: '1 parcial' });
   });
 
   it('demais tabelas: área, empresa, tipo de saída (com "não informado"), resolução e status', () => {
-    expect(painel2026.porArea.map((l) => l.qtd)).toEqual([1, 1, 0]);
-    expect(painel2026.porEmpresa.map((l) => [l.valor, l.qtd])).toEqual([['Alinare', 1], ['Novitah', 1]]);
-    expect(painel2026.porTipoSaida.map((l) => [l.valor, l.qtd])).toEqual([['Venda', 1], [NAO_INFORMADO, 1]]);
-    expect(painel2026.porResolucao.map((l) => [l.valor, l.qtd])).toEqual([['Reverso', 1], ['Multa paga', 1]]);
+    expect(painel2026.porArea.map((l) => l.qtd)).toEqual([1, 1, 0, 1]);
+    expect(painel2026.porEmpresa.map((l) => [l.valor, l.qtd])).toEqual([['Alinare', 2], ['Novitah', 1]]);
+    expect(painel2026.porTipoSaida.map((l) => [l.valor, l.qtd])).toEqual([['Venda', 1], [NAO_INFORMADO, 2]]);
+    expect(painel2026.porResolucao.map((l) => [l.valor, l.qtd])).toEqual([['Reverso', 1], ['Multa paga', 1], [NAO_INFORMADO, 1]]);
     expect(painel2026.porStatus.map((l) => [l.valor, l.qtd])).toEqual([
-      ['Aberta', 1], ['Em tratativa', 0], ['Encerrada', 1], ['Cancelada', 0],
+      ['Aberta', 2], ['Em tratativa', 0], ['Encerrada', 1], ['Cancelada', 0],
     ]);
   });
 
   it('visão mensal usa só o ano (ignora o período), como na planilha', () => {
     const outubro = calcularPainelNc(ncs, { dataInicio: '2026-10-01', dataFim: '', ano: 2026 }, listas, HOJE);
-    expect(outubro.indicadores.registradas).toBe(1);
+    expect(outubro.indicadores.registradas).toBe(2);
     expect(outubro.porMes[8]).toMatchObject({ rotulo: 'Set', qtd: 1, evitaveis: 0, custoLiquido: 0 });
-    expect(outubro.porMes[9]).toMatchObject({ rotulo: 'Out', qtd: 1, evitaveis: 1, custoLiquido: 12.5 });
-    expect(outubro.porMes.reduce((s, m) => s + m.qtd, 0)).toBe(2);
+    expect(outubro.porMes[9]).toMatchObject({ rotulo: 'Out', qtd: 2, evitaveis: 1, custoLiquido: 12.5, comValor: 1 });
+    expect(outubro.porMes.reduce((s, m) => s + m.qtd, 0)).toBe(3);
   });
 
   it('sem período: inclui o histórico e mostra "sem status"', () => {
     const tudo = calcularPainelNc(ncs, { dataInicio: '', dataFim: '', ano: 2025 }, listas, HOJE);
-    expect(tudo.indicadores.registradas).toBe(3);
+    expect(tudo.indicadores.registradas).toBe(4);
     expect(tudo.porStatus.find((l) => l.valor === SEM_STATUS)?.qtd).toBe(1);
     // A NC sem status (histórico) não entra nos dias médios
-    expect(tudo.indicadores.diasMediosEmAberto).toBe(10);
-    expect(tudo.porMes[3]).toMatchObject({ rotulo: 'Abr', qtd: 1, custoLiquido: 50 });
+    expect(tudo.indicadores.diasMediosEmAberto).toBeCloseTo(12.67, 2);
+    expect(tudo.porMes[3]).toMatchObject({ rotulo: 'Abr', qtd: 1, custoLiquido: 50, rotuloCusto: 'R$ 50,00' });
   });
 
   it('filtro por empresa (dashboard)', () => {
     const alinare = calcularPainelNc(ncs, { dataInicio: '', dataFim: '', ano: 2026, empresa: 'Alinare' }, listas, HOJE);
-    expect(alinare.indicadores.registradas).toBe(2);
+    expect(alinare.indicadores.registradas).toBe(3);
   });
 
   it('anos com ocorrência, do mais recente ao mais antigo', () => {
     expect(anosComOcorrencia(ncs)).toEqual([2026, 2025]);
+  });
+});
+
+describe('painel sem nenhum valor de custo: ausência não vira zero', () => {
+  const semValor = [
+    nc({ empresa: 'Alinare', data_ocorrencia: '2026-10-03', origem: 'Extravio Correios', custo_situacao: 'Em apuração' }),
+    nc({ empresa: 'Alinare', data_ocorrencia: '2026-10-04', origem: 'Extravio Correios', custo_situacao: 'Sim' }),
+  ];
+  const painel = calcularPainelNc(semValor, { dataInicio: '', dataFim: '', ano: 2026 }, listas, HOJE);
+
+  it('totais e médias ficam sem valor, não R$ 0,00', () => {
+    const i = painel.indicadores;
+    expect(i.custoTotal).toBeNull();
+    expect(i.valorReembolsado).toBeNull();
+    expect(i.custoLiquido).toBeNull();
+    expect(i.custoLiquidoPorNc).toBeNull();
+    expect(i.custoLiquidoMedioComValor).toBeNull();
+    expect(i.comValor).toBe(0);
+  });
+
+  it('linhas: o estado do custo aparece no lugar do valor', () => {
+    expect(painel.porSituacaoCusto.find((l) => l.valor === 'Em apuração')).toMatchObject({ qtd: 1, rotuloCusto: 'A apurar', custoLiquido: null });
+    expect(painel.porSituacaoCusto.find((l) => l.valor === 'Sim')).toMatchObject({ qtd: 1, rotuloCusto: 'Valor não informado', custoLiquido: null });
+    expect(painel.porSituacaoCusto.find((l) => l.valor === 'Não')).toMatchObject({ qtd: 0, rotuloCusto: '—' });
+  });
+
+  it('cobertura: as duas NCs somam nas categorias de valor não informado e a apurar', () => {
+    const c = painel.indicadores.cobertura;
+    expect([c.semCusto, c.comValor, c.valorNaoInformado, c.aApurar, c.semSituacaoSemValor]).toEqual([0, 0, 1, 1, 0]);
   });
 });

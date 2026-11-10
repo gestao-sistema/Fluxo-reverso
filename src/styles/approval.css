@@ -121,12 +121,12 @@
 .approval-button { min-height: 42px; display: inline-flex; align-items: center; justify-content: center; gap: 7px; padding: 0 18px; color: var(--flow-text); border: 1px solid var(--flow-line-strong); border-radius: var(--flow-radius-pill); background: var(--flow-surface-nested); font-size: 14px; font-weight: 600; text-decoration: none; cursor: pointer; transition: background var(--flow-motion-hover) var(--flow-ease), border-color var(--flow-motion-hover) var(--flow-ease), opacity var(--flow-motion-hover) var(--flow-ease); }
 .approval-button:hover:not(:disabled) { border-color: var(--flow-accent); }
 .approval-button:disabled { cursor: not-allowed; opacity: .5; }
-.approval-button.is-primary { color: var(--flow-on-fill); border-color: var(--flow-ativo-borda); background: var(--flow-fill); box-shadow: 0 8px 20px var(--flow-glow), inset 0 1px 0 rgba(255, 255, 255, .22); }
+.approval-button.is-primary { color: var(--flow-on-fill); border-color: var(--flow-ativo-borda); background: var(--flow-fill); box-shadow: 0 8px 20px var(--flow-glow), inset 0 1px 0 var(--flow-realce); }
 .approval-button.is-primary:hover:not(:disabled) { background: var(--flow-fill-hover); }
 .approval-button.is-reject { color: var(--flow-danger); border-color: color-mix(in srgb, var(--flow-danger) 40%, transparent); background: var(--flow-danger-soft); }
 .approval-button.is-reject:hover:not(:disabled),
 .approval-button.is-danger:hover:not(:disabled) { border-color: var(--flow-danger); }
-.approval-button.is-danger { color: #fff; border-color: color-mix(in srgb, var(--flow-danger) 50%, transparent); background: var(--flow-danger-deep); }
+.approval-button.is-danger { color: var(--flow-on-danger); border-color: color-mix(in srgb, var(--flow-danger) 50%, transparent); background: var(--flow-danger-deep); }
 .approval-button.is-secondary { min-height: 40px; }
 .approval-reject-form { margin-bottom: 12px; padding: 14px; border: 1px solid color-mix(in srgb, var(--flow-danger) 34%, transparent); border-radius: var(--flow-radius-card); background: var(--flow-danger-soft); }
 .approval-reject-form label { display: block; margin-bottom: 6px; color: var(--flow-text); font-size: 14px; font-weight: 600; }

@@ -38,12 +38,14 @@ Rotacionou a chave service_role? Atualize o segredo com `vault.update_secret` e 
 
 ## Desabilitar
 
-Executar `desabilitar-worker-comunicacao.sql` (remove o job) e/ou voltar `NOTIFICACAO_EMAIL_TRANSPORTE` para `simulado`. Mensagens pendentes continuam na fila; reabilitar retoma o processamento (a revalidação descarta o que perdeu pertinência).
+Executar `desabilitar-worker-comunicacao.sql` (remove o job) e/ou voltar `ETIQUETA_TRANSPORTE` para `simulado` (ou remover a variável). `ETIQUETA_TRANSPORTE` controla as notificações dos pedidos (e-mail e Teams, pelo Power Automate); os convites dependem só de `CONVITE_TRANSPORTE`. `NOTIFICACAO_EMAIL_TRANSPORTE` não é lida por nenhuma função: trocá-la não pausa o envio. Mensagens pendentes continuam na fila; reabilitar retoma o processamento (a revalidação descarta o que perdeu pertinência).
 
 ## Monitorar
 
 - `select jobid, jobname, schedule, active from cron.job where jobname = 'comunicacao-reversa-5min';`
-- `select status, return_message, start_time from cron.job_run_details where jobid = (select jobid from cron.job where jobname = 'comunicacao-reversa-5min') order by start_time desc limit 10;` (mostra o disparo do `pg_net`; a resposta da função fica em `net._http_response`)
+- `select status, return_message, start_time from cron.job_run_details where jobid = (select jobid from cron.job where jobname = 'comunicacao-reversa-5min') order by start_time desc limit 10;` (mostra se o agendador executou o comando que chama o `pg_net`; não mostra a resposta do worker)
+- Respostas em `net._http_response` (`status_code`, `timed_out`, `error_msg`): o disparo não envia identificador de execução e a resposta do worker não o devolve. Sem essa correlação, uma resposta recente não se atribui a uma execução do worker, e o resultado é **inconclusivo**. Não atribua um 403 ou um timeout a uma execução específica.
+- Presença do job, dos segredos do Vault e das funções não comprova versão correta, configuração válida nem envio funcionando.
 - Tela `/admin/comunicacoes`: situação de cada comunicação, tentativas e `resultado_indeterminado` a reconciliar.
 
 ## Não validado

@@ -515,6 +515,17 @@ select option { background: var(--flow-surface-raised-solid); color: var(--flow-
 .field-control:hover:not(:disabled) { border-color: color-mix(in srgb, var(--flow-accent) 55%, var(--flow-line-strong)); }
 .field-control:focus { border-color: var(--flow-accent); box-shadow: 0 0 0 3px var(--flow-accent-soft); outline: 0; }
 .field-control:disabled, input:disabled, select:disabled, textarea:disabled { opacity: .55; cursor: not-allowed; }
+/* Preenchimento automático do navegador: o campo segue o tema (sem o fundo claro padrão) */
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus,
+textarea:-webkit-autofill,
+select:-webkit-autofill {
+  -webkit-box-shadow: 0 0 0 1000px var(--flow-field-solid) inset;
+  box-shadow: 0 0 0 1000px var(--flow-field-solid) inset;
+  -webkit-text-fill-color: var(--flow-text);
+  caret-color: var(--flow-text);
+}
 
 .btn-primary,
 .btn-secondary,
@@ -532,7 +543,7 @@ select option { background: var(--flow-surface-raised-solid); color: var(--flow-
   text-decoration: none;
   transition: background var(--flow-motion-hover) var(--flow-ease), border-color var(--flow-motion-hover) var(--flow-ease), color var(--flow-motion-hover) var(--flow-ease), opacity var(--flow-motion-hover) var(--flow-ease);
 }
-.btn-primary { border: 1px solid var(--flow-ativo-borda); background: var(--flow-fill); color: var(--flow-on-fill); box-shadow: 0 8px 20px var(--flow-glow), inset 0 1px 0 rgba(255, 255, 255, .22); }
+.btn-primary { border: 1px solid var(--flow-ativo-borda); background: var(--flow-fill); color: var(--flow-on-fill); box-shadow: 0 8px 20px var(--flow-glow), inset 0 1px 0 var(--flow-realce); }
 .btn-primary:hover:not(:disabled) { background: var(--flow-fill-hover); }
 .btn-secondary { border: 1px solid var(--flow-line-strong); background: var(--flow-surface-inset); color: var(--flow-text); }
 .btn-secondary:hover:not(:disabled) { border-color: var(--flow-accent); background: var(--flow-accent-soft); }
@@ -643,9 +654,9 @@ select option { background: var(--flow-surface-raised-solid); color: var(--flow-
 
 /* Diálogo de detalhe da solicitação */
 .record-detail-modal { display: flex; flex-direction: column; max-height: min(90dvh, 900px); overflow: hidden; border-radius: var(--flow-radius-panel); }
-.record-empresa-pill { border: 1px solid currentColor; background: color-mix(in srgb, currentColor 14%, transparent); }
-.record-empresa-pill.is-alinare { color: var(--flow-serie-alinare); }
-.record-empresa-pill.is-novitah { color: var(--flow-serie-novitah); }
+.record-empresa-pill { border: 1px solid var(--flow-pill-cor); background: color-mix(in srgb, var(--flow-pill-cor) 14%, transparent); color: var(--flow-pill-texto); }
+.record-empresa-pill.is-alinare { --flow-pill-cor: var(--flow-serie-alinare); --flow-pill-texto: var(--flow-serie-alinare); }
+.record-empresa-pill.is-novitah { --flow-pill-cor: var(--flow-serie-novitah); --flow-pill-texto: var(--flow-serie-novitah-texto); }
 
 /* ── Kanban ───────────────────────────────────────────────────────────────── */
 .kanban-board .page-heading { margin: 0; }
@@ -673,7 +684,7 @@ select option { background: var(--flow-surface-raised-solid); color: var(--flow-
 .form-view .form-card form > div { position: relative; }
 .form-view .form-card label { font-size: 14px; font-weight: 600; color: var(--flow-text-2); }
 .form-view .form-card :is(input, select, textarea):not([type='checkbox']):not([type='radio']):not([type='file']) { border-radius: var(--flow-radius-control); }
-.form-submit { min-height: 48px; border: 1px solid var(--flow-ativo-borda); border-radius: var(--flow-radius-pill); background: var(--flow-fill); color: var(--flow-on-fill); font-weight: 650; box-shadow: 0 10px 26px var(--flow-glow), inset 0 1px 0 rgba(255, 255, 255, .22); transition: background var(--flow-motion-hover) var(--flow-ease), opacity var(--flow-motion-hover) var(--flow-ease); }
+.form-submit { min-height: 48px; border: 1px solid var(--flow-ativo-borda); border-radius: var(--flow-radius-pill); background: var(--flow-fill); color: var(--flow-on-fill); font-weight: 650; box-shadow: 0 10px 26px var(--flow-glow), inset 0 1px 0 var(--flow-realce); transition: background var(--flow-motion-hover) var(--flow-ease), opacity var(--flow-motion-hover) var(--flow-ease); }
 .form-submit:hover:not(:disabled) { background: var(--flow-fill-hover); }
 .form-submit:disabled { opacity: .55; box-shadow: none; }
 
@@ -701,7 +712,7 @@ select option { background: var(--flow-surface-raised-solid); color: var(--flow-
 .login-input-wrap input::placeholder { color: var(--flow-text-3); }
 .login-input-wrap button { display: grid; place-items: center; min-width: 36px; min-height: 36px; padding: 0; border: 0; border-radius: 8px; background: none; color: var(--flow-text-3); }
 .login-input-wrap button:hover { color: var(--flow-text); }
-.login-submit { width: 100%; height: 50px; margin-top: 26px; display: flex; align-items: center; justify-content: center; gap: 10px; border: 1px solid var(--flow-ativo-borda); border-radius: var(--flow-radius-pill); background: var(--flow-fill); color: var(--flow-on-fill); font-size: 14px; font-weight: 700; box-shadow: 0 10px 26px var(--flow-glow), inset 0 1px 0 rgba(255, 255, 255, .25); transition: background var(--flow-motion-hover) var(--flow-ease); }
+.login-submit { width: 100%; height: 50px; margin-top: 26px; display: flex; align-items: center; justify-content: center; gap: 10px; border: 1px solid var(--flow-ativo-borda); border-radius: var(--flow-radius-pill); background: var(--flow-fill); color: var(--flow-on-fill); font-size: 14px; font-weight: 700; box-shadow: 0 10px 26px var(--flow-glow), inset 0 1px 0 var(--flow-realce-forte); transition: background var(--flow-motion-hover) var(--flow-ease); }
 .login-submit:hover:not(:disabled) { background: var(--flow-fill-hover); }
 .login-submit:disabled { opacity: .55; cursor: not-allowed; }
 .login-demo { width: 100%; min-height: 54px; margin-top: 12px; padding: 10px 14px; display: flex; align-items: center; gap: 11px; border: 1px solid color-mix(in srgb, var(--flow-success) 40%, transparent); border-radius: var(--flow-radius-pill); background: var(--flow-success-soft); color: var(--flow-success); text-align: left; transition: border-color var(--flow-motion-hover) var(--flow-ease); }
@@ -809,6 +820,11 @@ select option { background: var(--flow-surface-raised-solid); color: var(--flow-
   --color-violet-200: color-mix(in srgb, var(--flow-violet) 32%, transparent);
   --color-violet-500: var(--flow-violet);
   --color-violet-700: var(--flow-violet);
+  --color-green-100: var(--flow-success-soft);
+  --color-green-700: var(--flow-success);
+  --color-sky-50: var(--flow-info-soft);
+  --color-sky-200: var(--flow-info-soft);
+  --color-sky-700: var(--flow-info);
 }
 /* Preenchimentos sólidos: o par cor/texto segue o tema (sem texto claro em fundo claro) */
 .bg-white { background-color: var(--flow-surface-nested); }
@@ -819,11 +835,11 @@ select option { background: var(--flow-surface-raised-solid); color: var(--flow-
 .bg-blue-500.text-white { background: var(--flow-fill); color: var(--flow-on-fill); }
 .hover\:bg-blue-700:hover { background: var(--flow-fill-hover); }
 .bg-rose-600,
-.bg-emerald-600 { color: #fff; }
+.bg-emerald-600 { color: var(--flow-on-danger); }
 .bg-rose-600 { background-color: var(--flow-danger-deep); }
-.hover\:bg-rose-700:hover { background-color: color-mix(in srgb, var(--flow-danger-deep) 82%, #fff); }
-.bg-emerald-600 { background-color: color-mix(in srgb, var(--flow-success) 40%, #0c2a1f); }
-.hover\:bg-emerald-700:hover { background-color: color-mix(in srgb, var(--flow-success) 52%, #0c2a1f); }
+.hover\:bg-rose-700:hover { background-color: color-mix(in srgb, var(--flow-danger-deep) 82%, var(--flow-on-danger)); }
+.bg-emerald-600 { background-color: color-mix(in srgb, var(--flow-success) 40%, var(--flow-surface-solid)); }
+.hover\:bg-emerald-700:hover { background-color: color-mix(in srgb, var(--flow-success) 52%, var(--flow-surface-solid)); }
 .bg-slate-900,
 .hover\:bg-slate-700:hover { background-color: var(--flow-surface-raised-solid); color: var(--flow-text); }
 .bg-slate-900\/40,

@@ -6,6 +6,7 @@ import DemoSwitcher from '../../demo/DemoSwitcher';
 import BotaoModoCor from '../ui/BotaoModoCor';
 import { useAuth } from '../../context/AuthContext';
 import { useTema } from '../../context/TemaContext';
+import { ContadorAprovacoesProvider, useContadorAprovacoes } from '../../context/ContadorAprovacoesContext';
 import { homeDoUsuario, navItemsDoUsuario } from '../../lib/perfil';
 import alinareLogoSrc from '../../assets/alinare_logo.jpg';
 import novitahLogoSrc from '../../assets/novitah_logo.jpg';
@@ -13,7 +14,17 @@ import novitahLogoSrc from '../../assets/novitah_logo.jpg';
 const LOGO_DO_TEMA = { alinare: { src: alinareLogoSrc, empresa: 'Alinare' }, novitah: { src: novitahLogoSrc, empresa: 'Novitah' } } as const;
 
 export default function AdminLayout() {
+  // O provedor fica acima do cabeçalho, do menu e da página: o contador do item Aprovações lê a mesma fila da página
+  return (
+    <ContadorAprovacoesProvider>
+      <CascaAdministrativa />
+    </ContadorAprovacoesProvider>
+  );
+}
+
+function CascaAdministrativa() {
   const { user } = useAuth();
+  const { pendencias } = useContadorAprovacoes();
   const tema = useTema();
   const itensDoUsuario = user ? navItemsDoUsuario(user) : [];
   // Destinos sem repetição de rota (a navegação mostra cada rota uma vez)
@@ -45,7 +56,7 @@ export default function AdminLayout() {
         </div>
       </header>
       <main className="app-main" id="conteudo"><Outlet /></main>
-      <FlowNav items={itens} />
+      <FlowNav items={itens} pendenciasPorDestino={{ '/admin/aprovacoes': pendencias }} />
     </div>
   );
 }

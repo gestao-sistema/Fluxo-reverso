@@ -11,7 +11,7 @@ import type {
   Empresa,
   ListasNc,
   NaoConformidade,
-  NcCampos,
+  NcGravacao,
   NcHistorico,
   NcListaItem,
   NcOpcaoReversa,
@@ -19,12 +19,25 @@ import type {
   UsuarioAutenticado,
 } from '../types';
 import type { NcImportada } from '../lib/ncPlanilha';
+import { ConflitoEdicaoNc, ErroEdicaoNc } from '../lib/ncEdicao';
+import type { OpcoesAtualizacaoNc, ResultadoAtualizacaoNc } from '../lib/ncEdicao';
 import { demoAtivo } from '../demo/demoMode';
 import demoNcService from '../demo/demoNcService';
 
 /** Converte erro Supabase em mensagem legível */
 function checarErro(erro: { message: string } | null, fallback: string): void {
   if (erro) throw new Error(erro.message || fallback);
+}
+
+/** Erro devolvido pela função de gravação: NC001 é conflito de versão; os demais carregam o código. */
+function traduzirErroEdicao(erro: { code?: string; message?: string }): Error {
+  const codigo = erro.code ?? '';
+  const mensagem = erro.message || 'Erro ao salvar a não conformidade.';
+  if (codigo === 'NC001') return new ConflitoEdicaoNc();
+  // Permissão: a mensagem técnica do banco não vai para a tela
+  if (codigo === '42501') return new ErroEdicaoNc(codigo, 'Você não tem permissão para editar esta não conformidade.');
+  if (['NC002', 'NC003', 'NC004', 'NC005'].includes(codigo)) return new ErroEdicaoNc(codigo, mensagem);
+  return new Error(mensagem);
 }
 
 const TAMANHO_LOTE_IMPORTACAO = 50;
@@ -53,7 +66,7 @@ const supabaseNcService = {
   },
 
   /** Registra a NC e devolve o registro com os campos calculados. */
-  async criar(campos: NcCampos): Promise<NaoConformidade> {
+  async criar(campos: NcGravacao): Promise<NaoConformidade> {
     const { data, error } = await supabase
       .from('nao_conformidades')
       .insert(campos)
@@ -66,13 +79,33 @@ const supabaseNcService = {
     return nc;
   },
 
-  async atualizar(id: string, campos: Partial<NcCampos>): Promise<NaoConformidade> {
-    const { error } = await supabase.from('nao_conformidades').update(campos).eq('id', id);
-    checarErro(error, 'Erro ao salvar a não conformidade.');
+  /**
+   * Grava só os campos alterados, se a versão (updated_at) ainda for a que o formulário carregou.
+   * A conferência da versão e a gravação são uma única operação no banco (nc_salvar_edicao), então
+   * uma gravação concorrente não passa entre elas. Sem versão, a gravação é recusada.
+   */
+  async atualizar(id: string, campos: Partial<NcGravacao>, opcoes: OpcoesAtualizacaoNc): Promise<ResultadoAtualizacaoNc> {
+    if (!opcoes?.versao) throw new ErroEdicaoNc('NC004', 'A versão da não conformidade é obrigatória para gravar.');
+    if (Object.keys(campos).length === 0) {
+      const nc = await supabaseNcService.obter(id);
+      if (!nc) throw new ErroEdicaoNc('NC005', 'Não conformidade não encontrada.');
+      return { nc, gravado: false };
+    }
 
-    const nc = await ncService.obter(id);
-    if (!nc) throw new Error('NC salva, mas não foi possível carregá-la.');
-    return nc;
+    const { data, error } = await supabase.rpc('nc_salvar_edicao', {
+      p_id: id,
+      p_versao: opcoes.versao,
+      p_campos: campos,
+      p_motivo: opcoes.motivo ?? null,
+    });
+    if (error) throw traduzirErroEdicao(error);
+
+    const linha = (Array.isArray(data) ? data[0] : data) as { updated_at: string } | null | undefined;
+    if (!linha) throw new ErroEdicaoNc('NC005', 'Não conformidade não encontrada.');
+    // A função devolve a linha da tabela; os campos calculados vêm da leitura da view
+    const nc = await supabaseNcService.obter(id);
+    if (!nc) throw new ErroEdicaoNc('NC005', 'Não conformidade não encontrada.');
+    return { nc, gravado: linha.updated_at !== opcoes.versao };
   },
 
   /** Apaga a NC (somente admin). NC com reversa vinculada não pode ser apagada. */

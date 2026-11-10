@@ -2,9 +2,11 @@
 // ficam visíveis na ordem original; o restante vai para o menu Mais. Nenhum
 // destino autorizado fica sem acesso.
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
-import { NavLink, useLocation } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { MoreHorizontal } from 'lucide-react';
 import type { NavItem } from '../../lib/perfil';
+import { descreverPendencias, PENDENCIAS_INATIVAS, type DescricaoPendencias, type PendenciasAprovacao } from '../../lib/aprovacoesPendentes';
+import './contador-aprovacoes.css';
 
 const LIMITE_DIRETOS = 6;
 
@@ -48,17 +50,36 @@ function rotuloCompacto(item: NavItem): string {
   return item.label;
 }
 
+/** Pendências por destino (rota). Hoje só Aprovações tem contador. */
+type PendenciasPorDestino = Partial<Record<string, PendenciasAprovacao>>;
+
 interface FlowNavProps {
   items: NavItem[];
+  pendenciasPorDestino?: PendenciasPorDestino;
 }
 
-export default function FlowNav({ items }: FlowNavProps) {
+function descricaoDoItem(item: NavItem, pendenciasPorDestino?: PendenciasPorDestino): DescricaoPendencias {
+  return descreverPendencias(pendenciasPorDestino?.[item.to] ?? PENDENCIAS_INATIVAS);
+}
+
+/** O nome acessível inclui a contagem: o número não depende só do ícone. */
+function nomeDoItem(item: NavItem, descricao: DescricaoPendencias): string {
+  return descricao.resumo ? `${item.label}, ${descricao.resumo}` : item.label;
+}
+
+export default function FlowNav({ items, pendenciasPorDestino }: FlowNavProps) {
   const location = useLocation();
+  const navigate = useNavigate();
   const [maisAberto, setMaisAberto] = useState(false);
+  // Itens são botões, não <a href>: sem prévia de URL no navegador. Mesma regra do Link: se o destino
+  // já é a página atual, a entrada do histórico é substituída em vez de duplicada.
+  const irPara = (item: NavItem) => {
+    navigate(item.to, { replace: item.to === `${location.pathname}${location.search}` });
+  };
   const [quantidadeVisivel, setQuantidadeVisivel] = useState(Math.min(items.length, LIMITE_DIRETOS));
   const navRef = useRef<HTMLElement>(null);
   const medicaoRef = useRef<HTMLDivElement>(null);
-  const primeiroDoMais = useRef<HTMLAnchorElement>(null);
+  const primeiroDoMais = useRef<HTMLButtonElement>(null);
   // Medidos na ordem de prioridade: o que couber primeiro é o que fica no dock
   const ordenados = useMemo(() => ordenarPorPrioridade(items), [items]);
 
@@ -115,6 +136,12 @@ export default function FlowNav({ items }: FlowNavProps) {
 
   const [principais, demais] = separarDiretos(items, quantidadeVisivel);
   const demaisTemAtivo = demais.some((item) => estaAtivo(item.to, location.pathname, location.search));
+  // Itens dentro de "Mais" com pendências: o botão mostra um indicador e o nome acessível os anuncia
+  const nomesEmMais = demais.flatMap((item) => {
+    const descricao = descricaoDoItem(item, pendenciasPorDestino);
+    return descricao.resumo ? [nomeDoItem(item, descricao)] : [];
+  });
+  const alertaEmMais = demais.some((item) => descricaoDoItem(item, pendenciasPorDestino).alerta);
 
   useEffect(() => {
     if (demais.length === 0) setMaisAberto(false);
@@ -142,18 +169,23 @@ export default function FlowNav({ items }: FlowNavProps) {
             {demais.map((item, indice) => {
               const ativo = estaAtivo(item.to, location.pathname, location.search);
               const Icone = item.icon;
+              const descricao = descricaoDoItem(item, pendenciasPorDestino);
               return (
-                <NavLink
+                <button
                   key={item.to}
                   ref={indice === 0 ? primeiroDoMais : undefined}
-                  to={item.to}
-                  onClick={() => setMaisAberto(false)}
+                  type="button"
+                  onClick={() => { setMaisAberto(false); irPara(item); }}
                   className={`flow-nav-sheet-link ${ativo ? 'is-active' : ''}`}
                   aria-current={ativo ? 'page' : undefined}
+                  aria-label={descricao.resumo ? nomeDoItem(item, descricao) : undefined}
                 >
                   <Icone size={18} strokeWidth={1.9} aria-hidden="true" />
                   <span>{item.label}</span>
-                </NavLink>
+                  {descricao.marca && (
+                    <span className={`flow-nav-badge ${descricao.alerta ? 'is-alerta' : ''}`} aria-hidden="true">{descricao.marca}</span>
+                  )}
+                </button>
               );
             })}
           </div>
@@ -164,19 +196,22 @@ export default function FlowNav({ items }: FlowNavProps) {
         {principais.map((item) => {
           const ativo = estaAtivo(item.to, location.pathname, location.search);
           const Icone = item.icon;
+          const descricao = descricaoDoItem(item, pendenciasPorDestino);
           return (
-            <NavLink
+            <button
               key={item.to}
-              to={item.to}
-              onClick={() => setMaisAberto(false)}
+              type="button"
+              onClick={() => { setMaisAberto(false); irPara(item); }}
               className={`flow-nav-item ${ativo ? 'is-active' : ''}`}
               aria-current={ativo ? 'page' : undefined}
-              aria-label={item.label}
-              title={item.label}
+              aria-label={nomeDoItem(item, descricao)}
             >
               <Icone size={20} strokeWidth={1.9} aria-hidden="true" />
+              {descricao.marca && (
+                <span className={`flow-nav-badge ${descricao.alerta ? 'is-alerta' : ''}`} aria-hidden="true">{descricao.marca}</span>
+              )}
               <span aria-hidden="true">{rotuloCompacto(item)}</span>
-            </NavLink>
+            </button>
           );
         })}
         {demais.length > 0 && (
@@ -185,9 +220,13 @@ export default function FlowNav({ items }: FlowNavProps) {
             className={`flow-nav-item ${demaisTemAtivo ? 'is-active' : ''} ${maisAberto ? 'is-open' : ''}`}
             aria-expanded={maisAberto}
             aria-controls="flow-nav-mais"
+            aria-label={nomesEmMais.length > 0 ? `Mais, com ${nomesEmMais.join('; ')}` : undefined}
             onClick={() => setMaisAberto((aberto) => !aberto)}
           >
             <MoreHorizontal size={20} strokeWidth={1.9} aria-hidden="true" />
+            {nomesEmMais.length > 0 && (
+              <span className={`flow-nav-badge is-ponto ${alertaEmMais ? 'is-alerta' : ''}`} aria-hidden="true" />
+            )}
             <span>Mais</span>
           </button>
         )}

@@ -5,18 +5,18 @@
    - data-modo="escuro|claro": preferência do usuário (padrão: a do sistema).
    Os nomes são os mesmos em todas as combinações; só os valores mudam.
 
-   Paleta: proposta de identidade para sistemas (Alinare + Novitah, 26/10/2026;
-   não é manual de marca oficial):
-   - Alinare: azul-noite #25314A (principal), champagne #B79B75 (acento),
-     fundo #F7F6F3, texto #20252E/#343943, borda #E4E0D9;
-   - Novitah: vinho #704653 (principal), rosa envelhecido #AE7D83 (acento),
-     fundo #F9F6F8, texto #2D262A/#443940, borda #EADFE4;
-   - Estados fixos entre empresas (cor da marca ≠ cor de status).
-   A marca aparece no botão principal, na seleção, na navegação (chrome) e nos
-   títulos; o resto da interface é neutro.
+   Paleta oficial (materiais originais do Marketing, recebidos em 10/11/2026 e
+   transcritos pelo usuário; RGB convertido para HEX e conferido):
+   - Alinare: Deep #242741 · Off Light #F0EBE4 · Travertine #D4C8B7 · New-Ruby #7A353C · Ônix #121212
+   - Novitá: Rosa nude #D6C0B8 · Terracota rosado #A46F69 · Bege areia #D7B79B · Cinza claro #C6C4C7 · Branco #FFFFFF
+   Logos, JPEGs e dashboards não são fonte de cor.
 
-   Contraste: texto principal ≥ 7:1 e demais textos ≥ 4,5:1 sobre as
-   superfícies, mesmo no pior caso do fundo (conferido no navegador).
+   Cada valor traz o comentário "oficial: <cor>" ou "proposta: <motivo>".
+   Proposta = derivada de cor oficial, alfa, tema escuro, estado ou contraste.
+   Não é cor oficial: aguarda aprovação. Papéis e tabela completa: docs/aparencia-tema.md.
+
+   Contraste: texto principal ≥ 7:1 e demais textos ≥ 4,5:1 sobre as superfícies;
+   contorno de controle ≥ 3:1.
    Não defina cor, raio, sombra ou tempo literal fora deste arquivo; se faltar um
    token, adicione-o aqui. */
 
@@ -47,16 +47,16 @@
   --flow-radius-control: 11px;
   --flow-radius-pill: 999px;
 
-  /* Acabamento do acesso: ouro champagne e filete animado do card */
+  /* Acabamento do acesso (tela de login usa o conjunto): filete animado neutro */
   --flow-login-radius: 18px;
   --flow-login-trace-duration: 5s;
   --flow-login-bg-filter: contrast(1.12) saturate(1.1) brightness(1.04);
-  --flow-login-border: rgba(210, 176, 120, .3);
-  --flow-login-trace-edge: #c9a66b;
-  --flow-login-trace-highlight: #fff3cd;
-  --flow-login-trace-return: #d5ad73;
-  --flow-login-trace-filter: drop-shadow(0 0 6px rgba(216, 172, 104, .72));
-  --flow-login-trace-filter-hover: drop-shadow(0 0 10px rgba(243, 212, 157, .88));
+  --flow-login-border: rgba(198, 196, 199, .3); /* oficial: Cinza claro, alfa proposta */
+  --flow-login-trace-edge: #C6C4C7; /* oficial: Cinza claro */
+  --flow-login-trace-highlight: #FFFFFF; /* oficial: Branco */
+  --flow-login-trace-return: #C6C4C7; /* oficial: Cinza claro */
+  --flow-login-trace-filter: drop-shadow(0 0 6px rgba(198, 196, 199, .72)); /* oficial: Cinza claro, alfa proposta */
+  --flow-login-trace-filter-hover: drop-shadow(0 0 10px rgba(255, 255, 255, .88)); /* oficial: Branco, alfa proposta */
 
   /* Vidro: um único nível de blur por pilha de superfícies */
   --flow-glass-blur: 18px;
@@ -89,11 +89,20 @@
   --flow-fundo-posicao: center 38%;
   --flow-fundo-topo: 0px;
 
-  /* Superfície clara para indicadores Novitah no modo escuro (texto escuro) */
-  --flow-surface-light: rgba(249, 246, 248, .93);
-  --flow-text-on-light: #2d262a;
-  --flow-text-on-light-2: #554750;
-  --flow-line-on-light: rgba(255, 255, 255, .6);
+  /* Superfície clara para indicadores Novitá no modo escuro (texto escuro) */
+  --flow-surface-light: rgba(255, 255, 255, .93); /* oficial: Branco, alfa proposta */
+  --flow-text-on-light: #392725; /* proposta: Terracota escurecida (Novitá não tem texto escuro oficial) */
+  --flow-text-on-light-2: #5A3D3A; /* proposta: Terracota escurecida */
+  --flow-line-on-light: rgba(255, 255, 255, .6); /* proposta: alfa de Branco */
+  --flow-on-light-accent: #6B4844; /* proposta: Terracota escurecida (contraste 4,5:1 sobre o indicador) */
+  --flow-on-light-line: rgba(57, 39, 37, .26); /* proposta: alfa de Terracota escurecida */
+  --flow-on-light-inset: rgba(164, 111, 105, .16); /* oficial: Terracota, alfa proposta */
+
+  /* Realces de preenchimento (linha branca interna dos botões de ação) */
+  --flow-realce: rgba(255, 255, 255, .22); /* proposta: alfa de Branco */
+  --flow-realce-forte: rgba(255, 255, 255, .25); /* proposta: alfa de Branco (acesso) */
+  /* Texto sobre o vermelho de ação (botão de recusa e de exclusão) */
+  --flow-on-danger: #FFFFFF; /* oficial: Branco */
 
   /* Chrome (dock, cápsula do cabeçalho, menu "Mais"): no escuro acompanha as
      superfícies; no modo claro vira a cor principal da marca. */
@@ -106,173 +115,176 @@
   --flow-chrome-ativo-bg: var(--flow-ativo-bg);
   --flow-chrome-ativo-text: var(--flow-ativo-text);
   --flow-chrome-ativo-borda: var(--flow-ativo-borda);
-  /* Títulos serifados: no escuro são marfim; no claro, a cor principal da marca */
+  /* Títulos serifados: no escuro são o texto claro; no claro, a cor principal da marca */
   --flow-titulo: var(--flow-text);
 }
 
 /* ══ MODO ESCURO (padrão) ═══════════════════════════════════════════════════ */
 
-/* ── Conjunto: grafite neutro entre as duas marcas, destaque champagne ── */
+/* ── Conjunto: Ônix e Cinza claro neutros, destaque Cinza claro ── */
 :root {
   color-scheme: dark;
-  --flow-bg: #111217;
-  --flow-particula: 214, 192, 156;
-  --flow-serie-alinare: #d9c4a1;
-  --flow-serie-novitah: #e0b9be;
+  --flow-bg: #121212; /* oficial: Ônix */
+  --flow-particula: 198, 196, 199; /* oficial: Cinza claro */
+  --flow-serie-alinare: #D4C8B7; /* oficial: Travertine */
+  --flow-serie-novitah: #A46F69; /* oficial: Terracota rosado */
+  --flow-serie-novitah-texto: #D6C0B8; /* oficial: Rosa nude (texto da etiqueta no escuro) */
 
-  --flow-surface: rgba(26, 27, 34, .84);
-  --flow-surface-solid: #1a1b22;
-  --flow-surface-raised: rgba(32, 33, 41, .97);
-  --flow-surface-raised-solid: #202129;
-  --flow-surface-inset: rgba(6, 7, 10, .42);
-  --flow-surface-nested: rgba(240, 232, 220, .05);
-  --flow-surface-hover: rgba(240, 232, 220, .07);
-  --flow-field: rgba(8, 9, 12, .72);
-  --flow-field-solid: #0e0f13;
-  --flow-overlay: rgba(5, 5, 8, .72);
+  --flow-surface: rgba(31, 31, 31, .86); /* proposta: Cinza claro sobre Ônix */
+  --flow-surface-solid: #1F1F1F; /* proposta: Cinza claro sobre Ônix */
+  --flow-surface-raised: rgba(36, 36, 36, .97); /* proposta: Cinza claro sobre Ônix */
+  --flow-surface-raised-solid: #242424; /* proposta: Cinza claro sobre Ônix */
+  --flow-surface-inset: rgba(18, 18, 18, .42); /* oficial: Ônix, alfa proposta */
+  --flow-surface-nested: rgba(198, 196, 199, .05); /* proposta: alfa de Cinza claro */
+  --flow-surface-hover: rgba(198, 196, 199, .08); /* proposta: alfa de Cinza claro */
+  --flow-field: rgba(18, 18, 18, .72); /* oficial: Ônix, alfa proposta */
+  --flow-field-solid: #121212; /* oficial: Ônix */
+  --flow-overlay: rgba(18, 18, 18, .72); /* oficial: Ônix, alfa proposta */
 
-  --flow-text: #f7f6f3;
-  --flow-text-2: #e2ded7;
-  --flow-text-3: #c4bfb6;
+  --flow-text: #FFFFFF; /* oficial: Branco */
+  --flow-text-2: #C6C4C7; /* oficial: Cinza claro */
+  --flow-text-3: #939395; /* proposta: Cinza claro escurecido. PENDENTE: 3,49:1 sobre #3E3E3E no painel de notificações (ver docs/aparencia-tema.md, seção 5) */
 
-  --flow-accent: #dac6a4;
-  --flow-accent-hover: #e8d8bd;
-  --flow-accent-soft: rgba(183, 155, 117, .16);
-  --flow-accent-strong: rgba(183, 155, 117, .38);
-  --flow-fill: linear-gradient(135deg, #cfb790 0%, #b79b75 100%);
-  --flow-fill-hover: linear-gradient(135deg, #dac5a2 0%, #c4a983 100%);
-  --flow-fill-solid: #b79b75;
-  --flow-on-fill: #151f33;
+  --flow-accent: #C6C4C7; /* oficial: Cinza claro (destaque neutro) */
+  --flow-accent-hover: #FFFFFF; /* oficial: Branco */
+  --flow-accent-soft: rgba(198, 196, 199, .16); /* proposta: alfa de Cinza claro */
+  --flow-accent-strong: rgba(198, 196, 199, .38); /* proposta: alfa de Cinza claro */
+  --flow-fill: #C6C4C7; /* oficial: Cinza claro (sólido) */
+  --flow-fill-hover: #FFFFFF; /* oficial: Branco */
+  --flow-fill-solid: #C6C4C7; /* oficial: Cinza claro */
+  --flow-on-fill: #121212; /* oficial: Ônix */
 
-  --flow-line: rgba(228, 224, 217, .18);
-  --flow-line-strong: rgba(228, 224, 217, .34);
-  --flow-edge: rgba(255, 255, 255, .12);
-  --flow-glow: rgba(183, 155, 117, .22);
+  --flow-line: rgba(198, 196, 199, .18); /* proposta: alfa de Cinza claro */
+  --flow-line-strong: rgba(198, 196, 199, .5); /* proposta: alfa de Cinza claro (contorno 3:1) */
+  --flow-edge: rgba(255, 255, 255, .12); /* proposta: alfa de Branco */
+  --flow-glow: rgba(198, 196, 199, .22); /* proposta: alfa de Cinza claro */
 
-  --flow-success: #86d3b7;
-  --flow-success-soft: rgba(23, 100, 79, .3);
-  --flow-warning: #f0b872;
-  --flow-warning-soft: rgba(164, 90, 10, .28);
-  --flow-danger: #ff9f96;
-  --flow-danger-deep: #b42318;
-  --flow-danger-soft: rgba(180, 35, 24, .28);
-  --flow-info: #a6c6ee;
-  --flow-info-soft: rgba(39, 91, 154, .3);
-  --flow-violet: #c9b6f0;
-  --flow-orange: #f2ae7e;
+  --flow-success: #86d3b7; /* proposta: estado (sem cor oficial) */
+  --flow-success-soft: rgba(23, 100, 79, .3); /* proposta: estado */
+  --flow-warning: #f0b872; /* proposta: estado (sem cor oficial) */
+  --flow-warning-soft: rgba(164, 90, 10, .28); /* proposta: estado */
+  --flow-danger: #ff9f96; /* proposta: estado (sem cor oficial) */
+  --flow-danger-deep: #b42318; /* proposta: estado, preenchimento de ação */
+  --flow-danger-soft: rgba(180, 35, 24, .28); /* proposta: estado */
+  --flow-info: #a6c6ee; /* proposta: estado (sem cor oficial) */
+  --flow-info-soft: rgba(39, 91, 154, .3); /* proposta: estado */
+  --flow-violet: #c9b6f0; /* proposta: cor de categoria (existente) */
+  --flow-orange: #f2ae7e; /* proposta: cor de categoria (existente) */
 
-  --flow-ativo-bg: linear-gradient(180deg, rgba(183, 155, 117, .36), rgba(183, 155, 117, .14));
-  --flow-ativo-text: #f4e9d6;
-  --flow-ativo-borda: rgba(183, 155, 117, .62);
+  --flow-ativo-bg: #C6C4C7; /* oficial: Cinza claro (sólido) */
+  --flow-ativo-text: #121212; /* oficial: Ônix */
+  --flow-ativo-borda: rgba(198, 196, 199, .6); /* proposta: alfa de Cinza claro */
 
-  --flow-shadow-panel: 0 22px 50px rgba(0, 0, 0, .34), 0 2px 6px rgba(0, 0, 0, .18);
-  --flow-shadow-float: 0 18px 44px rgba(0, 0, 0, .42);
-  --flow-shadow-modal: 0 30px 80px rgba(0, 0, 0, .55);
+  --flow-shadow-panel: 0 22px 50px rgba(0, 0, 0, .34), 0 2px 6px rgba(0, 0, 0, .18); /* efeito de sombra, sem cor de marca */
+  --flow-shadow-float: 0 18px 44px rgba(0, 0, 0, .42); /* efeito de sombra, sem cor de marca */
+  --flow-shadow-modal: 0 30px 80px rgba(0, 0, 0, .55); /* efeito de sombra, sem cor de marca */
   --flow-highlight: inset 0 1px 0 var(--flow-edge);
   /* Texto pousado direto no cenário (títulos, rótulos de filtro): halo de leitura */
-  --flow-sombra-texto: 0 1px 2px rgba(0, 0, 0, .7), 0 0 20px rgba(0, 0, 0, .6);
+  --flow-sombra-texto: 0 1px 2px rgba(0, 0, 0, .7), 0 0 20px rgba(0, 0, 0, .6); /* efeito de sombra, sem cor de marca */
 
   --flow-veu:
-    radial-gradient(ellipse 70% 55% at 50% 42%, rgba(17, 18, 23, .25), rgba(17, 18, 23, .66) 100%),
-    linear-gradient(180deg, rgba(17, 18, 23, .15) 0%, rgba(17, 18, 23, .55) 100%);
-  --flow-brilho: radial-gradient(ellipse 40% 34% at 50% 30%, rgba(240, 222, 190, .18), transparent 70%);
+    radial-gradient(ellipse 70% 55% at 50% 42%, rgba(18, 18, 18, .25), rgba(18, 18, 18, .66) 100%),
+    linear-gradient(180deg, rgba(18, 18, 18, .15) 0%, rgba(18, 18, 18, .55) 100%); /* oficial: Ônix, alfa proposta */
+  --flow-brilho: radial-gradient(ellipse 40% 34% at 50% 30%, rgba(255, 255, 255, .14), transparent 70%); /* proposta: alfa de Branco */
 }
 
-/* ── Alinare: azul-noite profundo e champagne, texto off-white ── */
+/* ── Alinare escuro: Ônix de fundo, Deep de superfície, Travertine e Off Light de texto ── */
 :root[data-tema='alinare'] {
-  --flow-bg: #0b1019;
-  --flow-particula: 214, 190, 150;
+  --flow-bg: #121212; /* oficial: Ônix */
+  --flow-particula: 212, 200, 183; /* oficial: Travertine */
 
-  --flow-surface: rgba(20, 27, 42, .84);
-  --flow-surface-solid: #141b2a;
-  --flow-surface-raised: rgba(25, 33, 51, .97);
-  --flow-surface-raised-solid: #192133;
-  --flow-surface-inset: rgba(4, 7, 13, .42);
-  --flow-surface-nested: rgba(228, 224, 217, .05);
-  --flow-surface-hover: rgba(183, 155, 117, .1);
-  --flow-field: rgba(6, 9, 16, .72);
-  --flow-field-solid: #0a0e17;
-  --flow-overlay: rgba(3, 5, 10, .72);
+  --flow-surface: rgba(36, 39, 65, .84); /* oficial: Deep, alfa proposta */
+  --flow-surface-solid: #242741; /* oficial: Deep */
+  --flow-surface-raised: rgba(53, 55, 81, .97); /* proposta: Deep com 8% de Off Light (aprox.) */
+  --flow-surface-raised-solid: #353751; /* proposta: Deep com 8% de Off Light (aprox.) */
+  --flow-surface-inset: rgba(18, 18, 18, .42); /* oficial: Ônix, alfa proposta */
+  --flow-surface-nested: rgba(240, 235, 228, .05); /* proposta: alfa de Off Light */
+  --flow-surface-hover: rgba(212, 200, 183, .1); /* proposta: alfa de Travertine */
+  --flow-field: rgba(18, 18, 18, .72); /* oficial: Ônix, alfa proposta */
+  --flow-field-solid: #121212; /* oficial: Ônix */
+  --flow-overlay: rgba(18, 18, 18, .72); /* oficial: Ônix, alfa proposta */
 
-  --flow-text: #f7f6f3;
-  --flow-text-2: #e0ddd6;
-  --flow-text-3: #bfbab1;
+  --flow-text: #F0EBE4; /* oficial: Off Light */
+  --flow-text-2: #D4C8B7; /* oficial: Travertine */
+  --flow-text-3: #A8A09A; /* proposta: Travertine 75% sobre Deep */
 
-  --flow-accent: #dac6a4;
-  --flow-accent-hover: #e8d8bd;
-  --flow-accent-soft: rgba(183, 155, 117, .16);
-  --flow-accent-strong: rgba(183, 155, 117, .38);
-  --flow-fill: linear-gradient(135deg, #cfb790 0%, #b79b75 100%);
-  --flow-fill-hover: linear-gradient(135deg, #dac5a2 0%, #c4a983 100%);
-  --flow-fill-solid: #b79b75;
-  --flow-on-fill: #151f33;
+  --flow-accent: #BD9A9E; /* proposta: New-Ruby clareado 50% (destaque sobre Deep) */
+  --flow-accent-hover: #D7C2C4; /* proposta: New-Ruby clareado */
+  --flow-accent-soft: rgba(122, 53, 60, .22); /* oficial: New-Ruby, alfa proposta */
+  --flow-accent-strong: rgba(122, 53, 60, .5); /* oficial: New-Ruby, alfa proposta */
+  --flow-fill: #D4C8B7; /* oficial: Travertine (sólido) */
+  --flow-fill-hover: #F0EBE4; /* oficial: Off Light */
+  --flow-fill-solid: #D4C8B7; /* oficial: Travertine */
+  --flow-on-fill: #242741; /* oficial: Deep */
 
-  --flow-line: rgba(228, 224, 217, .18);
-  --flow-line-strong: rgba(228, 224, 217, .36);
-  --flow-edge: rgba(255, 255, 255, .12);
-  --flow-glow: rgba(183, 155, 117, .24);
+  --flow-line: rgba(240, 235, 228, .18); /* proposta: alfa de Off Light */
+  --flow-line-strong: rgba(240, 235, 228, .4); /* proposta: alfa de Off Light (contorno 3:1) */
+  --flow-edge: rgba(255, 255, 255, .12); /* proposta: alfa de Branco */
+  --flow-glow: rgba(212, 200, 183, .24); /* proposta: alfa de Travertine */
 
-  --flow-ativo-bg: linear-gradient(180deg, rgba(183, 155, 117, .38), rgba(183, 155, 117, .14));
-  --flow-ativo-text: #f4e9d6;
-  --flow-ativo-borda: rgba(183, 155, 117, .64);
+  --flow-ativo-bg: #D4C8B7; /* oficial: Travertine */
+  --flow-ativo-text: #242741; /* oficial: Deep */
+  --flow-ativo-borda: rgba(212, 200, 183, .6); /* proposta: alfa de Travertine */
 
   --flow-veu:
-    radial-gradient(ellipse 75% 60% at 55% 45%, rgba(11, 16, 25, .12), rgba(11, 16, 25, .6) 100%),
-    linear-gradient(180deg, rgba(11, 16, 25, .05) 0%, rgba(11, 16, 25, .5) 100%);
-  --flow-brilho: radial-gradient(ellipse 34% 30% at 68% 8%, rgba(228, 208, 172, .18), transparent 70%);
+    radial-gradient(ellipse 75% 60% at 55% 45%, rgba(18, 18, 18, .12), rgba(18, 18, 18, .6) 100%),
+    linear-gradient(180deg, rgba(18, 18, 18, .05) 0%, rgba(18, 18, 18, .5) 100%); /* oficial: Ônix, alfa proposta */
+  --flow-brilho: radial-gradient(ellipse 34% 30% at 68% 8%, rgba(212, 200, 183, .18), transparent 70%); /* proposta: alfa de Travertine */
 }
 
-/* ── Novitah: vinho empoeirado e rosa envelhecido ── */
+/* ── Novitá escuro: fundo e superfícies derivados da Terracota (proposta); Bege areia e Rosa nude de texto ── */
 :root[data-tema='novitah'] {
-  --flow-bg: #1e1418;
-  --flow-particula: 224, 185, 190;
+  --flow-bg: #392725; /* proposta: Terracota escurecida 65% (não há fundo escuro oficial) */
+  --flow-particula: 214, 192, 184; /* oficial: Rosa nude */
 
-  --flow-surface: rgba(52, 36, 43, .86);
-  --flow-surface-solid: #34242b;
-  --flow-surface-raised: rgba(62, 44, 52, .97);
-  --flow-surface-raised-solid: #3e2c34;
-  --flow-surface-inset: rgba(18, 10, 14, .42);
-  --flow-surface-nested: rgba(243, 230, 235, .05);
-  --flow-surface-hover: rgba(174, 125, 131, .12);
-  --flow-field: rgba(20, 12, 16, .72);
-  --flow-field-solid: #170e12;
-  --flow-overlay: rgba(18, 10, 14, .72);
+  --flow-surface: rgba(74, 50, 47, .86); /* proposta: Terracota escurecida 55% */
+  --flow-surface-solid: #4A322F; /* proposta: Terracota escurecida 55% */
+  --flow-surface-raised: rgba(90, 61, 58, .97); /* proposta: Terracota escurecida 45% */
+  --flow-surface-raised-solid: #5A3D3A; /* proposta: Terracota escurecida 45% */
+  --flow-surface-inset: rgba(41, 28, 26, .42); /* proposta: Terracota escurecida 75% */
+  --flow-surface-nested: rgba(214, 192, 184, .05); /* oficial: Rosa nude, alfa proposta */
+  --flow-surface-hover: rgba(164, 111, 105, .16); /* oficial: Terracota, alfa proposta */
+  --flow-field: rgba(41, 28, 26, .72); /* proposta: Terracota escurecida 75% */
+  --flow-field-solid: #291C1A; /* proposta: Terracota escurecida 75% */
+  --flow-overlay: rgba(57, 39, 37, .72); /* proposta: alfa do fundo escuro */
 
-  --flow-text: #f9f6f8;
-  --flow-text-2: #eadfe4;
-  --flow-text-3: #cfbec6;
+  --flow-text: #FFFFFF; /* oficial: Branco */
+  --flow-text-2: #D6C0B8; /* oficial: Rosa nude */
+  --flow-text-3: #BAA49D; /* proposta: Rosa nude 80% sobre superfície */
 
-  --flow-accent: #e3bdc2;
-  --flow-accent-hover: #efd3d6;
-  --flow-accent-soft: rgba(174, 125, 131, .18);
-  --flow-accent-strong: rgba(174, 125, 131, .4);
-  --flow-fill: linear-gradient(135deg, #865a69 0%, #704653 100%);
-  --flow-fill-hover: linear-gradient(135deg, #946878 0%, #7e5160 100%);
-  --flow-fill-solid: #704653;
-  --flow-on-fill: #ffffff;
+  --flow-accent: #D7B79B; /* oficial: Bege areia */
+  --flow-accent-hover: #D6C0B8; /* oficial: Rosa nude */
+  --flow-accent-soft: rgba(215, 183, 155, .12); /* oficial: Bege areia, alfa proposta (4,9:1 no selo) */
+  --flow-accent-strong: rgba(215, 183, 155, .42); /* oficial: Bege areia, alfa proposta */
+  --flow-fill: #D7B79B; /* oficial: Bege areia (sólido) */
+  --flow-fill-hover: #D6C0B8; /* oficial: Rosa nude */
+  --flow-fill-solid: #D7B79B; /* oficial: Bege areia */
+  --flow-on-fill: #392725; /* proposta: fundo escuro (texto sobre o Bege areia, 7,47:1) */
 
-  --flow-line: rgba(234, 223, 228, .2);
-  --flow-line-strong: rgba(234, 223, 228, .38);
-  --flow-edge: rgba(255, 255, 255, .12);
-  --flow-glow: rgba(174, 125, 131, .26);
+  --flow-line: rgba(214, 192, 184, .2); /* oficial: Rosa nude, alfa proposta */
+  --flow-line-strong: rgba(214, 192, 184, .6); /* oficial: Rosa nude, alfa proposta (contorno 3:1) */
+  --flow-edge: rgba(255, 255, 255, .12); /* proposta: alfa de Branco */
+  --flow-glow: rgba(215, 183, 155, .26); /* oficial: Bege areia, alfa proposta */
+  /* Série Novitá no escuro: Bege areia (3:1 sobre a superfície; a Terracota fica em 2,8:1) */
+  --flow-serie-novitah: #D7B79B; /* oficial: Bege areia */
 
-  --flow-ativo-bg: linear-gradient(180deg, #865a69 0%, #5f3a46 100%);
-  --flow-ativo-text: #ffffff;
-  --flow-ativo-borda: rgba(227, 189, 194, .5);
+  --flow-ativo-bg: #D7B79B; /* oficial: Bege areia (sólido) */
+  --flow-ativo-text: #392725; /* proposta: fundo escuro (texto sobre o Bege areia) */
+  --flow-ativo-borda: rgba(215, 183, 155, .6); /* oficial: Bege areia, alfa proposta */
 
   --flow-veu:
-    radial-gradient(ellipse 75% 60% at 55% 48%, rgba(30, 20, 24, .18), rgba(30, 20, 24, .62) 100%),
-    linear-gradient(180deg, rgba(30, 20, 24, .05) 0%, rgba(30, 20, 24, .52) 100%);
-  --flow-brilho: radial-gradient(ellipse 30% 40% at 30% 20%, rgba(240, 205, 205, .18), transparent 70%);
+    radial-gradient(ellipse 75% 60% at 55% 48%, rgba(57, 39, 37, .18), rgba(57, 39, 37, .62) 100%),
+    linear-gradient(180deg, rgba(57, 39, 37, .05) 0%, rgba(57, 39, 37, .52) 100%); /* proposta: alfa do fundo escuro */
+  --flow-brilho: radial-gradient(ellipse 30% 40% at 30% 20%, rgba(214, 192, 184, .18), transparent 70%); /* oficial: Rosa nude, alfa proposta */
 }
 
 /* Vista conjunta dentro do app: as duas marcas da imagem ficam à meia altura,
    atrás do conteúdo; o véu escurece essa faixa para virarem só uma marca-d'água. */
 :root[data-tema='conjunto'][data-contexto='app'] {
   --flow-veu:
-    linear-gradient(180deg, rgba(17, 18, 23, .34) 0%, rgba(17, 18, 23, .84) 28%, rgba(17, 18, 23, .86) 50%, rgba(17, 18, 23, .55) 72%, rgba(17, 18, 23, .64) 100%);
+    linear-gradient(180deg, rgba(18, 18, 18, .34) 0%, rgba(18, 18, 18, .84) 28%, rgba(18, 18, 18, .86) 50%, rgba(18, 18, 18, .55) 72%, rgba(18, 18, 18, .64) 100%); /* oficial: Ônix, alfa proposta */
   /* Brilho acima da faixa das marcas, para não reacendê-las */
-  --flow-brilho: radial-gradient(ellipse 34% 22% at 52% 6%, rgba(240, 222, 190, .14), transparent 70%);
+  --flow-brilho: radial-gradient(ellipse 34% 22% at 52% 6%, rgba(255, 255, 255, .12), transparent 70%); /* proposta: alfa de Branco */
 }
 
 /* ══ MODO CLARO ═════════════════════════════════════════════════════════════
@@ -283,205 +295,207 @@
    na cor principal, com o item ativo no acento. Cada bloco redefine todas as
    cores para nenhum valor do modo escuro vazar. */
 
-/* ── Conjunto claro: pedra quente, chrome grafite, detalhes champagne ── */
+/* ── Conjunto claro: Cinza claro de fundo, Branco de superfície, Ônix de texto ── */
 :root[data-modo='claro'] {
   color-scheme: light;
-  --flow-bg: #dfdbd3;
-  --flow-particula: 160, 132, 92;
-  --flow-serie-alinare: #25314a;
-  --flow-serie-novitah: #704653;
+  --flow-bg: #C6C4C7; /* oficial: Cinza claro */
+  --flow-particula: 198, 196, 199; /* oficial: Cinza claro */
+  --flow-serie-alinare: #242741; /* oficial: Deep */
+  --flow-serie-novitah: #A46F69; /* oficial: Terracota rosado */
+  --flow-serie-novitah-texto: #8B5E59; /* proposta: Terracota escurecida (texto da etiqueta no claro: 5,5:1 sobre branco; 4,6:1 sobre o fundo tingido) */
 
-  --flow-surface: rgba(249, 247, 242, .94);
-  --flow-surface-solid: #f9f7f2;
-  --flow-surface-raised: rgba(255, 254, 251, .99);
-  --flow-surface-raised-solid: #fffefb;
-  --flow-surface-inset: rgba(183, 155, 117, .22);
-  --flow-surface-nested: rgba(42, 46, 56, .045);
-  --flow-surface-hover: rgba(42, 46, 56, .07);
-  --flow-field: rgba(255, 255, 255, .98);
-  --flow-field-solid: #ffffff;
-  --flow-overlay: rgba(21, 24, 32, .45);
+  --flow-surface: rgba(255, 255, 255, .94); /* oficial: Branco, alfa proposta */
+  --flow-surface-solid: #FFFFFF; /* oficial: Branco */
+  --flow-surface-raised: rgba(255, 255, 255, .99); /* oficial: Branco, alfa proposta */
+  --flow-surface-raised-solid: #FFFFFF; /* oficial: Branco */
+  --flow-surface-inset: rgba(18, 18, 18, .06); /* oficial: Ônix, alfa proposta */
+  --flow-surface-nested: rgba(18, 18, 18, .045); /* oficial: Ônix, alfa proposta */
+  --flow-surface-hover: rgba(18, 18, 18, .07); /* oficial: Ônix, alfa proposta */
+  --flow-field: #FFFFFF; /* oficial: Branco */
+  --flow-field-solid: #FFFFFF; /* oficial: Branco */
+  --flow-overlay: rgba(18, 18, 18, .45); /* oficial: Ônix, alfa proposta */
 
-  --flow-text: #20252e;
-  --flow-text-2: #343943;
-  --flow-text-3: #4d535e;
-  --flow-titulo: #2a2e38;
+  --flow-text: #121212; /* oficial: Ônix */
+  --flow-text-2: #2A2A2A; /* proposta: Ônix escurecido (≥ 4,5:1 sobre o fundo tingido) */
+  --flow-text-3: #444444; /* proposta: Ônix escurecido (5,0:1 sobre o fundo tingido, medido no chip) */
+  --flow-titulo: #121212; /* oficial: Ônix */
 
-  --flow-accent: #765833;
-  --flow-accent-hover: #5c4426;
-  --flow-accent-soft: rgba(183, 155, 117, .18);
-  --flow-accent-strong: rgba(183, 155, 117, .5);
-  --flow-fill: linear-gradient(135deg, #3a3f4c 0%, #2a2e38 100%);
-  --flow-fill-hover: linear-gradient(135deg, #2a2e38 0%, #1c1f26 100%);
-  --flow-fill-solid: #2a2e38;
-  --flow-on-fill: #ffffff;
+  --flow-accent: #121212; /* oficial: Ônix (destaque neutro) */
+  --flow-accent-hover: #3F3F3F; /* proposta: cinza escuro derivado do Ônix (tom de hover) */
+  --flow-accent-soft: rgba(18, 18, 18, .14); /* oficial: Ônix, alfa proposta */
+  --flow-accent-strong: rgba(18, 18, 18, .38); /* oficial: Ônix, alfa proposta */
+  --flow-fill: #121212; /* oficial: Ônix (sólido) */
+  --flow-fill-hover: #3F3F3F; /* proposta: cinza escuro derivado do Ônix (tom de hover) */
+  --flow-fill-solid: #121212; /* oficial: Ônix */
+  --flow-on-fill: #FFFFFF; /* oficial: Branco */
 
-  --flow-line: rgba(70, 60, 45, .17);
-  --flow-line-strong: rgba(70, 60, 45, .32);
-  --flow-edge: rgba(255, 255, 255, .9);
-  --flow-glow: rgba(42, 46, 56, .16);
+  --flow-line: rgba(18, 18, 18, .16); /* oficial: Ônix, alfa proposta */
+  --flow-line-strong: rgba(18, 18, 18, .5); /* oficial: Ônix, alfa proposta (contorno 3:1) */
+  --flow-edge: rgba(255, 255, 255, .9); /* oficial: Branco, alfa proposta */
+  --flow-glow: rgba(18, 18, 18, .16); /* oficial: Ônix, alfa proposta */
 
-  --flow-success: #17644f;
-  --flow-success-soft: rgba(23, 100, 79, .11);
-  --flow-warning: #8f4e09;
-  --flow-warning-soft: rgba(164, 90, 10, .12);
-  --flow-danger: #b42318;
-  --flow-danger-deep: #b42318;
-  --flow-danger-soft: rgba(180, 35, 24, .09);
-  --flow-info: #275b9a;
-  --flow-info-soft: rgba(39, 91, 154, .1);
-  --flow-violet: #573d94;
-  --flow-orange: #8a4612;
+  --flow-success: #125341; /* proposta: estado escurecido para 4,5:1 sobre o fundo */
+  --flow-success-soft: rgba(18, 83, 65, .11); /* proposta: estado */
+  --flow-warning: #7A4208; /* proposta: estado escurecido para 4,5:1 sobre o fundo */
+  --flow-warning-soft: rgba(122, 66, 8, .12); /* proposta: estado */
+  --flow-danger: #9E1C13; /* proposta: estado escurecido para 4,5:1 sobre o fundo */
+  --flow-danger-deep: #b42318; /* proposta: estado, preenchimento de ação */
+  --flow-danger-soft: rgba(158, 28, 19, .09); /* proposta: estado */
+  --flow-info: #1F4B80; /* proposta: estado escurecido para 4,5:1 sobre o fundo */
+  --flow-info-soft: rgba(31, 75, 128, .1); /* proposta: estado */
+  --flow-violet: #573d94; /* proposta: cor de categoria (existente) */
+  --flow-orange: #8a4612; /* proposta: cor de categoria (existente) */
 
-  --flow-ativo-bg: linear-gradient(180deg, #3a3f4c 0%, #2a2e38 100%);
-  --flow-ativo-text: #ffffff;
-  --flow-ativo-borda: rgba(20, 22, 28, .55);
+  --flow-ativo-bg: #121212; /* oficial: Ônix (sólido) */
+  --flow-ativo-text: #FFFFFF; /* oficial: Branco */
+  --flow-ativo-borda: rgba(18, 18, 18, .6); /* oficial: Ônix, alfa proposta */
 
-  --flow-chrome: rgba(42, 46, 56, .96);
-  --flow-chrome-text: #e6e3dd;
-  --flow-chrome-text-forte: #ffffff;
-  --flow-chrome-hover: rgba(255, 255, 255, .1);
-  --flow-chrome-inset: rgba(255, 255, 255, .09);
-  --flow-chrome-line: rgba(255, 255, 255, .16);
-  --flow-chrome-ativo-bg: linear-gradient(180deg, #cfb790 0%, #b79b75 100%);
-  --flow-chrome-ativo-text: #151f33;
-  --flow-chrome-ativo-borda: rgba(255, 255, 255, .35);
+  --flow-chrome: rgba(18, 18, 18, .96); /* oficial: Ônix, alfa proposta */
+  --flow-chrome-text: #C6C4C7; /* oficial: Cinza claro */
+  --flow-chrome-text-forte: #FFFFFF; /* oficial: Branco */
+  --flow-chrome-hover: rgba(255, 255, 255, .1); /* proposta: alfa de Branco */
+  --flow-chrome-inset: rgba(255, 255, 255, .09); /* proposta: alfa de Branco */
+  --flow-chrome-line: rgba(255, 255, 255, .16); /* proposta: alfa de Branco */
+  --flow-chrome-ativo-bg: #C6C4C7; /* oficial: Cinza claro (sólido) */
+  --flow-chrome-ativo-text: #121212; /* oficial: Ônix */
+  --flow-chrome-ativo-borda: rgba(255, 255, 255, .35); /* proposta: alfa de Branco */
 
-  --flow-shadow-panel: 0 16px 36px rgba(37, 40, 52, .1), 0 2px 6px rgba(37, 40, 52, .06);
-  --flow-shadow-float: 0 16px 36px rgba(37, 40, 52, .2);
-  --flow-shadow-modal: 0 28px 70px rgba(37, 40, 52, .26);
-  --flow-sombra-texto: 0 0 2px rgba(255, 255, 255, .9), 0 0 18px rgba(255, 255, 255, .9);
+  --flow-shadow-panel: 0 16px 36px rgba(18, 18, 18, .1), 0 2px 6px rgba(18, 18, 18, .06); /* efeito de sombra, cor do neutro */
+  --flow-shadow-float: 0 16px 36px rgba(18, 18, 18, .2); /* efeito de sombra, cor do neutro */
+  --flow-shadow-modal: 0 28px 70px rgba(18, 18, 18, .26); /* efeito de sombra, cor do neutro */
+  --flow-sombra-texto: 0 0 2px rgba(255, 255, 255, .9), 0 0 18px rgba(255, 255, 255, .9); /* oficial: Branco, alfa proposta */
 
   --flow-veu:
-    linear-gradient(180deg, rgba(226, 222, 214, .12) 0%, rgba(226, 222, 214, .26) 100%);
-  --flow-brilho: radial-gradient(ellipse 40% 34% at 50% 30%, rgba(255, 255, 255, .45), transparent 70%);
+    linear-gradient(180deg, rgba(198, 196, 199, .12) 0%, rgba(198, 196, 199, .26) 100%); /* oficial: Cinza claro, alfa proposta */
+  --flow-brilho: radial-gradient(ellipse 40% 34% at 50% 30%, rgba(255, 255, 255, .45), transparent 70%); /* oficial: Branco, alfa proposta */
 }
 
-/* ── Alinare claro: canvas #F7F6F3, chrome azul-noite, acento champagne ── */
+/* ── Alinare claro: Travertine de fundo, Off Light de superfície, Deep de marca, New-Ruby de destaque ── */
 :root[data-modo='claro'][data-tema='alinare'] {
-  --flow-bg: #ddd5c6;
-  --flow-particula: 160, 132, 92;
+  --flow-bg: #D4C8B7; /* oficial: Travertine */
+  --flow-particula: 212, 200, 183; /* oficial: Travertine */
 
-  --flow-surface: rgba(248, 244, 236, .94);
-  --flow-surface-solid: #f8f4ec;
-  --flow-surface-raised: rgba(255, 253, 249, .99);
-  --flow-surface-raised-solid: #fffdf9;
-  --flow-surface-inset: rgba(183, 155, 117, .24);
-  --flow-surface-nested: rgba(37, 49, 74, .045);
-  --flow-surface-hover: rgba(37, 49, 74, .07);
-  --flow-field: rgba(255, 255, 255, .98);
-  --flow-field-solid: #ffffff;
-  --flow-overlay: rgba(21, 31, 51, .45);
+  --flow-surface: rgba(240, 235, 228, .94); /* oficial: Off Light, alfa proposta */
+  --flow-surface-solid: #F0EBE4; /* oficial: Off Light */
+  --flow-surface-raised: rgba(240, 235, 228, .99); /* oficial: Off Light, alfa proposta */
+  --flow-surface-raised-solid: #F0EBE4; /* oficial: Off Light */
+  --flow-surface-inset: rgba(212, 200, 183, .5); /* oficial: Travertine, alfa proposta */
+  --flow-surface-nested: rgba(36, 39, 65, .045); /* oficial: Deep, alfa proposta */
+  --flow-surface-hover: rgba(36, 39, 65, .07); /* oficial: Deep, alfa proposta */
+  --flow-field: rgba(240, 235, 228, .98); /* oficial: Off Light, alfa proposta */
+  --flow-field-solid: #F0EBE4; /* oficial: Off Light */
+  --flow-overlay: rgba(36, 39, 65, .45); /* oficial: Deep, alfa proposta */
 
-  --flow-text: #20252e;
-  --flow-text-2: #343943;
-  --flow-text-3: #4d535e;
-  --flow-titulo: #25314a;
+  --flow-text: #121212; /* oficial: Ônix */
+  --flow-text-2: #242741; /* oficial: Deep */
+  --flow-text-3: #434459; /* proposta: Deep 85% + Off Light 15% */
+  --flow-titulo: #242741; /* oficial: Deep */
 
-  --flow-accent: #765833;
-  --flow-accent-hover: #5c4426;
-  --flow-accent-soft: rgba(183, 155, 117, .18);
-  --flow-accent-strong: rgba(183, 155, 117, .5);
-  --flow-fill: linear-gradient(135deg, #34446a 0%, #25314a 100%);
-  --flow-fill-hover: linear-gradient(135deg, #25314a 0%, #151f33 100%);
-  --flow-fill-solid: #25314a;
-  --flow-on-fill: #ffffff;
+  --flow-accent: #7A353C; /* oficial: New-Ruby */
+  --flow-accent-hover: #622A30; /* proposta: New-Ruby escurecido 20% */
+  --flow-accent-soft: rgba(122, 53, 60, .14); /* oficial: New-Ruby, alfa proposta */
+  --flow-accent-strong: rgba(122, 53, 60, .36); /* oficial: New-Ruby, alfa proposta */
+  --flow-fill: #242741; /* oficial: Deep (sólido) */
+  --flow-fill-hover: #7A353C; /* oficial: New-Ruby */
+  --flow-fill-solid: #242741; /* oficial: Deep */
+  --flow-on-fill: #F0EBE4; /* oficial: Off Light */
 
-  --flow-line: rgba(37, 49, 74, .16);
-  --flow-line-strong: rgba(37, 49, 74, .32);
-  --flow-edge: rgba(255, 255, 255, .9);
-  --flow-glow: rgba(37, 49, 74, .18);
+  --flow-line: rgba(36, 39, 65, .18); /* oficial: Deep, alfa proposta */
+  --flow-line-strong: rgba(36, 39, 65, .6); /* oficial: Deep, alfa proposta (contorno 3:1) */
+  --flow-edge: rgba(255, 255, 255, .9); /* proposta: alfa de Branco */
+  --flow-glow: rgba(36, 39, 65, .18); /* oficial: Deep, alfa proposta */
 
-  --flow-ativo-bg: linear-gradient(180deg, #34446a 0%, #25314a 100%);
-  --flow-ativo-text: #ffffff;
-  --flow-ativo-borda: rgba(21, 31, 51, .6);
+  --flow-ativo-bg: #242741; /* oficial: Deep (sólido) */
+  --flow-ativo-text: #F0EBE4; /* oficial: Off Light */
+  --flow-ativo-borda: rgba(18, 18, 18, .6); /* oficial: Ônix, alfa proposta */
 
-  --flow-chrome: rgba(37, 49, 74, .96);
-  --flow-chrome-text: #e3e7ef;
-  --flow-chrome-text-forte: #ffffff;
-  --flow-chrome-hover: rgba(255, 255, 255, .1);
-  --flow-chrome-inset: rgba(255, 255, 255, .09);
-  --flow-chrome-line: rgba(255, 255, 255, .16);
-  --flow-chrome-ativo-bg: linear-gradient(180deg, #cfb790 0%, #b79b75 100%);
-  --flow-chrome-ativo-text: #151f33;
-  --flow-chrome-ativo-borda: rgba(255, 255, 255, .35);
+  --flow-chrome: rgba(36, 39, 65, .96); /* oficial: Deep, alfa proposta */
+  --flow-chrome-text: #F0EBE4; /* oficial: Off Light */
+  --flow-chrome-text-forte: #F0EBE4; /* oficial: Off Light */
+  --flow-chrome-hover: rgba(240, 235, 228, .12); /* oficial: Off Light, alfa proposta */
+  --flow-chrome-inset: rgba(240, 235, 228, .1); /* oficial: Off Light, alfa proposta */
+  --flow-chrome-line: rgba(240, 235, 228, .2); /* oficial: Off Light, alfa proposta */
+  --flow-chrome-ativo-bg: #D4C8B7; /* oficial: Travertine (sólido) */
+  --flow-chrome-ativo-text: #242741; /* oficial: Deep */
+  --flow-chrome-ativo-borda: rgba(240, 235, 228, .4); /* oficial: Off Light, alfa proposta */
 
-  --flow-shadow-panel: 0 16px 36px rgba(21, 31, 51, .1), 0 2px 6px rgba(21, 31, 51, .06);
-  --flow-shadow-float: 0 16px 36px rgba(21, 31, 51, .22);
-  --flow-shadow-modal: 0 28px 70px rgba(21, 31, 51, .28);
+  --flow-shadow-panel: 0 16px 36px rgba(36, 39, 65, .1), 0 2px 6px rgba(36, 39, 65, .06); /* efeito de sombra, cor da marca */
+  --flow-shadow-float: 0 16px 36px rgba(36, 39, 65, .22); /* efeito de sombra, cor da marca */
+  --flow-shadow-modal: 0 28px 70px rgba(36, 39, 65, .28); /* efeito de sombra, cor da marca */
 
   --flow-veu:
-    linear-gradient(180deg, rgba(226, 218, 203, .12) 0%, rgba(226, 218, 203, .26) 100%);
-  --flow-brilho: radial-gradient(ellipse 34% 30% at 68% 8%, rgba(255, 255, 255, .5), transparent 70%);
+    linear-gradient(180deg, rgba(212, 200, 183, .12) 0%, rgba(212, 200, 183, .26) 100%); /* oficial: Travertine, alfa proposta */
+  --flow-brilho: radial-gradient(ellipse 34% 30% at 68% 8%, rgba(255, 255, 255, .5), transparent 70%); /* oficial: Branco, alfa proposta */
 }
 
-/* ── Novitah claro: canvas #F9F6F8, chrome vinho, acento rosa envelhecido ── */
+/* ── Novitá claro: Rosa nude de fundo, Branco de superfície, Terracota derivada para texto e ação (proposta) ── */
 :root[data-modo='claro'][data-tema='novitah'] {
-  --flow-bg: #e3d1d8;
-  --flow-particula: 170, 120, 128;
+  --flow-bg: #D6C0B8; /* oficial: Rosa nude */
+  --flow-particula: 214, 192, 184; /* oficial: Rosa nude */
 
-  --flow-surface: rgba(250, 243, 246, .94);
-  --flow-surface-solid: #faf3f6;
-  --flow-surface-raised: rgba(255, 252, 253, .99);
-  --flow-surface-raised-solid: #fffcfd;
-  --flow-surface-inset: rgba(174, 125, 131, .24);
-  --flow-surface-nested: rgba(112, 70, 83, .045);
-  --flow-surface-hover: rgba(112, 70, 83, .07);
-  --flow-field: rgba(255, 255, 255, .98);
-  --flow-field-solid: #ffffff;
-  --flow-overlay: rgba(45, 38, 42, .45);
+  --flow-surface: rgba(255, 255, 255, .94); /* oficial: Branco, alfa proposta */
+  --flow-surface-solid: #FFFFFF; /* oficial: Branco */
+  --flow-surface-raised: rgba(255, 255, 255, .99); /* oficial: Branco, alfa proposta */
+  --flow-surface-raised-solid: #FFFFFF; /* oficial: Branco */
+  --flow-surface-inset: rgba(164, 111, 105, .16); /* oficial: Terracota, alfa proposta */
+  --flow-surface-nested: rgba(57, 39, 37, .045); /* proposta: alfa de Terracota escurecida */
+  --flow-surface-hover: rgba(57, 39, 37, .07); /* proposta: alfa de Terracota escurecida */
+  --flow-field: #FFFFFF; /* oficial: Branco */
+  --flow-field-solid: #FFFFFF; /* oficial: Branco */
+  --flow-overlay: rgba(57, 39, 37, .45); /* proposta: alfa de Terracota escurecida */
 
-  --flow-text: #2d262a;
-  --flow-text-2: #443940;
-  --flow-text-3: #574c55;
-  --flow-titulo: #663e4b;
+  --flow-text: #392725; /* proposta: Terracota escurecida (texto escuro da Novitá) */
+  --flow-text-2: #4F3431; /* proposta: Terracota escurecida */
+  --flow-text-3: #5A3D3A; /* proposta: Terracota escurecida */
+  --flow-titulo: #392725; /* proposta: Terracota escurecida */
+  --flow-serie-novitah-texto: #6B4844; /* proposta: Terracota escurecida (texto da etiqueta no claro da Novitá) */
 
-  --flow-accent: #8b5467;
-  --flow-accent-hover: #6d3f4f;
-  --flow-accent-soft: rgba(174, 125, 131, .18);
-  --flow-accent-strong: rgba(174, 125, 131, .5);
-  --flow-fill: linear-gradient(135deg, #865a69 0%, #704653 100%);
-  --flow-fill-hover: linear-gradient(135deg, #704653 0%, #583340 100%);
-  --flow-fill-solid: #704653;
-  --flow-on-fill: #ffffff;
+  --flow-accent: #5A3D3A; /* proposta: Terracota escurecida (texto de destaque, 4,9:1 sobre o destaque tingido) */
+  --flow-accent-hover: #4A322F; /* proposta: Terracota escurecida */
+  --flow-accent-soft: rgba(164, 111, 105, .2); /* oficial: Terracota, alfa proposta */
+  --flow-accent-strong: rgba(164, 111, 105, .5); /* oficial: Terracota, alfa proposta */
+  --flow-fill: #8B5E59; /* proposta: Terracota escurecida 15% (botão com Branco 5,46:1) */
+  --flow-fill-hover: #6B4844; /* proposta: Terracota escurecida */
+  --flow-fill-solid: #8B5E59; /* proposta: Terracota escurecida 15% */
+  --flow-on-fill: #FFFFFF; /* oficial: Branco */
 
-  --flow-line: rgba(112, 70, 83, .16);
-  --flow-line-strong: rgba(112, 70, 83, .32);
-  --flow-edge: rgba(255, 255, 255, .9);
-  --flow-glow: rgba(112, 70, 83, .18);
+  --flow-line: rgba(57, 39, 37, .18); /* proposta: alfa de Terracota escurecida */
+  --flow-line-strong: rgba(57, 39, 37, .6); /* proposta: alfa de Terracota escurecida (contorno 3:1) */
+  --flow-edge: rgba(255, 255, 255, .9); /* proposta: alfa de Branco */
+  --flow-glow: rgba(164, 111, 105, .22); /* oficial: Terracota, alfa proposta */
 
-  --flow-success: #17644f;
-  --flow-warning: #8f4e09;
-  --flow-danger: #b42318;
-  --flow-info: #275b9a;
+  --flow-success: #125341; /* proposta: estado escurecido para 4,5:1 sobre o fundo */
+  --flow-warning: #7A4208; /* proposta: estado escurecido para 4,5:1 sobre o fundo */
+  --flow-danger: #9E1C13; /* proposta: estado escurecido para 4,5:1 sobre o fundo */
+  --flow-info: #1F4B80; /* proposta: estado escurecido para 4,5:1 sobre o fundo */
 
-  --flow-ativo-bg: linear-gradient(180deg, #865a69 0%, #704653 100%);
-  --flow-ativo-text: #ffffff;
-  --flow-ativo-borda: rgba(88, 51, 64, .6);
+  --flow-ativo-bg: #8B5E59; /* proposta: Terracota escurecida 15% */
+  --flow-ativo-text: #FFFFFF; /* oficial: Branco */
+  --flow-ativo-borda: rgba(57, 39, 37, .6); /* proposta: alfa de Terracota escurecida */
 
-  --flow-chrome: rgba(69, 49, 59, .96);
-  --flow-chrome-text: #efe4e9;
-  --flow-chrome-text-forte: #ffffff;
-  --flow-chrome-hover: rgba(255, 255, 255, .1);
-  --flow-chrome-inset: rgba(255, 255, 255, .09);
-  --flow-chrome-line: rgba(255, 255, 255, .16);
-  --flow-chrome-ativo-bg: linear-gradient(180deg, #d1a5ab 0%, #c08d94 100%);
-  --flow-chrome-ativo-text: #2a1419;
-  --flow-chrome-ativo-borda: rgba(255, 255, 255, .35);
+  --flow-chrome: rgba(57, 39, 37, .96); /* proposta: Terracota escurecida, alfa */
+  --flow-chrome-text: #D6C0B8; /* oficial: Rosa nude */
+  --flow-chrome-text-forte: #FFFFFF; /* oficial: Branco */
+  --flow-chrome-hover: rgba(255, 255, 255, .1); /* proposta: alfa de Branco */
+  --flow-chrome-inset: rgba(255, 255, 255, .09); /* proposta: alfa de Branco */
+  --flow-chrome-line: rgba(255, 255, 255, .16); /* proposta: alfa de Branco */
+  --flow-chrome-ativo-bg: #D7B79B; /* oficial: Bege areia (sólido) */
+  --flow-chrome-ativo-text: #392725; /* proposta: Terracota escurecida */
+  --flow-chrome-ativo-borda: rgba(255, 255, 255, .35); /* proposta: alfa de Branco */
 
-  --flow-shadow-panel: 0 16px 36px rgba(69, 49, 59, .1), 0 2px 6px rgba(69, 49, 59, .06);
-  --flow-shadow-float: 0 16px 36px rgba(69, 49, 59, .22);
-  --flow-shadow-modal: 0 28px 70px rgba(69, 49, 59, .28);
+  --flow-shadow-panel: 0 16px 36px rgba(57, 39, 37, .1), 0 2px 6px rgba(57, 39, 37, .06); /* efeito de sombra, cor do fundo */
+  --flow-shadow-float: 0 16px 36px rgba(57, 39, 37, .22); /* efeito de sombra, cor do fundo */
+  --flow-shadow-modal: 0 28px 70px rgba(57, 39, 37, .28); /* efeito de sombra, cor do fundo */
 
   --flow-veu:
-    linear-gradient(180deg, rgba(232, 214, 221, .12) 0%, rgba(232, 214, 221, .26) 100%);
-  --flow-brilho: radial-gradient(ellipse 30% 40% at 30% 20%, rgba(255, 255, 255, .45), transparent 70%);
+    linear-gradient(180deg, rgba(214, 192, 184, .12) 0%, rgba(214, 192, 184, .26) 100%); /* oficial: Rosa nude, alfa proposta */
+  --flow-brilho: radial-gradient(ellipse 30% 40% at 30% 20%, rgba(255, 255, 255, .45), transparent 70%); /* oficial: Branco, alfa proposta */
 }
 
 :root[data-modo='claro'][data-tema='conjunto'][data-contexto='app'] {
   --flow-veu:
-    linear-gradient(180deg, rgba(226, 222, 214, .24) 0%, rgba(226, 222, 214, .42) 40%, rgba(226, 222, 214, .36) 100%);
-  --flow-brilho: radial-gradient(ellipse 34% 22% at 52% 6%, rgba(255, 255, 255, .4), transparent 70%);
+    linear-gradient(180deg, rgba(198, 196, 199, .24) 0%, rgba(198, 196, 199, .42) 40%, rgba(198, 196, 199, .36) 100%); /* oficial: Cinza claro, alfa proposta */
+  --flow-brilho: radial-gradient(ellipse 34% 22% at 52% 6%, rgba(255, 255, 255, .4), transparent 70%); /* oficial: Branco, alfa proposta */
 }
 
 /* Sem backdrop-filter: as superfícies translúcidas viram opacas (leitura garantida).

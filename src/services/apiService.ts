@@ -602,6 +602,9 @@ const supabaseApiService: IApiService = {
       nc_codigo: string | null;
       nc_origem: string | null;
       nc_descricao: string | null;
+      /** Ausentes antes da migration 20261109130000: sem elas, a classificação aparece como não informada. */
+      nc_tipo_problema?: string | null;
+      nc_causador?: string | null;
       proprio_pedido: boolean;
       pode_aprovar: boolean;
     }>).map((linha) => ({
@@ -634,6 +637,8 @@ const supabaseApiService: IApiService = {
       nc_codigo: linha.nc_codigo,
       nc_origem: linha.nc_origem,
       nc_descricao: linha.nc_descricao,
+      nc_tipo_problema: linha.nc_tipo_problema ?? null,
+      nc_causador: linha.nc_causador ?? null,
     }));
   },
 

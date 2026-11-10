@@ -53,3 +53,19 @@
 @media(max-width:1300px) {.nc-kpis {grid-template-columns:repeat(3,minmax(0,1fr))}.nc-kpis-4 {grid-template-columns:repeat(4,minmax(0,1fr))}}
 @media(max-width:1080px) {.nc-kpis-4 {grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:760px) {.nc-kpis {grid-template-columns:repeat(2,minmax(0,1fr))}.nc-grid {padding:4px 16px 18px;grid-template-columns:1fr}.nc-aviso,.nc-info {margin:0 16px 16px}.nc-timeline {padding:4px 16px 16px}.nc-nota-form,.nc-chips,.nc-add {padding-left:16px;padding-right:16px}}
+
+/* Abertura simplificada e registro completo */
+.nc-abertura {gap:18px}
+.nc-escolha {display:flex;flex-wrap:wrap;gap:9px;border:0;margin:0;padding:2px 22px 6px;min-width:0}
+.nc-escolha legend {padding:0 0 8px;margin:0}
+.nc-escolha-opcao {display:inline-flex;align-items:center;gap:8px;min-height:40px;padding:9px 16px;border:1px solid var(--flow-line);border-radius:var(--flow-radius-pill);background:var(--flow-surface-inset);font-size:14px;color:var(--flow-text-2);cursor:pointer}
+.nc-escolha-opcao.is-marcada {border-color:var(--flow-accent);background:var(--flow-accent-soft);color:var(--flow-accent);font-weight:600}
+.nc-detalhes {padding:0;overflow:hidden}
+.nc-detalhes > summary {cursor:pointer;padding:16px 22px;list-style:none}
+.nc-detalhes > summary::-webkit-details-marker {display:none}
+.nc-detalhes[open] > summary {border-bottom:1px solid var(--flow-line)}
+.nc-detalhes > .nc-dica {padding:12px 22px 0}
+.nc-origem-antiga {display:block;margin-top:3px;font-size:11px;color:var(--flow-text-3)}
+@media(max-width:760px) {.nc-escolha {padding-left:16px;padding-right:16px}.nc-detalhes > summary,.nc-detalhes > .nc-dica {padding-left:16px;padding-right:16px}}
+/* Painel no celular: a grade não cresce além da tela; a tabela rola dentro do próprio painel */
+@media(max-width:760px) {.nc-page .chart-grid {grid-template-columns:minmax(0,1fr)}.nc-page .chart-grid > * {min-width:0}}

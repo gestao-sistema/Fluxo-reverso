@@ -118,17 +118,17 @@ describe('permissões de NC e reversa', () => {
 });
 
 describe('navItemsDoUsuario', () => {
-  it('gestão de usuários sozinha mostra só Usuários e Comunicações: nenhuma outra tela é aberta por ela', () => {
-    expect(navItemsDoUsuario(usuario(['usuarios'])).map((i) => i.to)).toEqual(['/admin/usuarios', '/admin/comunicacoes']);
+  it('gestão de usuários sozinha mostra Usuários, Lixeira e Comunicações: nenhuma tela de pedidos, NC ou aprovação é aberta por ela', () => {
+    expect(navItemsDoUsuario(usuario(['usuarios'])).map((i) => i.to)).toEqual(['/admin/usuarios', '/admin/lixeira', '/admin/comunicacoes']);
     expect(homeDoUsuario(usuario(['usuarios']))).toBe('/admin/usuarios');
   });
 
   it('quem tem todas as telas vê um item por tela, sem repetir dashboard e pedidos por empresa', () => {
     const items = navItemsDoUsuario(usuario(['usuarios', 'dashboard-geral', 'dashboard-alinare', 'dashboard-novitah', 'lista-geral', 'lista-alinare', 'lista-novitah', 'formulario-alinare', 'formulario-novitah', 'aprovar-reversa', 'emitir-etiqueta', 'nc-edit']));
-    expect(items.length).toBe(12);
+    expect(items.length).toBe(13);
     expect(items.map(i => i.to)).toEqual([
       '/admin/dashboard',
-      '/admin/lista',
+      '/admin/lista?visao=historico',
       '/admin/alinare',
       '/admin/novitah',
       '/admin/aprovacoes',
@@ -137,6 +137,7 @@ describe('navItemsDoUsuario', () => {
       '/admin/nc/painel',
       '/admin/nc/listas',
       '/admin/usuarios',
+      '/admin/lixeira',
       '/admin/comunicacoes',
       '/admin/meus-pedidos',
     ]);
@@ -180,16 +181,16 @@ describe('navItemsDoUsuario', () => {
     expect(menu('demo-aprovador')).toEqual(['Aprovações', 'Pedidos']);
     expect(menu('demo-aprovador-alinare')).toEqual(['Aprovações', 'Pedidos']);
     expect(menu('demo-aprovador-novitah')).toEqual(['Aprovações', 'Pedidos']);
-    // Expedição: Operações | Pedidos (o andamento dos Correios é automático, dentro do pedido)
-    expect(menu('demo-etiquetas')).toEqual(['Operações', 'Pedidos']);
-    expect(menu('demo-expedicao-novitah')).toEqual(['Operações', 'Pedidos']);
-    expect(menu('demo-expedicao-alinare')).toEqual(['Operações', 'Pedidos']);
+    // Expedição: Operações | Histórico de pedidos (quem emite e também acessa pedidos vê a visão de histórico)
+    expect(menu('demo-etiquetas')).toEqual(['Histórico de pedidos', 'Operações']);
+    expect(menu('demo-expedicao-novitah')).toEqual(['Histórico de pedidos', 'Operações']);
+    expect(menu('demo-expedicao-alinare')).toEqual(['Histórico de pedidos', 'Operações']);
     // Gerência: Nova solicitação | Pedidos (| Aprovações só se também aprova)
     expect(menu('demo-expedicao')).toEqual(['Dashboard', 'Meus Pedidos', 'Novo pedido Alinare', 'Novo pedido Novitah', 'Pedidos']);
     expect(menu('demo-gerente-aprovadora')).toContain('Aprovações');
     expect(menu('demo-expedicao')).not.toContain('Aprovações');
     // TI: tudo
-    expect(menu('demo-mestre')).toEqual(expect.arrayContaining(['Pedidos', 'Aprovações', 'Operações', 'Usuários', 'Comunicações']));
+    expect(menu('demo-mestre')).toEqual(expect.arrayContaining(['Histórico de pedidos', 'Aprovações', 'Operações', 'Usuários', 'Lixeira', 'Comunicações']));
   });
 
   it('todos os itens retornam icon definido e label não vazio', () => {

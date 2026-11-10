@@ -28,11 +28,11 @@ describe('ncSchema', () => {
     }
   });
 
-  it('sem data, empresa ou origem falha no campo certo', () => {
+  it('sem data ou empresa falha no campo certo; a origem antiga não é obrigatória (registro novo não a preenche)', () => {
     const r = ncSchema.safeParse(vazio);
     expect(erroDe(r, 'data_ocorrencia')).toBe('Informe a data da ocorrência.');
     expect(erroDe(r, 'empresa')).toBe('Selecione a empresa / contrato.');
-    expect(erroDe(r, 'origem')).toBe('Selecione a origem da não conformidade.');
+    expect(erroDe(r, 'origem')).toBeUndefined();
   });
 
   it('valores em reais: número com duas casas; negativo falha', () => {
