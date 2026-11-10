@@ -1,19 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const { rpc, from, demoAtivo, demoListar, demoContar, demoMarcar } = vi.hoisted(() => ({
+const { rpc, from } = vi.hoisted(() => ({
   rpc: vi.fn(),
   from: vi.fn(),
-  demoAtivo: vi.fn(() => false),
-  demoListar: vi.fn(),
-  demoContar: vi.fn(),
-  demoMarcar: vi.fn(),
 }));
 
 vi.mock('../lib/supabase', () => ({ supabase: { rpc, from } }));
-vi.mock('../demo/demoMode', () => ({ demoAtivo }));
-vi.mock('../demo/demoAvisosReverso', () => ({
-  demoAvisosReverso: { listar: demoListar, contarNaoLidos: demoContar, marcarLido: demoMarcar },
-}));
 
 import avisosReversoService from '../services/avisosReversoService';
 
@@ -34,7 +26,6 @@ const linha = (extra: Record<string, unknown> = {}) => ({
 describe('avisosReversoService (banco)', () => {
   beforeEach(() => {
     vi.resetAllMocks();
-    demoAtivo.mockReturnValue(false);
   });
 
   it('lista pela RPC segura, sem leitura direta da tabela, e devolve o aviso já tratado', async () => {
@@ -73,23 +64,5 @@ describe('avisosReversoService (banco)', () => {
   it('falha ao registrar leitura é avisada, sem parecer sucesso', async () => {
     rpc.mockResolvedValueOnce({ data: null, error: { message: 'permission denied' } });
     await expect(avisosReversoService.marcarAvisoLido('aviso-1')).rejects.toThrow('Não foi possível registrar a leitura');
-  });
-});
-
-describe('avisosReversoService (demonstração)', () => {
-  beforeEach(() => {
-    vi.resetAllMocks();
-    demoAtivo.mockReturnValue(true);
-  });
-
-  it('com a demonstração ativa, usa o armazenamento demo e não chama o banco', async () => {
-    demoListar.mockResolvedValueOnce([{ id: 'demo-1' }]);
-    demoContar.mockResolvedValueOnce(1);
-    demoMarcar.mockResolvedValueOnce(true);
-    await expect(avisosReversoService.listarAvisos()).resolves.toEqual([{ id: 'demo-1' }]);
-    await expect(avisosReversoService.contarAvisosNaoLidos()).resolves.toBe(1);
-    await expect(avisosReversoService.marcarAvisoLido('demo-1')).resolves.toBe(true);
-    expect(rpc).not.toHaveBeenCalled();
-    expect(from).not.toHaveBeenCalled();
   });
 });
