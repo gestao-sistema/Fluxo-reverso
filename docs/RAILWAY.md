@@ -19,17 +19,17 @@ O Railway hospeda **apenas** o frontend. Não há banco, Redis, volume ou servi�
 
 ## 2. Configuração adotada
 
-- **Origem do código:** repositório Git conectado ao serviço no Railway.
-- **Branch de publicação:** `main` (branch de produção do repositório). Publicar uma branch diferente exige decisão explícita do responsável pelo sistema.
+- **Origem do código:** GitHub `gestao-sistema/Fluxo-reverso` (remote `fluxo-reverso`, upstream da branch local de preparação). O remote `origin` aponta para `gestao-sistema/forms_codigo_reverso`; esta branch não acompanha esse remote.
+- **Branch de publicação:** `main` em `gestao-sistema/Fluxo-reverso`. A branch local `fluxo-reverso-main` acompanha `fluxo-reverso/main`.
 - **Diretório raiz:** `/` (raiz do repositório; não é monorepo).
-- **Builder:** `Dockerfile` na raiz. O Railway usa o Dockerfile sempre que ele existe, mesmo que o serviço tenha sido criado com Railpack.
+- **Builder:** `Dockerfile` na raiz. O Railway detecta o Dockerfile e o usa para buildar o serviço.
 - **Runtime de build:** `node:22-alpine` (o `engines` do `package.json` exige Node 20.19+ ou 22.12+).
 - **Runtime de execução:** `nginx:alpine`, sem Node em produção.
 - **Instalação:** `npm ci` (dentro do Dockerfile, usa `package-lock.json`).
 - **Build:** `npm run build`, que executa `node scripts/verificar-ambiente-producao.mjs && tsc -b && vite build`.
 - **Start:** comando padrão do container: Nginx em primeiro plano, com `__PORT__` trocado pelo valor de `PORT` (`/opt/nginx-template/default.conf.template`, gerado em `nginx.conf`). Não há `npm start` nem `vite preview`.
 - **Health check:** `GET /healthz`, configurado no painel do serviço (ver seção 5).
-- **Arquivo de configuração como código (`railway.toml`/`railway.json`):** não criado. Motivo: a configuração necessária (builder e health check) cabe no painel e o Dockerfile já define o build; um arquivo versionado agora duplicaria essas definições. Pode ser adicionado depois, se a equipe preferir IaC.
+- **Infraestrutura como código:** a documentação atual do Railway depreca Config as Code (`railway.json`/`railway.toml`) para serviços novos e prevê deixar de ler esses arquivos existentes em 2026-12-01. O mecanismo atual é Infrastructure as Code em `.railway/railway.ts`, aplicado por `railway config plan`. Foi avaliado e não incluído porque nenhum projeto, ambiente ou serviço Railway foi identificado nesta preparação; criar nomes de recursos por suposição poderia apontar para a infraestrutura errada. Nesta etapa, conecte o repositório e configure Dockerfile e health check no painel. Se a equipe escolher IaC, defina os recursos com as identidades reais e revise o plano antes de aplicar. Nenhuma configuração remota foi aplicada. [Documentação oficial de IaC do Railway](https://github.com/railwayapp/docs/blob/main/content/docs/infrastructure-as-code.md).
 
 ## 3. Variáveis
 
@@ -57,7 +57,7 @@ Nomes encontrados no código das funções. Nenhum deles vai ao Railway.
 |---|---|---|---|---|
 | `SUPABASE_URL` | todas | URL do projeto (injetada pelo Supabase). | Sim | Execução |
 | `SUPABASE_ANON_KEY` | `admin-usuarios`, `correios-rastreio` | Chave pública usada pela função. | Sim | Execução |
-| `SUPABASE_SERVICE_ROLE_KEY` | `admin-usuarios`, `correios-rastreio` | **Segredo.** Só no servidor. | Sim | Execução |
+| `SUPABASE_SERVICE_ROLE_KEY` | `admin-usuarios`, `comunicacao-etiqueta`, `correios-rastreio` | **Segredo.** Só no servidor. | Sim | Execução |
 | `APP_BASE_URL` | `admin-usuarios`, `comunicacao-etiqueta` | Origem do aplicativo para os links de convite e recuperação (`https://<dominio-railway>`). | Sim | Execução |
 | `ALLOWED_ORIGINS` | `correios-rastreio` | Origens autorizadas a chamar a função (`https://<dominio-railway>`, separadas por vírgula). | Sim | Execução |
 | `CONVITE_TRANSPORTE` | `admin-usuarios` | Transporte do e-mail de convite (`smtp`). | Sim | Execução |
@@ -83,18 +83,18 @@ Não há chaves de provedor no frontend. Chaves de Power Automate, SMTP e Correi
 ### 5.1 Conectar o repositório ao Railway (painel)
 
 1. No Railway, criar o projeto ou abrir o existente.
-2. Adicionar um serviço a partir do repositório GitHub de publicação.
+2. Adicionar um serviço a partir do repositório GitHub `gestao-sistema/Fluxo-reverso` (remote `fluxo-reverso`).
 3. Nas configurações do serviço, confirmar a branch de publicação `main` e a raiz `/`.
 4. Confirmar que o builder é Dockerfile (caminho `Dockerfile`, na raiz). Os nomes exatos dos campos podem variar na interface atual; a regra é a da seção 2.
 5. Cadastrar `VITE_SUPABASE_URL` e `VITE_SUPABASE_ANON_KEY` em Variables do serviço (seção 3.1). Os valores vêm do painel do Supabase (*Project Settings → API*), usando **somente** a chave pública.
 6. Configurar o health check path do serviço como `/healthz`.
 7. Gerar o domínio público nas configurações de rede do serviço. O nome é atribuído pelo Railway e não é definido neste repositório.
 
-Ainda não disparar o deploy automático antes da ordem da seção 5.2. Se o serviço já publicar a partir de um commit, o estado do banco deve estar atualizado antes.
+Atenção: o Railway publica automaticamente quando um commit chega à branch conectada. Por isso, o commit de preparação só deve ser enviado ao `main` depois da ordem da seção 5.2 (banco e funções prontos). Até lá, a publicação fica pausada, e o serviço pode ser criado sem gerar domínio.
 
 ### 5.2 Ordem de publicação
 
-1. **Diagnóstico somente leitura do banco.** Listar as migrations aplicadas (somente leitura, no SQL Editor do Supabase de produção):
+1. **Diagnóstico somente leitura do banco.** O histórico aplicado em produção não foi consultado nesta preparação: não havia CLI do Supabase nem credencial de banco/admin disponível nesta sessão. Os arquivos locais não permitem afirmar quais migrations estão pendentes no banco. Antes da publicação, liste as migrations aplicadas (somente leitura, no SQL Editor do Supabase de produção):
    ```sql
    select version, name from supabase_migrations.schema_migrations order by version;
    ```
@@ -105,7 +105,7 @@ Ainda não disparar o deploy automático antes da ordem da seção 5.2. Se o ser
    A pasta `supabase/functions/smtp-homologacao` está vazia e não é versionada; não há o que publicar nela.
 3. **Secrets** das funções (seção 3.2). `APP_BASE_URL` e `ALLOWED_ORIGINS` podem ser preenchidos com o domínio após a etapa 5.
 4. **Migrations pendentes** no SQL Editor, uma por vez, na ordem de versão, cada uma conferida após a execução.
-5. **Frontend no Railway:** o deploy automático ocorre quando o commit chega à branch `main` (ou pelo botão **Deploy** do painel). Acompanhar o log do build: a primeira linha deve ser `Ambiente de produção verificado`.
+5. **Frontend no Railway:** o deploy automático ocorre quando o commit chega à branch `main` (ou pelo botão de deploy do painel). No log do build deve aparecer a linha `Ambiente de produção verificado`, seguida do `vite build` concluído.
 6. **Após obter o domínio:** atualizar `APP_BASE_URL` e `ALLOWED_ORIGINS` (seção 6) e fazer o cadastro das URLs no Supabase.
 7. **Verificações** (seção 7).
 
@@ -179,7 +179,14 @@ Rollback do frontend não desfaz banco nem funções. Por isso, a ordem da seç�
 
 ## 10. Validação local realizada (preparação)
 
-- `npm ci` em instalação limpa, `npm run build` com variáveis de teste (placeholders), `vitest` completo, `tsc -b` (dentro do build) e `oxlint` — resultados registrados no relatório de entrega.
-- Validador de ambiente: testes em `src/test/verificacaoAmbienteProducao.test.ts` e execução direta do script nos casos de ausência, valor válido e `service_role`.
+As validações de build e teste abaixo foram feitas em um export limpo do commit `ec2d552`, com somente os arquivos versionados daquela preparação.
 
-**Não validado localmente:** a imagem Docker e o Nginx. Este computador não tem Docker, WSL nem nginx. A configuração do Nginx deve ser validada no primeiro build do Railway e, se preciso, com `docker build -t frontend . && docker run --rm -e PORT=8080 -p 8080:8080 frontend` seguido das verificações da seção 7.
+- `npm ci`: aprovado; instalação limpa pelo `package-lock.json` (259 pacotes).
+- `npm run build`: aprovado com placeholders de teste para `VITE_SUPABASE_URL` e `VITE_SUPABASE_ANON_KEY`. Inclui o validador de ambiente, `tsc -b` e `vite build`.
+- `npm run lint`: exit 0, com seis avisos existentes em `src/lib/etiquetaPdf.ts`.
+- `npm test`: **não passou integralmente**. Na execução completa mais recente, 13 testes falharam e 649 passaram (662 no total; 6 arquivos falharam). Comparação isolada: nove falhas determinísticas em `conviteFluxoTemplate.test.ts` (1), `deleteSolicitacao.test.ts` (5) e `perfil.test.ts` (3) também ocorriam no commit-base `6e49885`. Outras falhas em `ApprovalQueuePage`, `UsuariosPage`, `rotaDefinirSenha` e `UsuariosPageConvite` variaram entre rodadas completas (timeouts e expectativas de interação) e passaram quando isoladas. `verificacaoAmbienteProducao.test.ts` passou isolado. Portanto, a suíte continua bloqueada por falhas já presentes na base e por timeouts instáveis.
+- `src/test/verificacaoAmbienteProducao.test.ts`: validou ausência de configuração, valores de teste válidos e recusa de chave secreta/service_role.
+- Estado das migrations em produção: **não consultado**. A consulta somente leitura e a comparação com os arquivos locais continuam pendentes (seção 5.2).
+- Imagem Docker, sintaxe do Nginx e execução do servidor de produção: **não validadas localmente**. Docker e Nginx não estão instalados, e o WSL presente não tem uma distribuição/subsistema Linux instalado. Não foi usado `vite preview` como substituto do servidor de produção.
+
+Antes de publicar, valide a imagem Docker e o Nginx no Railway ou em um ambiente Docker disponível, depois rode os pedidos HTTP da seção 7. A resposta de health check local/de plataforma confirma apenas que o Nginx responde, não que login, banco ou integrações funcionem.
