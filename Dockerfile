@@ -15,8 +15,10 @@ RUN npm ci
 # Variáveis de build: o Railway só as entrega ao Docker se estiverem declaradas como ARG.
 # VITE_* é incorporado ao JavaScript: alterar qualquer valor exige novo build.
 ARG VITE_SUPABASE_URL
+ARG VITE_SUPABASE_PUBLISHABLE_KEY
 ARG VITE_SUPABASE_ANON_KEY
 ENV VITE_SUPABASE_URL=$VITE_SUPABASE_URL
+ENV VITE_SUPABASE_PUBLISHABLE_KEY=$VITE_SUPABASE_PUBLISHABLE_KEY
 ENV VITE_SUPABASE_ANON_KEY=$VITE_SUPABASE_ANON_KEY
 
 COPY . .

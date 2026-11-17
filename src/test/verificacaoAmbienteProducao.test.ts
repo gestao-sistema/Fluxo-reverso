@@ -14,15 +14,19 @@ describe('validarAmbienteProducao', () => {
     expect(validarAmbienteProducao({ VITE_SUPABASE_URL: URL_VALIDA, VITE_SUPABASE_ANON_KEY: jwtFalso('anon') })).toEqual([]);
   });
 
-  it('aceita chave publishable no formato novo', () => {
+  it('aceita chave publishable no formato novo pelo nome recomendado', () => {
+    expect(validarAmbienteProducao({ VITE_SUPABASE_URL: URL_VALIDA, VITE_SUPABASE_PUBLISHABLE_KEY: 'sb_publishable_teste' })).toEqual([]);
+  });
+
+  it('mantém compatibilidade com a variável antiga da chave pública', () => {
     expect(validarAmbienteProducao({ VITE_SUPABASE_URL: URL_VALIDA, VITE_SUPABASE_ANON_KEY: 'sb_publishable_teste' })).toEqual([]);
   });
 
-  it('exige VITE_SUPABASE_URL e VITE_SUPABASE_ANON_KEY', () => {
+  it('exige VITE_SUPABASE_URL e uma chave pública', () => {
     const erros = validarAmbienteProducao({});
     expect(erros).toHaveLength(2);
     expect(erros[0]).toContain('VITE_SUPABASE_URL não está definida');
-    expect(erros[1]).toContain('VITE_SUPABASE_ANON_KEY não está definida');
+    expect(erros[1]).toContain('VITE_SUPABASE_PUBLISHABLE_KEY não está definida');
   });
 
   it('recusa URL inválida e URL http fora de localhost', () => {

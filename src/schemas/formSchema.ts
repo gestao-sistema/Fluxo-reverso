@@ -26,46 +26,47 @@ export const formSchema = z
 
     /** Data da solicitação no formato YYYY-MM-DD */
     data_solicitacao: z
-      .string({ required_error: 'Selecione a data da solicitação.' })
+      .string({ error: (issue) => issue.input === undefined ? 'Selecione a data da solicitação.' : undefined })
       .min(1, 'Selecione a data da solicitação.'),
 
     /** Nome do responsável interno */
     solicitante: z
-      .string({ required_error: 'Informe o nome do solicitante.' })
+      .string({ error: (issue) => issue.input === undefined ? 'Informe o nome do solicitante.' : undefined })
       .transform(val => val.replace(/<[^>]*>?/gm, '').trim())
       .pipe(z.string().min(2, 'Nome deve ter ao menos 2 caracteres.').max(100, 'Nome muito longo.')),
 
     /** Setor interno */
     setor: z.enum(SETORES, {
-      errorMap: () => ({ message: 'Selecione um setor válido.' }),
+      error: () => 'Selecione um setor válido.',
     }),
 
     /** Código numérico da cliente */
     codigo_cliente: z
       .number({
-        required_error: 'Informe o código da cliente.',
-        invalid_type_error: 'O código deve ser um número inteiro.',
+        error: (issue) => issue.input === undefined
+          ? 'Informe o código da cliente.'
+          : 'O código deve ser um número inteiro.',
       })
-      .int('O código deve ser um número inteiro.')
       .positive('O código deve ser maior que zero.')
       // A coluna é integer (4 bytes): acima disso o banco recusa e, antes, o JavaScript arredondava
-      .max(CODIGO_CLIENTE_MAXIMO, `O código deve ter no máximo ${CODIGO_CLIENTE_MAXIMO.toLocaleString('pt-BR')}.`),
+      .max(CODIGO_CLIENTE_MAXIMO, `O código deve ter no máximo ${CODIGO_CLIENTE_MAXIMO.toLocaleString('pt-BR')}.`)
+      .int('O código deve ser um número inteiro.'),
 
     /** Nome completo da cliente */
     nome_cliente: z
-      .string({ required_error: 'Informe o nome da cliente.' })
+      .string({ error: (issue) => issue.input === undefined ? 'Informe o nome da cliente.' : undefined })
       .transform(val => val.replace(/<[^>]*>?/gm, '').trim())
       .pipe(z.string().min(2, 'Nome deve ter ao menos 2 caracteres.').max(150, 'Nome muito longo.')),
 
     /** Endereço de postagem */
     endereco_postagem: z
-      .string({ required_error: 'Informe o endereço de postagem.' })
+      .string({ error: (issue) => issue.input === undefined ? 'Informe o endereço de postagem.' : undefined })
       .transform(val => val.replace(/<[^>]*>?/gm, '').trim())
       .pipe(z.string().min(5, 'Endereço deve ter ao menos 5 caracteres.').max(300, 'Endereço muito longo.')),
 
     /** Número do imóvel, informado separadamente do endereço retornado pelo CEP. */
     numero_endereco: z
-      .string({ required_error: 'Informe o número do endereço.' })
+      .string({ error: (issue) => issue.input === undefined ? 'Informe o número do endereço.' : undefined })
       .transform(val => val.replace(/<[^>]*>?/gm, '').trim())
       .pipe(z.string().min(1, 'Informe o número ou S/N.').max(20, 'Número muito longo.')),
 
@@ -85,7 +86,7 @@ export const formSchema = z
       .or(z.literal('')),
 
     /** Motivo principal do reverso */
-    motivo: z.enum(MOTIVOS_ACEITOS, { errorMap: () => ({ message: 'Selecione um motivo válido.' }) }),
+    motivo: z.enum(MOTIVOS_ACEITOS, { error: () => 'Selecione um motivo válido.' }),
 
     /**
      * Obrigatório quando motivo === 'Outros'.

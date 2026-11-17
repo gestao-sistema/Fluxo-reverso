@@ -69,41 +69,52 @@ describe('histórico de aprovação da demonstração: só o que foi decidido', 
   });
 });
 
-describe('autoaprovação da demonstração (espelha aprovacao_config, desligada por padrão)', () => {
-  it('pedido próprio: aparece na fila sem poder aprovar, e a decisão é recusada ao tentar', async () => {
+describe('decisão só por terceiros na demonstração (espelha registrar_decisao_reversa, sem autoaprovação)', () => {
+  it('pedido próprio: aparece na fila sem poder decidir; aprovar e rejeitar são recusados', async () => {
     const pedido = await criarComo('demo-gerente-aprovadora', 'Alinare', 'Pedido da Joyce');
     const item = (await filaDe('demo-gerente-aprovadora', pedido.id))!;
     expect(item).toMatchObject({ proprio_pedido: true, pode_aprovar: false });
     await expect(demoApi.decidirAprovacao(item, 'approve', usuario('demo-gerente-aprovadora'), ''))
-      .rejects.toThrow('Você não pode aprovar uma solicitação registrada ou alterada por você.');
+      .rejects.toThrow('Você não pode aprovar nem rejeitar uma solicitação registrada ou alterada por você.');
+    await expect(demoApi.decidirAprovacao(item, 'reject', usuario('demo-gerente-aprovadora'), 'Desisti do pedido'))
+      .rejects.toThrow('Você não pode aprovar nem rejeitar uma solicitação registrada ou alterada por você.');
     expect(demoDados.solicitacoes().find((p) => p.id === pedido.id)!.aprovacao_status).toBe('aguardando_aprovacao');
     expect(await demoApi.getHistoricoAprovacao(pedido.id)).toEqual([]);
   });
 
-  it('terceiro autorizado aprova o pedido de outra pessoa; o próprio autor ainda pode rejeitar', async () => {
+  it('terceiro autorizado decide o pedido de outra pessoa; a segunda decisão não altera o resultado', async () => {
     const pedido = await criarComo('demo-gerente-aprovadora', 'Alinare', 'Pedido da Joyce 2');
     const comoTerceiro = (await filaDe('demo-aprovador-alinare', pedido.id))!;
     expect(comoTerceiro).toMatchObject({ proprio_pedido: false, pode_aprovar: true });
     await demoApi.decidirAprovacao(comoTerceiro, 'approve', usuario('demo-aprovador-alinare'), '');
     expect(demoDados.solicitacoes().find((p) => p.id === pedido.id)!.aprovacao_status).toBe('aprovada');
 
-    const outro = await criarComo('demo-gerente-aprovadora', 'Alinare', 'Pedido da Joyce 3');
-    const proprio = (await filaDe('demo-gerente-aprovadora', outro.id))!;
-    await demoApi.decidirAprovacao(proprio, 'reject', usuario('demo-gerente-aprovadora'), 'Desisti do pedido');
-    expect(demoDados.solicitacoes().find((p) => p.id === outro.id)!.aprovacao_status).toBe('rejeitada');
+    selecionarUsuarioDemo('demo-aprovador');
+    await expect(demoApi.decidirAprovacao(comoTerceiro, 'reject', usuario('demo-aprovador'), 'tarde demais')).rejects.toThrow();
+    expect(demoDados.solicitacoes().find((p) => p.id === pedido.id)!.aprovacao_status).toBe('aprovada');
+    expect(await demoApi.getHistoricoAprovacao(pedido.id)).toHaveLength(1);
   });
 
-  it('configuração habilitada explicitamente libera a autoaprovação; TI não ganha aprovação sem ser aprovadora', async () => {
+  it('não há configuração que libere a autoaprovação; TI não ganha aprovação sem ser aprovadora', async () => {
+    expect('permitirAutoaprovacao' in demoDados).toBe(false);
+    expect('salvarPermitirAutoaprovacao' in demoDados).toBe(false);
+    localStorage.setItem('flowdesk:demo:dados:permitir-autoaprovacao', 'true'); // valor antigo esquecido no navegador
     const pedido = await criarComo('demo-gerente-aprovadora', 'Alinare', 'Pedido da Joyce 4');
-    demoDados.salvarPermitirAutoaprovacao(true);
     const item = (await filaDe('demo-gerente-aprovadora', pedido.id))!;
-    expect(item.pode_aprovar).toBe(true);
-    await demoApi.decidirAprovacao(item, 'approve', usuario('demo-gerente-aprovadora'), '');
-    expect(demoDados.solicitacoes().find((p) => p.id === pedido.id)!.aprovacao_status).toBe('aprovada');
+    expect(item.pode_aprovar).toBe(false);
+    await expect(demoApi.decidirAprovacao(item, 'approve', usuario('demo-gerente-aprovadora'), '')).rejects.toThrow();
 
     const outro = await criarComo('demo-solicitante-alinare', 'Alinare', 'Pedido para TI');
-    demoDados.salvarPermitirAutoaprovacao(false);
     expect(await filaDe('demo-mestre', outro.id)).toBeUndefined();
+  });
+
+  it('pedido sem autor identificado não pode ser decidido por ninguém', async () => {
+    const pedido = await criarComo('demo-solicitante-alinare', 'Alinare', 'Pedido sem autor');
+    demoDados.salvarSolicitacoes(demoDados.solicitacoes().map((p) => p.id === pedido.id ? { ...p, solicitado_por: null } : p));
+    const item = (await filaDe('demo-aprovador-alinare', pedido.id))!;
+    expect(item).toMatchObject({ proprio_pedido: false, pode_aprovar: false });
+    await expect(demoApi.decidirAprovacao(item, 'approve', usuario('demo-aprovador-alinare'), '')).rejects.toThrow(/autor identificado/);
+    expect(demoDados.solicitacoes().find((p) => p.id === pedido.id)!.aprovacao_status).toBe('aguardando_aprovacao');
   });
 
   it('empresa ou setor indevido: o aprovador de uma empresa não decide a outra', async () => {

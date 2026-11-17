@@ -14,6 +14,8 @@ import type {
 } from '../types';
 import { limparArquivosDemo } from './demoArquivos';
 import { HISTORICO_NCS_DEMO, HISTORICO_SOLICITACOES_DEMO, ID_NC_DEMO, LISTAS_NC_DEMO, NCS_DEMO, SOLICITACOES_DEMO } from './fixtures';
+import { itensClassificacaoPadrao } from '../lib/ncClassificacao';
+import type { AuditoriaFinanceiraNc } from '../lib/ncEdicao';
 import { definirFonteUsuariosDemo, USUARIOS_DEMO, type UsuarioDemo } from './demoMode';
 import { comunicacoesDemoIniciais, type DemoComunicacao } from './demoComunicacoesRelatorio';
 
@@ -22,6 +24,7 @@ const KEYS = {
   historicoSolicitacoes: 'flowdesk:demo:dados:historico-solicitacoes',
   ncs: 'flowdesk:demo:dados:ncs',
   historicoNcs: 'flowdesk:demo:dados:historico-ncs',
+  auditoriaFinanceiraNcs: 'flowdesk:demo:dados:auditoria-financeira-ncs',
   listasNc: 'flowdesk:demo:dados:listas-nc',
   usuarios: 'flowdesk:demo:dados:usuarios',
   configAprovadores: 'flowdesk:demo:dados:config-aprovadores',
@@ -33,6 +36,7 @@ const KEYS = {
   versoes: 'flowdesk:demo:dados:versoes',
   usuariosRemovidos: 'flowdesk:demo:dados:usuarios-removidos',
   aprovacoes: 'flowdesk:demo:dados:aprovacoes',
+  // Sem uso desde 20261112100000 (não há autoaprovação); mantida só para o "resetar" limpar valores antigos
   autoaprovacao: 'flowdesk:demo:dados:permitir-autoaprovacao',
 };
 
@@ -140,6 +144,17 @@ function marcarVersao(nome: string): void {
   gravar(KEYS.versoes, { ...ler<Record<string, number>>(KEYS.versoes, {}), [nome]: VERSAO_ATUAL });
 }
 
+/**
+ * Listas salvas antes da classificação separada (tipo do problema, origem/causador e áreas) recebem
+ * os valores padrão que faltam, sem mexer nos existentes. Mesmo efeito da carga inicial do banco.
+ */
+function completarListasClassificacao(listas: ListasNc): ListasNc {
+  const faltantes = itensClassificacaoPadrao().filter(
+    (padrao) => !listas.itens.some((item) => item.lista === padrao.lista && item.valor === padrao.valor)
+  );
+  return faltantes.length > 0 ? { ...listas, itens: [...listas.itens, ...faltantes] } : listas;
+}
+
 export const demoDados = {
   solicitacoes: () => ler<Solicitacao[]>(KEYS.solicitacoes, SOLICITACOES_DEMO)
     .map((item) => item.nc_id && idNcValido(item.nc_id) !== item.nc_id ? { ...item, nc_id: idNcValido(item.nc_id) as string } : item),
@@ -150,7 +165,10 @@ export const demoDados = {
   salvarNcs: (itens: NaoConformidade[]) => gravar(KEYS.ncs, itens),
   historicoNcs: () => ler<NcHistorico[]>(KEYS.historicoNcs, HISTORICO_NCS_DEMO).map((item) => ({ ...item, nc_id: idNcValido(item.nc_id) as string })),
   salvarHistoricoNcs: (itens: NcHistorico[]) => gravar(KEYS.historicoNcs, itens),
-  listasNc: () => ler<ListasNc>(KEYS.listasNc, LISTAS_NC_DEMO),
+  /** Trilha financeira das NCs (espelha nc_auditoria_financeira: só cresce). */
+  auditoriaFinanceiraNcs: () => ler<AuditoriaFinanceiraNc[]>(KEYS.auditoriaFinanceiraNcs, []),
+  salvarAuditoriaFinanceiraNcs: (itens: AuditoriaFinanceiraNc[]) => gravar(KEYS.auditoriaFinanceiraNcs, itens),
+  listasNc: () => completarListasClassificacao(ler<ListasNc>(KEYS.listasNc, LISTAS_NC_DEMO)),
   salvarListasNc: (itens: ListasNc) => gravar(KEYS.listasNc, itens),
   /**
    * Cadastro de usuários. Dados guardados por versões antigas ficam como estão (pedidos, configurações e
@@ -224,9 +242,6 @@ export const demoDados = {
   salvarComunicacoes: (itens: DemoComunicacao[]) => gravar(KEYS.comunicacoes, itens),
   aprovacoes: () => ler<SolicitacaoAprovacaoHistorico[]>(KEYS.aprovacoes, APROVACOES_DEMO),
   salvarAprovacoes: (itens: SolicitacaoAprovacaoHistorico[]) => gravar(KEYS.aprovacoes, itens),
-  /** Espelha aprovacao_config.permitir_autoaprovacao: desligada por padrão e sem tela de configuração. */
-  permitirAutoaprovacao: () => ler<boolean>(KEYS.autoaprovacao, false),
-  salvarPermitirAutoaprovacao: (valor: boolean) => gravar(KEYS.autoaprovacao, valor),
   recebimentosFisicos: () => ler<string[]>(KEYS.recebimentosFisicos, []),
   salvarRecebimentosFisicos: (ids: string[]) => gravar(KEYS.recebimentosFisicos, ids),
   resetar() {

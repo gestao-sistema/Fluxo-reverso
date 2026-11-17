@@ -114,3 +114,88 @@ describe('jornada: pedido novo -> aprovação -> expedição -> etiqueta', () =>
     assert.equal(atual.etiqueta_path, null);
   });
 });
+
+// Jornada pedida na correção de 12/11/2026, ponta a ponta no banco (RLS por papel, Storage simulado):
+// A abre -> A não decide -> B decide -> expedição anexa a etiqueta e o rastreio -> o PDF continua legível
+// depois de "recarregar" (nova consulta) -> administrador move para a Lixeira e restaura.
+describe('jornada completa: autoria, decisão, etiqueta, PDF e Lixeira', () => {
+  const lerPdf = async (persona, caminho) =>
+    (await como(c1, persona, "select count(*)::int as n from storage.objects where bucket_id = 'etiquetas' and name = $1", [caminho])).rows[0].n;
+
+  it('o autor não decide, outro aprovador decide, o PDF reabre para quem lê o pedido e a Lixeira preserva tudo', async () => {
+    const autorA = await criarUsuario(db, 'Autora e aprovadora jornada', ['formulario-alinare', 'aprovar-alinare']);
+    const colegaFormulario = await criarUsuario(db, 'Colega so formulario jornada', ['formulario-alinare']);
+    await como(c1, u.admin, 'select public.salvar_config_aprovadores_reversa($1, $2::jsonb)', ['Alinare', JSON.stringify([
+      { usuario_id: u.aprovador.id, todos_setores: true, setores: [] },
+      { usuario_id: autorA.id, todos_setores: true, setores: [] },
+    ])]);
+
+    // 1. A abre o pedido e não consegue decidir (nem pela tela nem pela API)
+    const pedido = await novoPedido('Alinare', 'Jornada completa', autorA);
+    const naFilaDeA = (await como(c1, autorA, 'select id, proprio_pedido, pode_aprovar from public.fila_aprovacao_reversas()')).rows
+      .find((r) => r.id === pedido.id);
+    assert.deepEqual({ ...naFilaDeA }, { id: pedido.id, proprio_pedido: true, pode_aprovar: false });
+    for (const sql of [
+      'select * from public.aprovar_reversa($1, $2, null)',
+      "select * from public.rejeitar_reversa($1, $2, 'desistência')",
+    ]) {
+      const erro = await falha(como(c1, autorA, sql, [pedido.id, pedido.aprovacao_versao]));
+      assert.equal(erro?.code, '42501');
+    }
+
+    // 2. B decide; segunda decisão sobre a mesma versão não muda nada
+    await como(c1, u.aprovador, 'select * from public.aprovar_reversa($1, $2, null)', [pedido.id, pedido.aprovacao_versao]);
+    const repetida = await falha(como(c1, u.aprovador, "select * from public.rejeitar_reversa($1, $2, 'mudei')", [pedido.id, pedido.aprovacao_versao]));
+    assert.equal(repetida?.code, '55000');
+    assert.equal((await q('select aprovacao_status from public.solicitacoes_reverso where id = $1', [pedido.id]))[0].aprovacao_status, 'aprovada');
+
+    // 3. Expedição envia o PDF e registra a emissão com o rastreio lido da etiqueta
+    const caminho = `${pedido.id}/emissao-1-etiqueta.pdf`;
+    await como(c1, u.emissorAlinare, "insert into storage.objects (bucket_id, name) values ('etiquetas', $1)", [caminho]);
+    const emissao = (await como(c1, u.emissorAlinare,
+      'select * from public.registrar_emissao_reversa($1, null, $2, $3, current_date, null, $4, $5)',
+      [pedido.id, 'AUT-JORNADA', 'AB123456789BR', caminho, 'etiqueta.pdf'])).rows[0];
+    assert.equal(emissao.codigo_rastreio, 'AB123456789BR');
+    assert.equal(emissao.pdf_path, caminho);
+
+    // 4. "Atualizar a página": nova consulta devolve o mesmo vínculo e o PDF continua legível
+    const reaberta = (await como(c1, u.emissorAlinare,
+      'select pdf_path, codigo_rastreio from public.reversa_emissoes where solicitacao_id = $1 and substituida_em is null', [pedido.id])).rows[0];
+    assert.deepEqual({ ...reaberta }, { pdf_path: caminho, codigo_rastreio: 'AB123456789BR' });
+    const pedidoReaberto = (await q('select etiqueta_path, codigo_rastreio, status from public.solicitacoes_reverso where id = $1', [pedido.id]))[0];
+    assert.equal(pedidoReaberto.etiqueta_path, caminho);
+    assert.equal(pedidoReaberto.codigo_rastreio, 'AB123456789BR');
+    assert.equal(await lerPdf(u.emissorAlinare, caminho), 1, 'expedição reabre o PDF');
+    assert.equal(await lerPdf(autorA, caminho), 1, 'a autora reabre a etiqueta do próprio pedido');
+    assert.equal(await lerPdf(u.aprovador, caminho), 1, 'o aprovador da empresa lê');
+    assert.equal(await lerPdf(colegaFormulario, caminho), 0, 'só o formulário da empresa não dá leitura do PDF de outra pessoa');
+    assert.equal(await lerPdf(u.solicitanteNovitah, caminho), 0, 'outra empresa não lê');
+    assert.equal(await lerPdf(u.emissorNovitah, caminho), 0, 'expedição de outra empresa não lê');
+
+    // 5. Só o administrador move para a Lixeira; o arquivo e a emissão ficam guardados
+    for (const persona of [u.emissorAlinare, u.aprovador, autorA]) {
+      const erro = await falha(como(c1, persona, 'select public.inutilizar_chamado($1)', [pedido.id]));
+      assert.equal(erro?.code, '42501');
+      const lista = await falha(como(c1, persona, 'select * from public.listar_chamados_lixeira()'));
+      assert.equal(lista?.code, '42501');
+    }
+    await como(c1, u.admin, 'select public.inutilizar_chamado($1)', [pedido.id]);
+    const naLixeira = (await como(c1, u.admin, 'select id from public.listar_chamados_lixeira()')).rows.map((r) => r.id);
+    assert.ok(naLixeira.includes(pedido.id));
+    assert.equal((await q("select count(*)::int as n from storage.objects where bucket_id = 'etiquetas' and name = $1", [caminho]))[0].n, 1, 'o PDF não é apagado');
+    assert.equal((await q('select count(*)::int as n from public.reversa_emissoes where solicitacao_id = $1', [pedido.id]))[0].n, 1, 'a emissão é preservada');
+    assert.equal(await lerPdf(u.emissorAlinare, caminho), 0, 'chamado na Lixeira: PDF só para administrador');
+    assert.equal(await lerPdf(autorA, caminho), 0);
+    assert.equal(await lerPdf(u.admin, caminho), 1, 'o administrador consulta o histórico arquivado');
+    const operar = await falha(como(c1, u.emissorAlinare, "select * from public.atualizar_dados_emissao($1, 'AUT-JORNADA', 'AC123456789BR', current_date, null)", [emissao.id]));
+    assert.ok(operar, 'chamado na Lixeira não é operado');
+
+    // 6. Restaurar devolve o mesmo arquivo, o mesmo rastreio e a mesma leitura
+    await como(c1, u.admin, 'select public.restaurar_chamado($1)', [pedido.id]);
+    assert.equal(await lerPdf(u.emissorAlinare, caminho), 1);
+    assert.equal(await lerPdf(autorA, caminho), 1);
+    const restaurada = (await como(c1, u.emissorAlinare,
+      'select pdf_path, codigo_rastreio from public.reversa_emissoes where solicitacao_id = $1 and substituida_em is null', [pedido.id])).rows[0];
+    assert.deepEqual({ ...restaurada }, { pdf_path: caminho, codigo_rastreio: 'AB123456789BR' });
+  });
+});

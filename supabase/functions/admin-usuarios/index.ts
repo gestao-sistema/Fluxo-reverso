@@ -20,10 +20,17 @@ const corsHeaders = {
 import { ehAdmin, normalizarAcesso } from './acesso.ts';
 import { criarServicoConvite, ErroConvite, situacaoDoUsuario } from './convite.ts';
 import { enviarEmailSmtp } from '../_shared/smtp.ts';
+import { fetchSemBearerDaChave, obterChaveSupabase } from '../_shared/supabase-keys.ts';
+
+const envSupabase = { get: (name: string) => Deno.env.get(name) ?? undefined };
+const SUPABASE_PUBLISHABLE_KEY = obterChaveSupabase(envSupabase, 'publishable') ?? '';
+const SUPABASE_SECRET_KEY = obterChaveSupabase(envSupabase, 'secret') ?? '';
 
 // SMTP e modos de transporte são lidos somente do ambiente do servidor.
 const ENV_CONVITE = [
   'CONVITE_TRANSPORTE', 'SMTP_HOST', 'SMTP_PORT', 'SMTP_SECURE', 'SMTP_USER', 'SMTP_FROM', 'SMTP_PASS', 'APP_BASE_URL',
+  // Não é segredo: só distingue projeto hospedado da pilha local para recusar link de localhost
+  'SUPABASE_URL',
 ] as const;
 
 // Administrador padrão (login 'admin'): login e telas fixos, não pode ser removido.
@@ -45,7 +52,7 @@ serve(async (req: Request) => {
 
     const supabaseClient = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_ANON_KEY') ?? '',
+      SUPABASE_PUBLISHABLE_KEY,
       { global: { headers: { Authorization: authHeader } } }
     );
 
@@ -70,8 +77,8 @@ serve(async (req: Request) => {
     if (action === 'list-names') {
       const supabaseAdmin = createClient(
         Deno.env.get('SUPABASE_URL') ?? '',
-        Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
-        { auth: { autoRefreshToken: false, persistSession: false } }
+        SUPABASE_SECRET_KEY,
+        { global: { fetch: fetchSemBearerDaChave(SUPABASE_SECRET_KEY) }, auth: { autoRefreshToken: false, persistSession: false } }
       );
       const { data, error } = await supabaseAdmin.auth.admin.listUsers({ page: 1, perPage: 1000 });
       if (error) throw error;
@@ -89,8 +96,8 @@ serve(async (req: Request) => {
     // 2. Cliente com service_role para operar no auth.admin
     const supabaseAdmin = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
-      { auth: { autoRefreshToken: false, persistSession: false } }
+      SUPABASE_SECRET_KEY,
+      { global: { fetch: fetchSemBearerDaChave(SUPABASE_SECRET_KEY) }, auth: { autoRefreshToken: false, persistSession: false } }
     );
 
     if (action === 'create') {

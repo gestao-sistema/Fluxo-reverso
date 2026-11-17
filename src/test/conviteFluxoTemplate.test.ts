@@ -139,12 +139,12 @@ describe('validações do fluxo × payloads do backend', () => {
   const token = (tamanho: number) => 'aB3_-'.repeat(Math.ceil(tamanho / 5)).slice(0, tamanho);
 
   it('aceita todo e-mail que o backend aceita e recusa o que ele recusa', () => {
-    const validos = ['maria.silva@azime.com.br', '  Maria.Silva@AZIME.com.br ', 'a+filtro@azime.com.br', 'x_y-z@azime.com.br', '0@azime.com.br', 'joao.p.souza@azime.com.br'];
+    const validos = ['maria.silva@azime.com.br', '  Maria.Silva@AZIME.com.br ', 'a+filtro@azime.com.br', 'x_y-z@azime.com.br', '0@azime.com.br', 'joao.p.souza@azime.com.br', 'ana@alinare.com.br', ' Beto@NOVITAH.com.br '];
     for (const bruto of validos) {
       const email = normalizarEmailCorporativo(bruto);
       expect(passa('Verificar_destinatario', payload(email, 'x')), email).toBe(true);
     }
-    for (const invalido of ['a@sub.azime.com.br', 'a@azime.com.br.evil.com', 'a@@azime.com.br', 'a@evilazime.com.br', 'a@outro.com', 'sem-arroba']) {
+    for (const invalido of ['a@sub.azime.com.br', 'a@azime.com.br.evil.com', 'a@@azime.com.br', 'a@evilazime.com.br', 'a@outro.com', 'sem-arroba', 'a@alinare.com.br.evil.com', 'a@evilnovitah.com.br', 'a@sub.alinare.com.br', 'a@novitah.com']) {
       expect(() => normalizarEmailCorporativo(invalido), invalido).toThrow();
       expect(passa('Verificar_destinatario', payload(invalido, 'x')), invalido).toBe(false);
     }
@@ -204,8 +204,9 @@ describe('contrato do convite × código', () => {
   });
 
   it('o exemplo do contrato é o payload exato, sem token real, e passa pela mesma validação de domínio', () => {
-    const bloco = /```json\n([\s\S]*?)```/.exec(contrato)![1];
-    const exemplo = JSON.parse(bloco);
+    const bloco = /```json\r?\n([\s\S]*?)```/.exec(contrato);
+    expect(bloco, 'o contrato deve conter um bloco JSON').toBeTruthy();
+    const exemplo = JSON.parse(bloco![1]);
     expect(Object.keys(exemplo).sort()).toEqual(['acao', 'canal', 'destinatario', 'evento', 'idempotency_key', 'versao']);
     expect(exemplo).toMatchObject({ versao: 1, evento: 'convite_acesso', canal: 'email' });
     expect(exemplo.destinatario.email.endsWith('@azime.com.br')).toBe(true);

@@ -81,7 +81,7 @@ describe('cadastro por convite na tela de usuários', () => {
     expect(mocks.sucesso).toHaveBeenCalledWith(expect.stringContaining('servidor SMTP aceitou'));
   });
 
-  it.each(['pessoa@gmail.com', 'pessoa@azime.com.br.outrodominio.com', 'pessoa@sub.azime.com.br', ''])(
+  it.each(['pessoa@gmail.com', 'pessoa@azime.com.br.outrodominio.com', 'pessoa@sub.azime.com.br', '', 'pessoa@evilnovitah.com.br', 'pessoa@alinare.com'])(
     'recusa o e-mail %j antes de chamar o backend',
     async (email) => {
       await abrirNovo(email);
@@ -93,6 +93,13 @@ describe('cadastro por convite na tela de usuários', () => {
 
   it('aceita espaços e maiúsculas nas pontas (a normalização final é do serviço e do backend)', async () => {
     await abrirNovo('  Pessoa.Nova@AZIME.com.br  ');
+    fireEvent.click(salvar());
+    await waitFor(() => expect(mocks.convidarUsuario).toHaveBeenCalledTimes(1));
+  });
+
+  it.each([' Ana.Souza@ALINARE.com.br', 'beto@novitah.com.br'])('aceita os domínios autorizados das empresas: %j', async (email) => {
+    await abrirNovo(email);
+    expect(screen.getByText(/Somente endereços @azime\.com\.br, @alinare\.com\.br ou @novitah\.com\.br\./)).toBeInTheDocument();
     fireEvent.click(salvar());
     await waitFor(() => expect(mocks.convidarUsuario).toHaveBeenCalledTimes(1));
   });

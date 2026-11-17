@@ -47,11 +47,12 @@ export function validarAmbienteProducao(env) {
     }
   }
 
-  const chave = (env.VITE_SUPABASE_ANON_KEY ?? '').trim();
+  const nomeChave = env.VITE_SUPABASE_PUBLISHABLE_KEY ? 'VITE_SUPABASE_PUBLISHABLE_KEY' : 'VITE_SUPABASE_ANON_KEY';
+  const chave = (env.VITE_SUPABASE_PUBLISHABLE_KEY ?? env.VITE_SUPABASE_ANON_KEY ?? '').trim();
   if (!chave) {
-    erros.push('VITE_SUPABASE_ANON_KEY não está definida. Informe a chave pública (anon ou publishable).');
+    erros.push('VITE_SUPABASE_PUBLISHABLE_KEY não está definida (compatibilidade: VITE_SUPABASE_ANON_KEY). Informe a chave pública.');
   } else if (chave.startsWith('sb_secret_') || papelDoJwt(chave) === 'service_role') {
-    erros.push('VITE_SUPABASE_ANON_KEY contém uma chave service_role/secreta. Use somente a chave pública.');
+    erros.push(`${nomeChave} contém uma chave service_role/secreta. Use somente a chave pública.`);
   }
 
   return erros;
@@ -68,5 +69,5 @@ if (executadoDiretamente) {
     console.error('No Railway, defina as variáveis no serviço (Variables) e faça um novo deploy. Veja docs/RAILWAY.md.');
     process.exit(1);
   }
-  console.log('Ambiente de produção verificado: VITE_SUPABASE_URL e VITE_SUPABASE_ANON_KEY presentes (valores não exibidos).');
+  console.log('Ambiente de produção verificado: VITE_SUPABASE_URL e chave pública presentes (valores não exibidos).');
 }

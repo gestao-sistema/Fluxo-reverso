@@ -7,6 +7,7 @@ import type { ReversaEmissaoResumo, Solicitacao } from '../../types';
 import EmissaoDatasResumo from './EmissaoDatasResumo';
 import VisualizadorPdf from '../ui/VisualizadorPdf';
 import { validarDatasEmissao } from '../../lib/emissaoDatas';
+import { decidirPreenchimento, type DecisaoPreenchimento } from '../../lib/rastreioCorreios';
 
 interface EtiquetaReversaProps {
   solicitacao: Solicitacao;
@@ -32,15 +33,96 @@ async function cabecalhoPdfInvalido(arquivo: File): Promise<boolean> {
   }
 }
 
-async function lerCodigos(arquivo: File): Promise<{ codigoAutorizacao?: string; codigoRastreio?: string }> {
+interface CodigosLidos {
+  codigoAutorizacao?: string;
+  /** Códigos de rastreio distintos com dígito verificador correto. */
+  codigosRastreio: string[];
+  /** Algum código veio da imagem (OCR), não do texto do PDF. */
+  porOcr: boolean;
+}
+
+// A leitura só auxilia a conferência: não aprova, não registra postagem nem encerra nada.
+// O OCR só é tentado quando o texto do PDF não traz o código de rastreio (PDF digitalizado).
+async function lerCodigos(arquivo: File): Promise<CodigosLidos> {
   const { lerEtiquetaPdf } = await import('../../lib/etiquetaPdf');
   const leitura = await lerEtiquetaPdf(arquivo, undefined, {
-    camposNecessarios: ['codigo_autorizacao', 'codigo_rastreio'],
+    camposNecessarios: ['codigo_rastreio'],
   });
   return {
     ...(leitura.campos.codigo_autorizacao ? { codigoAutorizacao: leitura.campos.codigo_autorizacao } : {}),
-    ...(leitura.campos.codigo_rastreio ? { codigoRastreio: leitura.campos.codigo_rastreio } : {}),
+    codigosRastreio: leitura.campos.codigos_rastreio ?? [],
+    porOcr: leitura.metodo === 'ocr',
   };
+}
+
+interface ResultadoLeitura {
+  rastreio: DecisaoPreenchimento;
+  autorizacao: DecisaoPreenchimento;
+  porOcr: boolean;
+}
+
+interface AvisoLeituraProps {
+  leitura: ResultadoLeitura;
+  rastreioAtual: string;
+  desabilitado: boolean;
+  onUsarRastreio: (codigo: string) => void;
+  onUsarAutorizacao: (codigo: string) => void;
+}
+
+/** Explica o que a leitura do PDF fez com cada código; nada é confirmado sem o clique em "Confirmar". */
+function AvisoLeitura({ leitura, rastreioAtual, desabilitado, onUsarRastreio, onUsarAutorizacao }: AvisoLeituraProps) {
+  const { rastreio, autorizacao, porOcr } = leitura;
+  const origem = porOcr ? 'lido da imagem do PDF' : 'lido do PDF';
+  const botaoCodigo = (codigo: string, aoUsar: (valor: string) => void, rotulo?: string) => (
+    <button
+      key={codigo}
+      type="button"
+      onClick={() => aoUsar(codigo)}
+      disabled={desabilitado}
+      aria-pressed={rastreioAtual === codigo}
+      className="rounded-md border border-blue-300 bg-white px-2 py-1 font-mono text-xs font-semibold text-blue-900 hover:bg-blue-100 disabled:opacity-60"
+    >
+      {rotulo ?? codigo}
+    </button>
+  );
+
+  return (
+    <div className="space-y-2 text-xs" role="status" aria-label="Resultado da leitura do PDF">
+      {rastreio.situacao === 'preenchido' && (
+        <p className="text-blue-900">Código de rastreamento {origem}: <strong className="font-mono">{rastreio.valor}</strong>. Confira antes de confirmar.</p>
+      )}
+      {rastreio.situacao === 'confirmado' && (
+        <p className="text-blue-900">O PDF traz o mesmo código de rastreamento já informado.</p>
+      )}
+      {rastreio.situacao === 'mantido' && (
+        <div className="space-y-1 text-amber-900">
+          <p>O PDF traz outro código de rastreamento. O código já informado foi mantido; troque só se o do PDF for o correto.</p>
+          <div className="flex flex-wrap gap-2">{rastreio.candidatos.map((codigo) => botaoCodigo(codigo, onUsarRastreio, `Usar ${codigo}`))}</div>
+        </div>
+      )}
+      {rastreio.situacao === 'escolher' && (
+        <div className="space-y-1 text-amber-900">
+          <p>O PDF traz mais de um código de rastreamento. Escolha o desta etiqueta:</p>
+          <div className="flex flex-wrap gap-2">{rastreio.candidatos.map((codigo) => botaoCodigo(codigo, onUsarRastreio))}</div>
+        </div>
+      )}
+      {rastreio.situacao === 'nenhum' && (
+        <p className="text-amber-900">
+          Não identifiquei um código de rastreamento válido neste PDF. Se a etiqueta tiver um, digite-o.
+          {' '}PDF digitalizado (imagem) pode não ser lido.
+        </p>
+      )}
+      {autorizacao.situacao === 'preenchido' && (
+        <p className="text-blue-900">Código de autorização {origem}. Confira antes de confirmar.</p>
+      )}
+      {autorizacao.situacao === 'mantido' && (
+        <div className="space-y-1 text-amber-900">
+          <p>O PDF traz outro código de autorização. O já informado foi mantido.</p>
+          <div className="flex flex-wrap gap-2">{autorizacao.candidatos.map((codigo) => botaoCodigo(codigo, onUsarAutorizacao, `Usar ${codigo}`))}</div>
+        </div>
+      )}
+    </div>
+  );
 }
 
 export default function EtiquetaReversa({ solicitacao, podeEmitir, onAlterada }: EtiquetaReversaProps) {
@@ -61,6 +143,7 @@ export default function EtiquetaReversa({ solicitacao, podeEmitir, onAlterada }:
   const [motivoDetalhe, setMotivoDetalhe] = useState('');
   const [lendoPdf, setLendoPdf] = useState(false);
   const [erroLeitura, setErroLeitura] = useState('');
+  const [leitura, setLeitura] = useState<ResultadoLeitura | null>(null);
   const [salvando, setSalvando] = useState(false);
   const salvandoRef = useRef(false);
   const [erroAnexo, setErroAnexo] = useState('');
@@ -119,20 +202,29 @@ export default function EtiquetaReversa({ solicitacao, podeEmitir, onAlterada }:
 
     setArquivo(selecionado);
     const recuperarEmissao = temEmissaoAtual && !emissao?.pdf_path;
+    // Emissão já gravada sem PDF: os códigos dela são o ponto de partida e não são trocados em silêncio
+    const autorizacaoInicial = recuperarEmissao ? emissao.codigo_autorizacao ?? '' : '';
+    const rastreioInicial = recuperarEmissao ? emissao.codigo_rastreio ?? '' : '';
     setEmissaoId(recuperarEmissao ? emissao.id : crypto.randomUUID());
-    setCodigoAutorizacao(recuperarEmissao ? emissao.codigo_autorizacao ?? '' : '');
-    setCodigoRastreio(recuperarEmissao ? emissao.codigo_rastreio ?? '' : '');
+    setCodigoAutorizacao(autorizacaoInicial);
+    setCodigoRastreio(rastreioInicial);
     setEmitidaEm(recuperarEmissao ? emissao.emitida_em ?? '' : '');
     setValidaAte(recuperarEmissao ? emissao.valida_ate ?? '' : '');
     setMotivo('');
     setMotivoDetalhe('');
     setErroLeitura('');
+    setLeitura(null);
     setLendoPdf(true);
     try {
       const extraidos = await lerCodigos(selecionado);
-      if (extraidos.codigoAutorizacao) setCodigoAutorizacao(extraidos.codigoAutorizacao);
-      if (extraidos.codigoRastreio) setCodigoRastreio(extraidos.codigoRastreio);
-    } catch {
+      const rastreio = decidirPreenchimento(rastreioInicial, extraidos.codigosRastreio);
+      const autorizacao = decidirPreenchimento(autorizacaoInicial, extraidos.codigoAutorizacao ? [extraidos.codigoAutorizacao] : []);
+      setCodigoRastreio(rastreio.valor);
+      setCodigoAutorizacao(autorizacao.valor);
+      setLeitura({ rastreio, autorizacao, porOcr: extraidos.porOcr });
+    } catch (erro) {
+      // A causa técnica (ex.: worker do pdf.js bloqueado) fica no console; a pessoa segue pela digitação
+      console.error('Leitura automática da etiqueta falhou.', erro);
       setErroLeitura('Não consegui ler os códigos do PDF. Preencha os campos.');
     } finally {
       setLendoPdf(false);
@@ -149,6 +241,7 @@ export default function EtiquetaReversa({ solicitacao, podeEmitir, onAlterada }:
     setMotivo('');
     setMotivoDetalhe('');
     setErroLeitura('');
+    setLeitura(null);
     setErroAnexo('');
   };
 
@@ -341,6 +434,15 @@ export default function EtiquetaReversa({ solicitacao, podeEmitir, onAlterada }:
             </div>
             {lendoPdf && <p className="text-xs text-blue-800" role="status">Lendo o PDF…</p>}
             {erroLeitura && <p className="text-xs text-amber-800" role="status">{erroLeitura}</p>}
+            {leitura && !lendoPdf && (
+              <AvisoLeitura
+                leitura={leitura}
+                rastreioAtual={codigoRastreio}
+                desabilitado={salvando}
+                onUsarRastreio={(codigo) => setCodigoRastreio(codigo)}
+                onUsarAutorizacao={(codigo) => setCodigoAutorizacao(codigo)}
+              />
+            )}
             <div className="grid gap-3 sm:grid-cols-2">
               {campoCodigo('Código de autorização de postagem', codigoAutorizacao, setCodigoAutorizacao)}
               {campoCodigo('Código de rastreamento', codigoRastreio, setCodigoRastreio, '(opcional)')}

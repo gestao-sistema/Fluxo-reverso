@@ -19,20 +19,33 @@ import {
 } from '../_shared/smtp-contract.ts';
 
 // >>> e-mail corporativo (idêntico em src/lib/emailCorporativo.ts; src/test/emailCorporativoParidade.test.ts compara o texto)
-export const DOMINIO_CONVITE = 'azime.com.br';
+/** Domínios dos destinatários de convite (não confundir com o remetente SMTP_FROM). Comparação exata. */
+export const DOMINIOS_CONVITE = ['azime.com.br', 'alinare.com.br', 'novitah.com.br'] as const;
+/** Domínio usado como exemplo nos textos da tela. */
+export const DOMINIO_CONVITE = DOMINIOS_CONVITE[0];
+/** "@azime.com.br, @alinare.com.br ou @novitah.com.br", para mensagens e ajuda. */
+export const DOMINIOS_CONVITE_TEXTO = DOMINIOS_CONVITE.map((dominio) => '@' + dominio)
+  .join(', ')
+  .replace(/, ([^,]+)$/, ' ou $1');
 
 const PARTE_LOCAL_EMAIL = /^[a-z0-9](?:[a-z0-9._+-]{0,62}[a-z0-9])?$/;
 
 /**
- * Normaliza (espaços externos e caixa) e aceita somente endereços do domínio exato do convite.
- * Recusa subdomínios, sufixos (azime.com.br.outro.com) e endereços sem parte local válida.
+ * Normaliza (espaços externos e caixa) e aceita somente endereços de um dos domínios exatos do convite.
+ * Recusa subdomínios, sufixos (azime.com.br.outro.com), domínios parecidos (evilazime.com.br)
+ * e endereços sem parte local válida.
  */
 export function normalizarEmailCorporativo(entrada: unknown): string {
   const email = typeof entrada === 'string' ? entrada.trim().toLowerCase() : '';
   if (!email) throw new Error('Informe o e-mail corporativo.');
   const partes = email.split('@');
-  if (partes.length !== 2 || partes[1] !== DOMINIO_CONVITE || !PARTE_LOCAL_EMAIL.test(partes[0]) || partes[0].includes('..')) {
-    throw new Error(`Informe um e-mail corporativo do domínio @${DOMINIO_CONVITE}.`);
+  if (
+    partes.length !== 2
+    || !(DOMINIOS_CONVITE as readonly string[]).includes(partes[1])
+    || !PARTE_LOCAL_EMAIL.test(partes[0])
+    || partes[0].includes('..')
+  ) {
+    throw new Error(`Informe um e-mail corporativo dos domínios ${DOMINIOS_CONVITE_TEXTO}.`);
   }
   return email;
 }
@@ -117,11 +130,38 @@ export function origemAplicativoValida(valor: string | undefined): URL | null {
   return url;
 }
 
+const hostLocal = (hostname: string) => hostname === 'localhost' || hostname === '127.0.0.1';
+
+/**
+ * Projeto Supabase hospedado (SUPABASE_URL em HTTPS e fora da máquina local). Na pilha local da CLI
+ * a função recebe http://kong:8000, e o localhost continua valendo para desenvolvimento.
+ */
+export function supabaseHospedado(env: Record<string, string | undefined>): boolean {
+  try {
+    const url = new URL(env.SUPABASE_URL ?? '');
+    return url.protocol === 'https:' && !hostLocal(url.hostname);
+  } catch {
+    return false;
+  }
+}
+
+/** APP_BASE_URL aponta para a máquina local, mas o backend é o hospedado: o link não abriria para ninguém. */
+export function appBaseUrlLocalEmProjetoHospedado(env: Record<string, string | undefined>): boolean {
+  const origem = origemAplicativoValida(env.APP_BASE_URL);
+  return origem !== null && hostLocal(origem.hostname) && supabaseHospedado(env);
+}
+
+/** Origem usada nos links de convite e definição de senha; null quando não pode ser usada neste ambiente. */
+export function origemDoAplicativo(env: Record<string, string | undefined>): URL | null {
+  if (appBaseUrlLocalEmProjetoHospedado(env)) return null;
+  return origemAplicativoValida(env.APP_BASE_URL);
+}
+
 /** Chave própria dos convites; não depende da habilitação do worker de notificações. */
 export function convitesHabilitados(env: Record<string, string | undefined>): boolean {
   return env.CONVITE_TRANSPORTE === 'smtp'
     && smtpConfigurado(env)
-    && origemAplicativoValida(env.APP_BASE_URL) !== null;
+    && origemDoAplicativo(env) !== null;
 }
 
 /** 'invite': convite novo. 'recovery': conta que aceitou o convite mas não definiu a senha. */
@@ -209,6 +249,10 @@ export function criarServicoConvite(deps: DependenciasConvite) {
     const base = { usuario_id: usuarioId, email, conta_criada: contaCriada, link: tipo === 'recovery' ? 'definicao_senha' as const : 'convite' as const };
 
     if (!convitesHabilitados(deps.env)) {
+      if (appBaseUrlLocalEmProjetoHospedado(deps.env)) {
+        // Sem valor no log: só o motivo. O convite fica preparado e é reenviado depois de corrigir o segredo.
+        log('[convite] envio desabilitado: APP_BASE_URL aponta para endereço local num projeto hospedado.');
+      }
       const { error } = await admin.rpc('admin_convite_preparar', { p_usuario_id: usuarioId, p_email: email, p_convidado_por: chamadorId });
       if (error) {
         log('[convite] registro do convite falhou:', error.code ?? 'erro');
@@ -258,7 +302,7 @@ export function criarServicoConvite(deps: DependenciasConvite) {
     let chamouSmtp = false;
     try {
       // Reenvio: o convite pendente recebe um token novo e o anterior deixa de valer (GoTrue).
-      const origem = origemAplicativoValida(deps.env.APP_BASE_URL)!;
+      const origem = origemDoAplicativo(deps.env)!;
       const { data: gerado, error: erroLink } = await admin.auth.admin.generateLink({
         type: tipo, email, options: { redirectTo: new URL(ROTA_DEFINIR_SENHA, origem).toString() },
       });

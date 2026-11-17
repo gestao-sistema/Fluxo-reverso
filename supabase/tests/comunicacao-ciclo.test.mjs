@@ -221,7 +221,7 @@ describe('rodadas de aprovação', () => {
     assert.equal((await tarefas()).length, 9);
   });
 
-  it('não avisa aprovadores de outro setor ou empresa e respeita a autoaprovação configurada', async () => {
+  it('não avisa aprovadores de outro setor ou empresa, nem o autor; não há autoaprovação para ligar', async () => {
     const financeiro = await novoPedido(u.solicitante, 'Alinare', 'Setor financeiro', { setor: 'Financeiro' });
     const destinos = (await filasDoPedido(financeiro.id, 'aprovacao_pendente')).map((l) => l.destinatario_id);
     assert.ok(destinos.includes(u.aprovadorFin.id));
@@ -231,13 +231,11 @@ describe('rodadas de aprovação', () => {
     const proprio = await novoPedido(u.solicitanteAprovador, 'Alinare', 'Autor é aprovador');
     assert.ok(!(await filasDoPedido(proprio.id, 'aprovacao_pendente')).some((l) => l.destinatario_id === u.solicitanteAprovador.id));
 
-    await db.query('update public.aprovacao_config set permitir_autoaprovacao = true where id');
-    try {
-      const comPermissao = await novoPedido(u.solicitanteAprovador, 'Alinare', 'Autoaprovação permitida');
-      assert.ok((await filasDoPedido(comPermissao.id, 'aprovacao_pendente')).some((l) => l.destinatario_id === u.solicitanteAprovador.id));
-    } finally {
-      await db.query('update public.aprovacao_config set permitir_autoaprovacao = false where id');
-    }
+    // Nem o dono do banco liga a autoaprovação (CHECK de 20261112100000)
+    const ligar = await db.query('update public.aprovacao_config set permitir_autoaprovacao = true where id').then(() => null, (e) => e);
+    assert.equal(ligar?.code, '23514');
+    const outro = await novoPedido(u.solicitanteAprovador, 'Alinare', 'Autor continua fora da tarefa');
+    assert.ok(!(await filasDoPedido(outro.id, 'aprovacao_pendente')).some((l) => l.destinatario_id === u.solicitanteAprovador.id));
   });
 });
 

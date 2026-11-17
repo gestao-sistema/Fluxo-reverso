@@ -38,7 +38,8 @@ describe('NC opcional na demonstração', () => {
   it('as opções oferecidas são só da empresa do pedido e abertas, e usam os UUIDs', async () => {
     const alinare = await demoNcService.opcoesParaReversa('Alinare');
     const novitah = await demoNcService.opcoesParaReversa('Novitah');
-    expect(alinare.map((o) => o.id)).toEqual([ID_NC_DEMO[2403]]); // 2401 está encerrada; 2402 é da Novitah
+    // 2401 está encerrada; 2402 é da Novitah; 2404 e 2405 são registros novos abertos da Alinare
+    expect(alinare.map((o) => o.id).sort()).toEqual([ID_NC_DEMO[2403], ID_NC_DEMO[2404], ID_NC_DEMO[2405]].sort());
     expect(novitah.map((o) => o.id)).toEqual([ID_NC_DEMO[2402]]);
     expect(formSchema.safeParse({ ...base, nc_id: alinare[0].id }).success).toBe(true);
   });

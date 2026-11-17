@@ -4,4 +4,9 @@ site_url = "http://localhost:5173"
 additional_redirect_urls = ["http://localhost:5173/definir-senha"]
 
 [functions.comunicacao-etiqueta]
-verify_jwt = true
+# The handler compares apikey/Bearer against configured new and legacy secret keys.
+verify_jwt = false
+
+[functions.correios-rastreio]
+# The handler validates user JWTs with Auth and cron keys with constant-time comparison.
+verify_jwt = false

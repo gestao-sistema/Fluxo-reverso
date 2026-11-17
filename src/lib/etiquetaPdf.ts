@@ -1,6 +1,7 @@
 import { createWorker } from 'tesseract.js';
 import { GlobalWorkerOptions, getDocument } from 'pdfjs-dist';
 import pdfWorkerUrl from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
+import { codigosRastreioNoTexto } from './rastreioCorreios';
 
 export interface CamposEtiqueta {
   nome_cliente?: string;
@@ -8,12 +9,17 @@ export interface CamposEtiqueta {
   numero_endereco?: string;
   cep?: string;
   codigo_autorizacao?: string;
+  /** Só quando o PDF traz exatamente um código válido (dígito verificador S10). */
   codigo_rastreio?: string;
+  /** Todos os códigos de rastreio distintos e válidos encontrados (para conferência quando há mais de um). */
+  codigos_rastreio?: string[];
 }
 
 export interface LeituraEtiqueta {
   campos: CamposEtiqueta;
   metodo: 'texto' | 'ocr';
+  /** O OCR era necessário mas não pôde rodar (ex.: sem acesso aos arquivos do OCR): valem só os campos do texto. */
+  ocrIndisponivel?: boolean;
 }
 
 type ProgressoLeitura = (etapa: 'texto' | 'ocr', progresso: number) => void;
@@ -42,8 +48,9 @@ export function extrairCamposEtiqueta(texto: string): CamposEtiqueta {
   const linhasNormalizadas = linhasCliente.map(normalizar);
   const linhaCep = linhasCliente.find((linha) => /\b\d{5}-?\d{3}\b/.test(linha));
   const cep = linhaCep?.match(/\b\d{5}-?\d{3}\b/)?.[0].replace(/\D/g, '');
-  const codigoRastreio = texto.toUpperCase().match(/(?:^|[^A-Z0-9])([A-Z][\s.-]*[A-Z](?:[\s.-]*\d){9}[\s.-]*B[\s.-]*R)(?=$|[^A-Z0-9])/m)?.[1]
-    ?.replace(/[^A-Z0-9]/g, '');
+  // Só códigos com dígito verificador correto; com mais de um, nenhum é escolhido sozinho
+  const codigosRastreio = codigosRastreioNoTexto(texto);
+  const codigoRastreio = codigosRastreio.length === 1 ? codigosRastreio[0] : undefined;
   const indiceAutorizacao = normalizadas.findIndex((linha) => /\bautorizacao\b/.test(linha));
   let valorAutorizacao = indiceAutorizacao < 0 ? '' : linhas[indiceAutorizacao]
     .replace(/^(?:(?:c[oó]d(?:igo)?\.?|codigo|numero|número)\s+(?:(?:da|de)\s+)?)?autoriza[cç](?:ao|ão)(?:\s+de\s+postagem)?\s*(?:n[ºo.]?\s*)?[:#-]?\s*/i, '')
@@ -52,7 +59,9 @@ export function extrairCamposEtiqueta(texto: string): CamposEtiqueta {
     valorAutorizacao = linhas[indiceAutorizacao + 1] ?? '';
   }
   const codigoAutorizacao = valorAutorizacao.match(/[A-Z0-9][A-Z0-9-]{3,59}/i)?.[0];
-  const autorizacaoValida = codigoAutorizacao && codigoAutorizacao.toUpperCase() !== codigoRastreio ? codigoAutorizacao.toUpperCase() : undefined;
+  const autorizacaoValida = codigoAutorizacao && !codigosRastreio.includes(codigoAutorizacao.toUpperCase())
+    ? codigoAutorizacao.toUpperCase()
+    : undefined;
 
   const nomeExplicito = linhasCliente
     .map((linha) => linha.match(/^(?:nome(?: do remetente)?|remetente|sender)\s*[:\-]\s*(.+)$/i)?.[1]?.trim())
@@ -103,6 +112,7 @@ export function extrairCamposEtiqueta(texto: string): CamposEtiqueta {
     ...(cep?.length === 8 ? { cep } : {}),
     ...(autorizacaoValida ? { codigo_autorizacao: autorizacaoValida } : {}),
     ...(codigoRastreio ? { codigo_rastreio: codigoRastreio } : {}),
+    ...(codigosRastreio.length > 0 ? { codigos_rastreio: codigosRastreio } : {}),
   };
 }
 
@@ -195,11 +205,18 @@ export async function lerEtiquetaPdf(
     let textoOcr: string[];
     try {
       textoOcr = await lerOcr(documento, progresso, camposNecessarios);
-    } catch {
+    } catch (erroOcr) {
+      // O OCR é complementar: sem ele, o que já foi lido do texto do PDF continua valendo
+      console.warn('OCR da etiqueta indisponível; usando só o texto do PDF.', erroOcr);
+      if (Object.keys(camposTexto).length > 0) return { campos: camposTexto, metodo: 'texto', ocrIndisponivel: true };
       throw new Error('Não foi possível iniciar o OCR. Verifique a conexão e tente novamente, ou preencha os campos manualmente.');
     }
     const camposOcr = extrairCamposEtiqueta(textoOcr.join('\n'));
     const campos = { ...camposOcr, ...camposTexto };
+    // Códigos de rastreio: o texto do PDF prevalece; o OCR só entra quando o texto não trouxe nenhum
+    if (camposTexto.codigos_rastreio?.length) {
+      if (!camposTexto.codigo_rastreio) delete campos.codigo_rastreio;
+    }
     if (Object.keys(campos).length === 0) {
       throw new Error('Não encontrei dados legíveis nesta etiqueta. Preencha os campos manualmente.');
     }

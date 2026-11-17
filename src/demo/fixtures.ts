@@ -25,6 +25,8 @@ export const ID_NC_DEMO: Record<number, string> = {
   2401: '0b2f9a61-2401-4a01-8a01-000000002401',
   2402: '0b2f9a61-2402-4a02-8a02-000000002402',
   2403: '0b2f9a61-2403-4a03-8a03-000000002403',
+  2404: '0b2f9a61-2404-4a04-8a04-000000002404',
+  2405: '0b2f9a61-2405-4a05-8a05-000000002405',
 };
 
 function solicitacao(
@@ -56,7 +58,7 @@ function solicitacao(
 export const SOLICITACOES_DEMO: Solicitacao[] = [
   solicitacao('01', 'Alinare', 'pendente', 0, { nome_cliente: 'Ateliê Aurora', nc_id: ID_NC_DEMO[2401], nc_numero: 2401, solicitado_por: 'demo-solicitante-alinare', solicitado_por_nome: 'Camila Oliveira', aprovacao_status: 'aguardando_aprovacao', aprovacao_legada: false }),
   solicitacao('02', 'Novitah', 'pendente', 1, { nome_cliente: 'Boutique Horizonte', nc_id: ID_NC_DEMO[2402], nc_numero: 2402, motivo: 'Mercadoria Errada', solicitado_por: 'demo-solicitante-novitah', solicitado_por_nome: 'Rafael Mendes', aprovacao_status: 'aguardando_aprovacao', aprovacao_legada: false }),
-  solicitacao('03', 'Alinare', 'pendente', 2, { nome_cliente: 'Casa Amora', nc_id: ID_NC_DEMO[2403], nc_numero: 2403, motivo: 'Erro expedição – endereço incorreto', aprovacao_status: 'aguardando_aprovacao', aprovacao_legada: false }),
+  solicitacao('03', 'Alinare', 'pendente', 2, { nome_cliente: 'Casa Amora', nc_id: ID_NC_DEMO[2403], nc_numero: 2403, motivo: 'Erro expedição – endereço incorreto', solicitado_por: 'demo-solicitante-alinare', solicitado_por_nome: 'Camila Oliveira', aprovacao_status: 'aguardando_aprovacao', aprovacao_legada: false }),
   solicitacao('04', 'Novitah', 'pendente', 3, { nome_cliente: 'Loja Violeta', autorizacao: 'Paula Mendes', anotacoes: 'Endereço informado não corresponde ao cadastro.', solicitado_por: 'demo-solicitante-novitah', solicitado_por_nome: 'Rafael Mendes', aprovacao_status: 'rejeitada', aprovacao_legada: false, aprovacao_justificativa: 'Endereço informado não corresponde ao cadastro.' }),
   solicitacao('05', 'Alinare', 'pendente', 2, { nome_cliente: 'Estilo Urbano', solicitado_por: 'demo-solicitante-alinare', solicitado_por_nome: 'Camila Oliveira', aprovacao_status: 'aprovada', aprovacao_legada: false }),
   solicitacao('06', 'Novitah', 'pendente', 4, { nome_cliente: 'Mundo da Moda', solicitado_por: 'demo-solicitante-novitah', solicitado_por_nome: 'Rafael Mendes', aprovacao_status: 'aprovada', aprovacao_legada: false }),
@@ -104,7 +106,26 @@ function nc(numero: number, status: NaoConformidade['status'], extras: Partial<N
   };
 }
 
-export const NCS_DEMO: NaoConformidade[] = [nc(2403, 'Aberta'), nc(2402, 'Em tratativa'), nc(2401, 'Encerrada')];
+// Registros novos (classificação explícita, sem origem antiga): mostram lista, painel e totais sem o legado.
+export const NCS_DEMO: NaoConformidade[] = [
+  nc(2403, 'Aberta'),
+  nc(2402, 'Em tratativa'),
+  nc(2401, 'Encerrada'),
+  nc(2404, 'Aberta', {
+    origem: null, tipo_problema: 'Endereço incorreto', causador: 'Comercial', area_registro: 'Expedição',
+    area_tratativa: 'Comercial', custo_situacao: 'Sim', cliente: 'Loja Nova Demonstração', vendedora: null,
+    descricao: 'Endereço digitado pela vendedora difere do pedido.', tipo_saida: 'Venda', como_identificada: 'Conferência da embalagem',
+    reembolso_correios: null, valor_reembolsado: null, custo_produto: 95, custo_frete_adicional: null, custo_multa_outros: null,
+    area_responsavel: null, evitavel: null, qtd_reversas: 0,
+  }),
+  nc(2405, 'Em tratativa', {
+    origem: null, tipo_problema: 'Outro', causador: 'A apurar', area_registro: null, area_tratativa: null,
+    custo_situacao: 'Em apuração', cliente: null, vendedora: null, romaneio: null, nf: null,
+    descricao: 'Peça recebida pela cliente não corresponde ao pedido; origem ainda em apuração.',
+    custo_produto: null, custo_frete_adicional: null, custo_multa_outros: null, valor_reembolsado: null,
+    area_responsavel: null, evitavel: null, qtd_reversas: 0,
+  }),
+];
 
 export const HISTORICO_NCS_DEMO: NcHistorico[] = NCS_DEMO.flatMap((item) => ([
   { id: `${item.id}-evento`, nc_id: item.id, created_at: item.created_at, user_nome: 'Júlia Nascimento', tipo: 'evento' as const, acao: 'Não conformidade registrada.' },

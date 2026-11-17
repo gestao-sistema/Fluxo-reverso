@@ -12,10 +12,11 @@ const APP = 'https://reverso.example.test';
 const SEGREDO_CLIENTE = 'segredo-cliente-oauth-NAO-LOGAR';
 const TOKEN_OAUTH = 'token-oauth-NAO-LOGAR';
 const FLUXO = 'https://flow.example.test/workflows/abc/triggers/manual/paths/invoke';
+const CHAVE_SUPABASE_TESTE = 'sb_secret_teste_nao_logar';
 
 const envConfigurado = {
   SUPABASE_URL: 'http://supabase.local',
-  SUPABASE_SERVICE_ROLE_KEY: 'chave-de-servico-NAO-LOGAR',
+  SUPABASE_SECRET_KEY: CHAVE_SUPABASE_TESTE,
   ETIQUETA_TRANSPORTE: 'power_automate',
   POWER_AUTOMATE_FLOW_URL: FLUXO,
   POWER_AUTOMATE_TENANT_ID: 'tenant-teste',
@@ -30,7 +31,9 @@ const jwt = (role) => `${base64url({ alg: 'HS256' })}.${base64url({ role })}.ass
 const requisicao = (role = 'service_role', metodo = 'POST') =>
   new Request('http://worker.local/functions/v1/comunicacao-etiqueta', {
     method: metodo,
-    headers: { Authorization: `Bearer ${jwt(role)}` },
+    headers: role === 'service_role'
+      ? { apikey: CHAVE_SUPABASE_TESTE }
+      : { Authorization: `Bearer ${jwt(role)}` },
     body: metodo === 'POST' ? JSON.stringify({ destinatario: 'invasor@example.test' }) : undefined,
   });
 
@@ -163,6 +166,12 @@ describe('worker de notificações: acesso, configuração e modo simulado', () 
     assert.equal((await rodar(instancia, requisicao('service_role', 'GET'))).status, 405);
     assert.equal((await rodar(instancia, requisicao('authenticated'))).status, 403);
     assert.equal((await rodar(instancia, requisicao('anon'))).status, 403);
+    const jwtDeServicoForjado = new Request('http://worker.local/functions/v1/comunicacao-etiqueta', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${jwt('service_role')}` },
+      body: JSON.stringify({ destinatario: 'invasor@example.test' }),
+    });
+    assert.equal((await rodar(instancia, jwtDeServicoForjado)).status, 403, 'uma claim forjada sem sb_secret não autentica');
     const semSupabase = worker({ env: { ...envConfigurado, SUPABASE_URL: undefined } });
     assert.equal((await rodar(semSupabase)).status, 503);
   });
@@ -478,7 +487,7 @@ describe('worker de notificações: contrato, resultados e autenticação', () =
       assert.ok(fetchFn.chamadas[0].sinal instanceof AbortSignal, 'o OAuth tem limite de tempo');
       assert.equal((await um("select status from public.reversa_comunicacoes_etiqueta where solicitacao_id = $1 and evento = 'pedido_criado'", [pedido.id])).status, 'falhou');
       const tudo = JSON.stringify([logs, resposta.corpo]);
-      for (const segredo of [SEGREDO_CLIENTE, TOKEN_OAUTH, envConfigurado.SUPABASE_SERVICE_ROLE_KEY, FLUXO, u.solicitante.email]) {
+      for (const segredo of [SEGREDO_CLIENTE, TOKEN_OAUTH, envConfigurado.SUPABASE_SECRET_KEY, FLUXO, u.solicitante.email]) {
         assert.ok(!tudo.includes(segredo), 'segredo, URL ou e-mail encontrado no log/resposta');
       }
     }

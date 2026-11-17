@@ -134,9 +134,25 @@
                     ]
                   },
                   {
-                    "endsWith": [
-                      "@toLower(triggerBody()?['destinatario']?['email'])",
-                      "@@azime.com.br"
+                    "or": [
+                      {
+                        "endsWith": [
+                          "@toLower(triggerBody()?['destinatario']?['email'])",
+                          "@@azime.com.br"
+                        ]
+                      },
+                      {
+                        "endsWith": [
+                          "@toLower(triggerBody()?['destinatario']?['email'])",
+                          "@@alinare.com.br"
+                        ]
+                      },
+                      {
+                        "endsWith": [
+                          "@toLower(triggerBody()?['destinatario']?['email'])",
+                          "@@novitah.com.br"
+                        ]
+                      }
                     ]
                   }
                 ]

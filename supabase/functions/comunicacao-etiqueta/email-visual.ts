@@ -104,16 +104,39 @@ export function montarEmailEtiquetaDisponivel(dados: DadosMensagemEtiqueta): str
     .botao-tabela, .botao-celula { width:100% !important; }
     .botao-link { display:block !important; }
   }
+  :root { color-scheme:light dark; supported-color-schemes:light dark; }
+  /* >>> modo escuro (idêntico nos dois e-mails; src/test/emailModoEscuro.test.ts confere) */
+  /* Apple Mail, iOS e webmails que respeitam o esquema declarado. */
   @media (prefers-color-scheme: dark) {
     .fundo-pagina { background-color:#0E0F13 !important; }
     .fundo-cartao { background-color:#1A1B22 !important; }
     .fundo-cabecalho { background-color:#111217 !important; }
+    .texto-marca { color:#F7F6F3 !important; }
+    .texto-submarca { color:#B9B4AA !important; }
     .texto-titulo { color:#F7F6F3 !important; }
     .texto-corpo { color:#E2DED7 !important; }
     .texto-nota { color:#C4BFB6 !important; }
     .texto-rodape { color:#A9A49B !important; }
     .linha { border-color:#34363F !important; }
+    .barra-ouro, .botao-celula, .botao-link { background-color:#B79B75 !important; }
+    .botao-link { color:#151F33 !important; }
   }
+  /* Outlook.com, novo Outlook e apps do Outlook ignoram a media query e recolorem sozinhos;
+     marcam o que recoloriram com data-ogsc (texto) e data-ogsb (fundo). Estas regras devolvem
+     as cores escolhidas: fundo escuro da marca, texto claro legível e botão dourado com texto escuro. */
+  [data-ogsb] .fundo-pagina { background-color:#0E0F13 !important; }
+  [data-ogsb] .fundo-cartao { background-color:#1A1B22 !important; }
+  [data-ogsb] .fundo-cabecalho { background-color:#111217 !important; }
+  [data-ogsb] .barra-ouro, [data-ogsb] .botao-celula, [data-ogsb] .botao-link { background-color:#B79B75 !important; }
+  [data-ogsc] .texto-marca { color:#F7F6F3 !important; }
+  [data-ogsc] .texto-submarca { color:#B9B4AA !important; }
+  [data-ogsc] .texto-titulo { color:#F7F6F3 !important; }
+  [data-ogsc] .texto-corpo { color:#E2DED7 !important; }
+  [data-ogsc] .texto-nota { color:#C4BFB6 !important; }
+  [data-ogsc] .texto-rodape { color:#A9A49B !important; }
+  [data-ogsc] .botao-link { color:#151F33 !important; }
+  [data-ogsc] .linha, [data-ogsb] .linha { border-color:#34363F !important; }
+  /* <<< modo escuro */
 </style>
 </head>
 <body class="fundo-pagina" style="margin:0;padding:0;background-color:${COR.pagina};">
@@ -123,9 +146,9 @@ export function montarEmailEtiquetaDisponivel(dados: DadosMensagemEtiqueta): str
   <table role="presentation" class="caixa" width="600" cellpadding="0" cellspacing="0" border="0" style="width:100%;max-width:600px;">
     <tr>
       <td class="fundo-cabecalho lateral" bgcolor="${COR.cabecalho}" style="background-color:${COR.cabecalho};padding:32px 40px 28px 40px;border-radius:12px 12px 0 0;">
-        <div style="font-family:${FONTE};font-size:20px;line-height:24px;font-weight:700;letter-spacing:6px;color:${COR.marca};">${MARCA}</div>
-        <table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr><td height="14" style="height:14px;line-height:14px;font-size:0;">&nbsp;</td></tr><tr><td width="40" height="2" bgcolor="${COR.ouro}" style="width:40px;height:2px;line-height:2px;font-size:2px;background-color:${COR.ouro};padding:0;">&nbsp;</td></tr></table>
-        <div style="font-family:${FONTE};font-size:13px;line-height:20px;letter-spacing:0.4px;color:${COR.submarca};padding-top:10px;">${escapar(SUBMARCA)}</div>
+        <div class="texto-marca" style="font-family:${FONTE};font-size:20px;line-height:24px;font-weight:700;letter-spacing:6px;color:${COR.marca};">${MARCA}</div>
+        <table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr><td height="14" style="height:14px;line-height:14px;font-size:0;">&nbsp;</td></tr><tr><td class="barra-ouro" width="40" height="2" bgcolor="${COR.ouro}" style="width:40px;height:2px;line-height:2px;font-size:2px;background-color:${COR.ouro};padding:0;">&nbsp;</td></tr></table>
+        <div class="texto-submarca" style="font-family:${FONTE};font-size:13px;line-height:20px;letter-spacing:0.4px;color:${COR.submarca};padding-top:10px;">${escapar(SUBMARCA)}</div>
       </td>
     </tr>
     <tr>

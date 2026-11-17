@@ -6,11 +6,11 @@ O worker de notificações envia pelo **Power Automate**: `canal=email` executa 
 
 ## Mecanismo escolhido e por quê
 
-`pg_cron` + `pg_net` + Supabase Vault, chamando a Edge Function `comunicacao-etiqueta`. É o mesmo mecanismo já usado no projeto para o rastreio dos Correios ([`src/sql/setup_cron_rastreio.sql`](../src/sql/setup_cron_rastreio.sql): job `correios-rastreio-30min`), as extensões já constam na base (`20260828171717_remote_commit.sql`) e a chave service_role fica no Vault, fora de arquivos. O front-end roda como site estático (Nginx no Railway) e não tem como executar tarefas; o repositório não tem CI. Por isso não foi introduzido outro agendador.
+`pg_cron` + `pg_net` + Supabase Vault, chamando a Edge Function `comunicacao-etiqueta`. É o mesmo mecanismo já usado no projeto para o rastreio dos Correios ([`src/sql/setup_cron_rastreio.sql`](../src/sql/setup_cron_rastreio.sql): job `correios-rastreio-30min`), as extensões já constam na migration local `20260828171717_remote_commit.sql` e a chave secreta do worker fica no Vault, fora de arquivos. O front-end roda como site estático (Nginx no Railway) e não tem como executar tarefas; o repositório não tem CI. Por isso não foi introduzido outro agendador.
 
-- Execução **autenticada**: a chamada leva `Authorization: Bearer <service_role>` lida do Vault a cada execução; a função tem `verify_jwt = true` e recusa qualquer outro papel.
+- Execução **autenticada**: o cron envia a chave secreta no cabeçalho `apikey`, lida do Vault a cada execução. A função usa `verify_jwt = false` no gateway e compara a chave recebida com a chave configurada antes de processar qualquer item.
 - **Não depende de navegador aberto.**
-- **Segredos protegidos**: `comunicacao_cron_url` e `comunicacao_cron_service_key` no Vault. Os scripts em [`supabase/agendamento/`](../supabase/agendamento) não contêm chave, URL de projeto nem destinatário (verificado em teste).
+- **Segredos protegidos**: `comunicacao_cron_url` e `comunicacao_cron_service_key` (nome histórico; valor atual é `sb_secret`) no Vault. Os scripts em [`supabase/agendamento/`](../supabase/agendamento) não contêm chave, URL de projeto nem destinatário (verificado em teste).
 - **Habilitar/desabilitar explícito**: [`habilitar-worker-comunicacao.sql`](../supabase/agendamento/habilitar-worker-comunicacao.sql) e [`desabilitar-worker-comunicacao.sql`](../supabase/agendamento/desabilitar-worker-comunicacao.sql), executados à mão no SQL Editor (primeiro em homologação). O primeiro recusa o ambiente sem extensões/segredos, com mensagem clara. O segundo remove só o job `comunicacao-reversa-5min`; fila e histórico ficam intactos.
 - **Trava do envio**: `ETIQUETA_TRANSPORTE`. Até `power_automate` e a configuração completa (URL do fluxo em HTTPS, OAuth e `APP_BASE_URL`), a função apenas **conta** pendências; não reserva itens, não altera tentativas e não marca envio. O agendamento existente não foi alterado.
 
@@ -25,16 +25,16 @@ O worker de notificações envia pelo **Power Automate**: `canal=email` executa 
 ## Habilitar (homologação primeiro)
 
 1. Habilitar `pg_cron` e `pg_net` (Database > Extensions) se ainda não estiverem.
-2. Publicar `comunicacao-etiqueta` com `verify_jwt = true` e configurar os secrets do Power Automate em ambiente seguro: `POWER_AUTOMATE_FLOW_URL`, `POWER_AUTOMATE_TENANT_ID`, `POWER_AUTOMATE_CLIENT_ID`, `POWER_AUTOMATE_CLIENT_SECRET`, `POWER_AUTOMATE_SCOPE`, `APP_BASE_URL` e `ETIQUETA_TRANSPORTE`. Manter o transporte simulado até validar o fluxo, o OAuth e as conexões do Outlook e do Teams. Nunca coloque segredo nem a URL do gatilho em arquivo versionado.
+2. Publicar `comunicacao-etiqueta` com `verify_jwt = false` (a função faz a validação explícita da chave secreta) e configurar os secrets do Power Automate em ambiente seguro: `POWER_AUTOMATE_FLOW_URL`, `POWER_AUTOMATE_TENANT_ID`, `POWER_AUTOMATE_CLIENT_ID`, `POWER_AUTOMATE_CLIENT_SECRET`, `POWER_AUTOMATE_SCOPE`, `APP_BASE_URL` e `ETIQUETA_TRANSPORTE`. Manter o transporte simulado até validar o fluxo, o OAuth e as conexões do Outlook e do Teams. Nunca coloque segredo nem a URL do gatilho em arquivo versionado.
 3. No SQL Editor, digitando os valores (nunca em arquivo/chat):
    ```sql
    select vault.create_secret('<URL-DO-PROJETO>/functions/v1/comunicacao-etiqueta', 'comunicacao_cron_url', 'URL da Edge Function comunicacao-etiqueta');
-   select vault.create_secret('<CHAVE-SERVICE-ROLE>', 'comunicacao_cron_service_key', 'Chave service_role do worker de comunicação');
+   select vault.create_secret('<SB_SECRET>', 'comunicacao_cron_service_key', 'Chave secreta do worker de comunicação');
    ```
 4. Executar `habilitar-worker-comunicacao.sql`. Conferir o job e as respostas (consultas comentadas no próprio arquivo). Em modo simulado a resposta é `{"modo":"simulado","envio_real":false,"alteracoes_na_fila":false,"pendentes":{…}}`.
 5. Só depois de conferir a fila (ver a seção 16 do contrato) e de uma homologação com um pedido real, habilitar `ETIQUETA_TRANSPORTE=power_automate`. Isso processa e-mail e Teams; não altera os convites.
 
-Rotacionou a chave service_role? Atualize o segredo com `vault.update_secret` e reexecute o script de habilitar.
+Ao trocar a chave secreta usada pelo cron, atualize o registro `comunicacao_cron_service_key` no Vault antes de desativar a chave anterior. O script lê o valor atualizado em cada chamada.
 
 ## Desabilitar
 

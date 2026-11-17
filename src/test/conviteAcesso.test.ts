@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import {
+  appBaseUrlLocalEmProjetoHospedado,
+  origemDoAplicativo,
+  supabaseHospedado,
   convitesHabilitados,
   criarServicoConvite,
   ErroConvite,
@@ -185,7 +188,9 @@ const linkDaMensagem = (html: string) => {
 describe('convite por e-mail corporativo', () => {
   it('normaliza o endereço e só aceita o domínio exato', () => {
     expect(normalizarEmailCorporativo('  Maria.Silva@AZIME.com.br  ')).toBe('maria.silva@azime.com.br');
-    for (const email of ['a@azime.com.br.outro', 'a@sub.azime.com.br', 'a..b@azime.com.br', 'a@@azime.com.br']) {
+    expect(normalizarEmailCorporativo(' Ana@Alinare.COM.BR')).toBe('ana@alinare.com.br');
+    expect(normalizarEmailCorporativo('beto@novitah.com.br ')).toBe('beto@novitah.com.br');
+    for (const email of ['a@azime.com.br.outro', 'a@sub.azime.com.br', 'a..b@azime.com.br', 'a@@azime.com.br', 'a@evilalinare.com.br', 'a@novitah.com.br.outro', 'a@alinare.com']) {
       expect(() => normalizarEmailCorporativo(email)).toThrow();
     }
   });
@@ -318,6 +323,35 @@ describe('convite por e-mail corporativo', () => {
     }
     expect(convitesHabilitados({ ...envSmtp, SMTP_SECURE: 'true' })).toBe(false);
     expect(convitesHabilitados({ ...envSmtp, APP_BASE_URL: 'http://app.example.test' })).toBe(false);
+  });
+
+  it('projeto hospedado com APP_BASE_URL local (situação de produção em 12/11/2026): não gera nem envia link', async () => {
+    const hospedado = { ...envSmtp, SUPABASE_URL: 'https://ymrrguubkqbxndhoxhor.supabase.co' };
+    expect(appBaseUrlLocalEmProjetoHospedado(hospedado)).toBe(true);
+    expect(convitesHabilitados(hospedado)).toBe(false);
+    for (const local of ['http://localhost:5173', 'http://127.0.0.1:5173']) {
+      expect(origemDoAplicativo({ ...hospedado, APP_BASE_URL: local })).toBeNull();
+    }
+    const a = ambiente({ env: hospedado });
+    const resultado = await a.service.convidar(administrador, entrada);
+    expect(resultado).toMatchObject({ estado: 'preparado', envio_habilitado: false, conta_criada: true });
+    expect(a.geracoesLink).toBe(0);
+    expect(a.enviosSmtp).toBe(0);
+    expect(a.logs.join('\n')).toMatch(/APP_BASE_URL aponta para endereço local/);
+    expect(a.logs.join('\n')).not.toContain('localhost');
+
+    // Com a URL pública (HTTPS), o mesmo projeto hospedado envia normalmente
+    const corrigido = { ...hospedado, APP_BASE_URL: 'https://reverso.example.test' };
+    expect(convitesHabilitados(corrigido)).toBe(true);
+    expect(origemDoAplicativo(corrigido)?.origin).toBe('https://reverso.example.test');
+  });
+
+  it('localhost continua válido no desenvolvimento (sem SUPABASE_URL ou pilha local da CLI)', () => {
+    expect(supabaseHospedado({})).toBe(false);
+    expect(supabaseHospedado({ SUPABASE_URL: 'http://kong:8000' })).toBe(false);
+    expect(supabaseHospedado({ SUPABASE_URL: 'http://127.0.0.1:54321' })).toBe(false);
+    expect(convitesHabilitados(envSmtp)).toBe(true);
+    expect(convitesHabilitados({ ...envSmtp, SUPABASE_URL: 'http://kong:8000' })).toBe(true);
   });
 
   it('o link usa origem confiável e valida o token_hash', () => {

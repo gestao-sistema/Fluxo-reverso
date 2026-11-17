@@ -5,6 +5,7 @@
 // Transporte: Power Automate (fluxo "Reverso — Notificações"). Uma chamada = um destinatário e um canal:
 // canal=email executa somente o Outlook; canal=teams executa somente o Teams. Não há SMTP aqui: convites e
 // definição de senha usam SMTP direto em outra Edge Function (admin-usuarios), com controle próprio.
+import { chamadaComChaveSecreta } from '../_shared/supabase-keys.ts';
 import {
   classificarRespostaFluxo,
   montarContratoComunicacao,
@@ -30,21 +31,9 @@ export interface DependenciasWorker {
   log?: (mensagem: string, detalhe?: string) => void;
 }
 
-function corpoToken(token: string): Record<string, unknown> | null {
-  try {
-    const parte = token.split('.')[1];
-    if (!parte) return null;
-    const base64 = parte.replace(/-/g, '+').replace(/_/g, '/');
-    return JSON.parse(atob(base64.padEnd(Math.ceil(base64.length / 4) * 4, '='))) as Record<string, unknown>;
-  } catch {
-    return null;
-  }
-}
-
-/** O gateway valida a assinatura (verify_jwt=true); aqui só se exige o papel de serviço. */
-function chamadaDeServico(req: Request): boolean {
-  const token = req.headers.get('authorization')?.replace(/^Bearer\s+/i, '') ?? '';
-  return corpoToken(token)?.role === 'service_role';
+/** Verificação local explícita usada com verify_jwt=false para aceitar sb_secret em apikey. */
+function chamadaDeServico(req: Request, env: Record<string, string | undefined>): boolean {
+  return chamadaComChaveSecreta(req, env.SUPABASE_SECRET_KEY ?? '', env.SUPABASE_SERVICE_ROLE_KEY ?? '');
 }
 
 function dadosRpc<T>(valor: T | T[] | null): T | null {
@@ -89,8 +78,8 @@ export function criarWorker(deps: DependenciasWorker) {
     if (req.method !== 'POST') return new Response('Method Not Allowed', { status: 405 });
     // Somente service_role aciona o worker. O corpo é ignorado: nenhum destinatário
     // nem mensagem vindos do navegador.
-    if (!chamadaDeServico(req)) return json({ erro: 'Acesso restrito ao worker.' }, 403);
-    if (!deps.env.SUPABASE_URL || !deps.env.SUPABASE_SERVICE_ROLE_KEY) {
+    if (!chamadaDeServico(req, deps.env)) return json({ erro: 'Acesso restrito ao worker.' }, 403);
+    if (!deps.env.SUPABASE_URL || !(deps.env.SUPABASE_SECRET_KEY || deps.env.SUPABASE_SERVICE_ROLE_KEY)) {
       return json({ erro: 'Worker sem configuracao do Supabase.' }, 503);
     }
     const cliente = deps.criarCliente();

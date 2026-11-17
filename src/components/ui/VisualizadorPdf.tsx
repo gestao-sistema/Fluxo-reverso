@@ -98,6 +98,7 @@ export default function VisualizadorPdf({ titulo, nomeArquivo, carregarUrl, onFe
       const dados = new Uint8Array(await resposta.arrayBuffer());
       if (!cancelado) setBytes(dados);
     })().catch((falha) => {
+      console.error('Visualizador de PDF: falha ao obter o arquivo (URL assinada ou download).', falha);
       if (!cancelado) setErro(falha instanceof Error ? falha.message : 'Não foi possível carregar o PDF.');
     });
     return () => { cancelado = true; };
@@ -112,7 +113,9 @@ export default function VisualizadorPdf({ titulo, nomeArquivo, carregarUrl, onFe
       tarefa = await abrirDocumento(bytes);
       const carregado = await tarefa.promise;
       if (!cancelado) setDocumento(carregado);
-    })().catch(() => {
+    })().catch((falha) => {
+      // A causa técnica (ex.: worker do pdf.js recusado pelo navegador) fica no console para diagnóstico
+      console.error('Visualizador de PDF: falha ao interpretar ou desenhar o documento.', falha);
       if (!cancelado) setErro('Não foi possível exibir este PDF. Use "Baixar" para abri-lo no seu leitor.');
     });
     return () => {
@@ -161,7 +164,9 @@ export default function VisualizadorPdf({ titulo, nomeArquivo, carregarUrl, onFe
         tarefas.push(tarefa);
         await tarefa.promise.catch(() => undefined);
       }
-    })().catch(() => {
+    })().catch((falha) => {
+      // A causa técnica (ex.: worker do pdf.js recusado pelo navegador) fica no console para diagnóstico
+      console.error('Visualizador de PDF: falha ao interpretar ou desenhar o documento.', falha);
       if (!cancelado) setErro('Não foi possível exibir este PDF. Use "Baixar" para abri-lo no seu leitor.');
     });
     return () => {

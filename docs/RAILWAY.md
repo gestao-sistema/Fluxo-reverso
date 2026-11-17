@@ -39,44 +39,56 @@ Nomes lidos pelo código. Valores reais ficam no painel e nunca no Git. O modelo
 
 | Variável | Finalidade | Obrigatória | Destino | Momento |
 |---|---|---|---|---|
-| `VITE_SUPABASE_URL` | URL da API do projeto Supabase deste sistema (https). | Sim | Bundle do navegador (público) | **Build** |
-| `VITE_SUPABASE_ANON_KEY` | Chave pública (anon ou publishable). | Sim | Bundle do navegador (público) | **Build** |
+| `VITE_SUPABASE_URL` | URL da API do projeto Supabase (https). | Sim | Bundle do navegador (público) | **Build** |
+| `VITE_SUPABASE_PUBLISHABLE_KEY` | Chave `sb_publishable` pública criada no Dashboard. | Sim, preferida | Bundle do navegador (público) | **Build** |
+| `VITE_SUPABASE_ANON_KEY` | Nome antigo, aceito temporariamente durante a migração. | Fallback temporário | Bundle do navegador (público) | **Build** |
 | `PORT` | Porta do Nginx. Injetada pelo Railway; não definir manualmente. | Automática | Container | Execução |
 
 Regras:
 
-- No Dockerfile, as duas variáveis são declaradas como `ARG` no estágio de build. Sem isso o Railway não as entrega ao build. Qualquer alteração exige **novo deploy**, porque o valor é gravado no JavaScript.
-- O build **falha** com mensagem clara se faltar uma delas ou se a chave for `service_role`/`sb_secret_`. Não há fallback para dados simulados em produção: o Vite substitui as importações de `src/demo` por `src/build/demo-disabled.ts` e remove os controles e dados de demonstração do bundle. O modo demo continua disponível no servidor de desenvolvimento (`import.meta.env.DEV`).
-- Nenhuma variável com nome contendo `SERVICE`, `SECRET`, `PASSWORD`, `SENHA`, `DATABASE`, `PRIVAT` ou `TOKEN` pode ter prefixo `VITE_`. O validador recusa.
+- O Dockerfile declara os nomes de build como `ARG`; o Railway precisa disponibilizar a chave pública durante o build. Qualquer alteração exige novo build porque o valor público fica no JavaScript.
+- O build falha se a URL ou a chave pública estiver ausente, ou se a chave tiver formato de `service_role`/`sb_secret_`. Nenhum segredo pode ter prefixo `VITE_`.
+- O frontend prefere `VITE_SUPABASE_PUBLISHABLE_KEY`; o nome `VITE_SUPABASE_ANON_KEY` permanece só como fallback de transição. Remova o fallback após confirmar que todos os ambientes usam a chave nova.
+- O Vite substitui imports de `src/demo` por `src/build/demo-disabled.ts` e remove controles/dados demo do bundle de produção. O modo demo de desenvolvimento permanece disponível.
 
 ### 3.2 Supabase (Edge Functions: Secrets do projeto, não do Railway)
 
-Nomes encontrados no código das funções. Nenhum deles vai ao Railway.
+As chaves pertencem ao projeto Supabase e nunca devem ser cadastradas no Railway. As novas chaves aparecem para Edge Functions nos mapas JSON fornecidos pelo Supabase; o código seleciona a entrada `default` (ou a única chave disponível). A compatibilidade com variáveis antigas é temporária.
 
-| Variável | Função que lê | Finalidade | Obrigatória | Momento |
-|---|---|---|---|---|
-| `SUPABASE_URL` | todas | URL do projeto (injetada pelo Supabase). | Sim | Execução |
-| `SUPABASE_ANON_KEY` | `admin-usuarios`, `correios-rastreio` | Chave pública usada pela função. | Sim | Execução |
-| `SUPABASE_SERVICE_ROLE_KEY` | `admin-usuarios`, `comunicacao-etiqueta`, `correios-rastreio` | **Segredo.** Só no servidor. | Sim | Execução |
-| `APP_BASE_URL` | `admin-usuarios`, `comunicacao-etiqueta` | Origem do aplicativo para os links de convite e recuperação (`https://<dominio-railway>`). | Sim | Execução |
-| `ALLOWED_ORIGINS` | `correios-rastreio` | Origens autorizadas a chamar a função (`https://<dominio-railway>`, separadas por vírgula). | Sim | Execução |
-| `CONVITE_TRANSPORTE` | `admin-usuarios` | Transporte do e-mail de convite (`smtp`). | Sim | Execução |
-| `SMTP_HOST`, `SMTP_PORT`, `SMTP_SECURE`, `SMTP_USER`, `SMTP_PASS`, `SMTP_FROM` | `admin-usuarios` | Envio SMTP de convites e senhas. `SMTP_PASS` é segredo. | Sim, se `CONVITE_TRANSPORTE=smtp` | Execução |
-| `ETIQUETA_TRANSPORTE` | `comunicacao-etiqueta` | Transporte das notificações de pedidos (`power_automate`). | Sim | Execução |
-| `POWER_AUTOMATE_FLOW_URL` | `comunicacao-etiqueta` | URL do fluxo do Power Automate. **Segredo.** | Sim | Execução |
-| `POWER_AUTOMATE_TENANT_ID`, `POWER_AUTOMATE_CLIENT_ID`, `POWER_AUTOMATE_CLIENT_SECRET`, `POWER_AUTOMATE_SCOPE` | `comunicacao-etiqueta` | Credenciais OAuth do fluxo. `CLIENT_SECRET` é segredo. | Conforme o fluxo | Execução |
+| Variável | Funções que leem | Natureza | Uso |
+|---|---|---|---|
+| `SUPABASE_URL` | todas | pública | URL do projeto |
+| `SUPABASE_PUBLISHABLE_KEYS` | `admin-usuarios`, `correios-rastreio` | pública | Mapa JSON das chaves `sb_publishable`; validação de sessão usa Auth |
+| `SUPABASE_SECRET_KEYS` | `admin-usuarios`, `comunicacao-etiqueta`, `correios-rastreio` | **segredo** | Mapa JSON das chaves `sb_secret`; acesso privilegiado somente no servidor |
+| `SUPABASE_ANON_KEY` | `admin-usuarios`, `correios-rastreio` | pública, antiga | Fallback temporário |
+| `SUPABASE_SERVICE_ROLE_KEY` | as três funções | **segredo legado** | Fallback temporário até concluir a migração |
+| `APP_BASE_URL`, `ALLOWED_ORIGINS` | conforme a função | configuração | Origem pública do app e origens CORS |
+| `CONVITE_TRANSPORTE`, `SMTP_*` | `admin-usuarios` | configuração/segredo | Convites e recuperação por SMTP; `SMTP_PASS` é secreto |
+| `ETIQUETA_TRANSPORTE`, `POWER_AUTOMATE_*` | `comunicacao-etiqueta` | configuração/segredo | Notificações; URL do fluxo e `CLIENT_SECRET` são secretos |
 
-Não cadastrar `SUPABASE_SERVICE_ROLE_KEY` nem `SMTP_PASS` no frontend.
+Os crons de Correios e comunicação mantêm a chave em segredos do Vault (`correios_cron_service_key` e `comunicacao_cron_service_key`, nomes históricos) e enviam a nova chave em `apikey`. Atualize os dois valores do Vault antes de desativar a chave antiga. Ver [setup_cron_rastreio.sql](../src/sql/setup_cron_rastreio.sql) e [habilitar-worker-comunicacao.sql](../supabase/agendamento/habilitar-worker-comunicacao.sql).
+
+Não cadastrar `SUPABASE_SECRET_KEYS`, `SUPABASE_SERVICE_ROLE_KEY`, `SMTP_PASS` ou chaves OAuth no frontend/Railway.
 
 ### 3.3 Fora do Railway e do Supabase
 
 Não há chaves de provedor no frontend. Chaves de Power Automate, SMTP e Correios ficam somente nas funções.
 
-## 4. Antes de publicar: pendências de segurança
+## 4. Antes de publicar: exposição histórica e rotação
 
-1. **Rotacionar a chave `service_role` e a senha do banco.** Quatro commits no histórico do Git (`7ba5400`, `940055e`, `fa77d56`, `c416bda`) contêm um JWT com `role=service_role`. Os arquivos atuais estão limpos. A rotação é ação do responsável pelo projeto Supabase, e a chave antiga deve ser considerada comprometida. Reescrever o histórico não foi feito: é destrutivo e exige decisão do responsável pelo repositório.
-2. Confirmar que o `.env` local continua fora do Git (`.gitignore` ignora `.env` e `.env.*`; `.env.example` é a exceção versionada).
-3. Não colar `service_role` nem senha de banco em variáveis do Railway ou em arquivos do repositório.
+A varredura do histórico Git encontrou um JWT `service_role` em `src/sql/setup_cron_rastreio.sql` no commit `c416bda`. Não apareceu no bundle nem no código frontend atual. A busca anterior que atribuía o JWT a quatro commits estava incorreta: somente esse commit contém esse JWT. Uma credencial de conexão PostgreSQL também foi encontrada historicamente em `DEPLOY_RAILWAY.md` e `run-sql-rls.cjs`; os valores foram deliberadamente omitidos dos relatórios. Trate ambos como expostos. A senha atual não foi lida.
+
+**Procedimento manual no Dashboard Supabase — faça a rotação somente depois de a versão local com compatibilidade nova estar publicada e os consumidores atualizados.** Mantenha as credenciais antigas ativas até terminar a sequência:
+
+1. Em **Project Settings → API Keys**, crie uma chave `sb_publishable` e uma `sb_secret` novas. Guarde os valores somente no gerenciador seguro; não os envie por chat, arquivo do repositório ou histórico de shell.
+2. Publique primeiro a versão do aplicativo e Edge Functions preparada para aceitar os mapas `SUPABASE_PUBLISHABLE_KEYS`/`SUPABASE_SECRET_KEYS` e as chaves novas. Confirme no Dashboard que as funções recebem esses mapas. O Railway só recebe a chave pública.
+3. No Railway, configure `VITE_SUPABASE_PUBLISHABLE_KEY` e `VITE_SUPABASE_URL`; faça o build/deploy autorizado e valide login, chamadas do frontend e isolamento por empresa. Mantenha a variável antiga só enquanto houver rollback compatível.
+4. Atualize o Vault dos dois crons para a nova `sb_secret`: `correios_cron_service_key` e `comunicacao_cron_service_key`. As chamadas devem usar o cabeçalho `apikey`. Atualize também Database Webhooks, automações, scripts e integrações externas que enviem a chave antiga; procure por `Authorization: Bearer` e substitua pelo formato `apikey` previsto para as novas chaves.
+5. Confirme que `admin-usuarios`, `comunicacao-etiqueta`, `correios-rastreio`, SMTP e notificações funcionam em homologação; confira ausência de 401/403 e que nenhum consumidor depende das variáveis antigas. Não use destinatários nem operações reais para essa conferência.
+6. Só então, em **Project Settings → API Keys**, desative as chaves antigas `anon` e `service_role`. Em seguida, use o fluxo de migração/rotação do **JWT Signing Keys** para revogar o segredo JWT legado comprometido, seguindo o período de validade de tokens indicado pelo Dashboard. A revogação pode invalidar tokens ainda assinados pela chave antiga; faça-a após a migração dos consumidores.
+7. Como a senha de banco também apareceu no histórico, inventarie conexões PostgreSQL externas e atualize primeiro os respectivos cofres de segredos. Depois, em **Database → Settings**, redefina a senha, atualize conexões autorizadas (incluindo scripts que usam `DATABASE_URL`) e teste somente em homologação. Não coloque essa senha no Railway: o serviço é frontend estático.
+
+O histórico Git permanece com os snapshots antigos; esta preparação não reescreveu histórico nem alterou credenciais remotas. Consulte [migração para API keys novas](https://supabase.com/docs/guides/getting-started/migrating-to-new-api-keys), [rotação de API keys expostas](https://supabase.com/docs/guides/security/rotate-leaked-api-keys), [JWT Signing Keys](https://supabase.com/docs/guides/auth/signing-keys) e [redefinição da senha do banco](https://supabase.com/kb/troubleshooting/how-do-i-reset-my-supabase-database-password-oTs5sB).
 
 ## 5. Passo a passo de publicação
 
@@ -86,7 +98,7 @@ Não há chaves de provedor no frontend. Chaves de Power Automate, SMTP e Correi
 2. Adicionar um serviço a partir do repositório GitHub `gestao-sistema/Fluxo-reverso` (remote `fluxo-reverso`).
 3. Nas configurações do serviço, confirmar a branch de publicação `main` e a raiz `/`.
 4. Confirmar que o builder é Dockerfile (caminho `Dockerfile`, na raiz). Os nomes exatos dos campos podem variar na interface atual; a regra é a da seção 2.
-5. Cadastrar `VITE_SUPABASE_URL` e `VITE_SUPABASE_ANON_KEY` em Variables do serviço (seção 3.1). Os valores vêm do painel do Supabase (*Project Settings → API*), usando **somente** a chave pública.
+5. Cadastrar `VITE_SUPABASE_URL` e `VITE_SUPABASE_PUBLISHABLE_KEY` em Variables do serviço (seção 3.1). O valor vem de **Project Settings → API Keys** e deve ser somente a chave pública.
 6. Configurar o health check path do serviço como `/healthz`.
 7. Gerar o domínio público nas configurações de rede do serviço. O nome é atribuído pelo Railway e não é definido neste repositório.
 
@@ -99,7 +111,7 @@ Atenção: o Railway publica automaticamente quando um commit chega à branch co
    select version, name from supabase_migrations.schema_migrations order by version;
    ```
    Comparar com `supabase/migrations/`. Se o projeto não usa o histórico da CLI, conferir o estado com `supabase/VERIFICAR_PUBLICACAO_CONVITES.sql` e com `docs/migrations.md`. Não reaplicar migrations existentes.
-   Migrations **ainda não versionadas** (criadas em 09/11/2026 e presentes só na árvore de trabalho): `20261109100000` a `20261109180000` (8 arquivos). Elas precisam estar no commit de publicação antes de qualquer aplicação.
+   A árvore local contém oito migrations de 09/11/2026, de `20261109100000` a `20261109180000`, versionadas neste repositório. O histórico remoto ainda não foi consultado; não presuma que estão pendentes nem aplicadas. `20261109140000_nc_edicao_versao_auditoria.sql` aparece uma vez localmente. Consulte a lista remota somente com `SELECT`, compare versão e nome, e confira a definição implantada antes de qualquer decisão. Não use `db push` nem `migration repair` nesta etapa.
 2. **Edge Functions**, com a CLI do Supabase, no projeto deste sistema (`supabase link` antes):
    `supabase functions deploy admin-usuarios`, `comunicacao-etiqueta` e `correios-rastreio`.
    A pasta `supabase/functions/smtp-homologacao` está vazia e não é versionada; não há o que publicar nela.
@@ -147,7 +159,15 @@ curl -sSI https://<dominio-railway>/                                            
 
 Para um JS real com hash (ver `dist/assets/` do build): `Content-Type: application/javascript` e `Cache-Control: public, max-age=31536000, immutable`.
 
-**Manuais (com contas reais, no navegador):**
+Worker do pdf.js (leitura do rastreio e "Abrir PDF"); o nome com hash está em `dist/assets/pdf.worker.min-*.mjs`:
+
+```bash
+curl -sSI https://<dominio-railway>/assets/pdf.worker.min-<hash>.mjs | grep -i content-type   # text/javascript (nunca application/octet-stream)
+```
+
+Até 12/11/2026 o `nginx.conf` não mapeava `.mjs`: o `mime.types` padrão do Nginx só conhece `.js`, o arquivo saía como `application/octet-stream` com `nosniff` e o navegador recusava o module worker ("Expected a JavaScript-or-Wasm module script…"). Efeito: o código de rastreio deixava de ser lido do PDF e o visualizador não abria a etiqueta. Corrigido com `location ~* \.mjs$ { types { } default_type text/javascript; }` dentro de `/assets/` e fora dele (reproduzido e validado com o Nginx 1.28 oficial e o Edge; detalhes em [`correcoes-producao-20261112.md`](./correcoes-producao-20261112.md)).
+
+**Manuais (em homologação, com contas de teste no navegador):**
 
 - Abrir `/`, `/login` e uma rota interna (ex.: `/admin/alinare`) diretamente e pelo F5. Não aceitar a tela de login como prova de autenticação.
 - Login com usuário real; conferir as telas do perfil.
@@ -155,7 +175,7 @@ Para um JS real com hash (ver `dist/assets/` do build): `Content-Type: applicati
 - Recuperação: solicitar reenvio de senha pelo administrador e conferir `/definir-senha`.
 - Console do navegador sem `service_role` e sem erro de configuração do Supabase.
 
-**Limite do health check:** `/healthz` responde 200 quando o Nginx está no ar. **Não** comprova login, banco, Storage, Edge Functions, SMTP, Power Automate ou Correios. Essas verificações são as manuais acima.
+**Limite do health check:** o Railway consulta `/healthz` durante a inicialização de um deployment; isso não é monitoramento contínuo nem prova que o Nginx consegue acessar login, banco, Storage, Edge Functions, SMTP, Power Automate ou Correios. Essas verificações exigem a homologação acima.
 
 ## 8. Logs
 
@@ -167,7 +187,7 @@ Para um JS real com hash (ver `dist/assets/` do build): `Content-Type: applicati
 
 | Situação | Ação |
 |---|---|
-| Build falha com "configuração obrigatória ausente" | Cadastrar `VITE_SUPABASE_URL` / `VITE_SUPABASE_ANON_KEY` no serviço e fazer novo deploy. |
+| Build falha com "configuração obrigatória ausente" | Cadastrar `VITE_SUPABASE_URL` / `VITE_SUPABASE_PUBLISHABLE_KEY` no serviço e gerar novo build. |
 | Build falha em `tsc` ou `vite` | Ver o log; corrigir no repositório. Nunca desativar TypeScript para passar. |
 | Container não fica saudável (`PORT inválida`) | Conferir se o Railway injetou `PORT` numérica. Não definir porta fixa. |
 | Deploy novo com erro na tela | No painel do Railway, reimplantar o **deployment anterior** que estava saudável. |
@@ -179,15 +199,18 @@ Rollback do frontend não desfaz banco nem funções. Por isso, a ordem da seç�
 
 ## 10. Validação local realizada (preparação)
 
-As validações abaixo foram feitas em um checkout limpo do commit `31d1ff1`, com apenas arquivos versionados. Os valores Supabase usados no build eram placeholders; não houve conexão a serviços reais.
+Validações feitas neste checkout em 11/11/2026, sem credenciais reais e sem acesso a serviços remotos:
 
-- `npm ci`: aprovado pelo `package-lock.json` (259 pacotes). O `npm audit` reportou 8 vulnerabilidades no total (3 moderadas e 5 altas). Entre dependências de produção, `xlsx` e `zod` têm avisos altos; o audit não oferece correção sem atualização major para `zod` e não indica correção disponível para `xlsx`. Revisar esses avisos antes de publicar.
-- `npm run build`: aprovado com placeholders de `VITE_SUPABASE_URL` e `VITE_SUPABASE_ANON_KEY`; executou o validador de ambiente, `tsc -b` e `vite build`.
-- Verificação do bundle: seis marcadores e textos de demonstração (controles, dados e contas demo) não apareceram nos assets JavaScript gerados.
-- `npm run lint`: exit 0, com 7 avisos: um `react(only-export-components)` em `src/context/ContadorAprovacoesContext.tsx` e seis escapes desnecessários já existentes em `src/lib/etiquetaPdf.ts`.
-- Testes focados das aprovações, fila, avisos e classificação/vínculo da NC: 60 passaram em 5 arquivos.
-- `npm test -- --run --reporter=dot`: 878 passaram e 1 falhou (879 no total). A falha restante, `conviteFluxoTemplate.test.ts`, também ocorre no commit-base `6e49885`. Testes que dependiam exclusivamente do serviço/fixtures demo foram removidos do conjunto versionado; a cobertura unitária e de migrations de produção foi mantida.
-- Estado das migrations em produção: **não consultado**. As migrations locais ainda precisam ser comparadas com o histórico do Supabase por uma consulta somente leitura antes de ordenar/publicar banco e frontend (seção 5.2).
-- Imagem Docker, sintaxe do Nginx e execução do servidor de produção: **não validadas localmente**. Docker não está disponível e o WSL presente não tem uma distribuição Linux instalada. Não foi usado `vite preview` como substituto do servidor de produção.
+- `npm run lint`: exit 0, com 7 avisos existentes (seis escapes desnecessários em `src/lib/etiquetaPdf.ts` e um aviso de Fast Refresh em `src/context/ContadorAprovacoesContext.tsx`).
+- `npx tsc -b --pretty false`: exit 0.
+- `npm test -- --reporter=dot`: 925 testes aprovados em 88 arquivos, sem falhas e sem cancelamentos.
+- Testes focados de chaves Supabase, contrato de integração, CRLF, validador de ambiente e schema Zod: 86 aprovados em 5 arquivos.
+- `npm run build`: exit 0 com URL e chave pública fictícias; Vite 8.3.8 transformou 2963 módulos. Isso valida compilação, não conectividade com Supabase.
+- Scan dos 67 assets do bundle: sem valor sb_secret, JWT, claim service_role ou os marcadores demo pesquisados.
+- `npm audit` e `npm audit --omit=dev`: zero vulnerabilidades reportadas após as atualizações. O pacote `xlsx` está fixado no tarball oficial SheetJS 0.20.3 fora do registry npm; confira também a observação de origem no relatório de prontidão, porque o npm audit não substitui a verificação do pacote CDN.
+- O teste que falhava por diferenças LF/CRLF foi corrigido no teste de contrato de template; a suíte completa passou depois da correção.
+- Os 76 testes da suíte PostgreSQL continuam **sem resultado**: execução cancelada anteriormente quando o servidor embutido detectou processo Administrador. Não foram contados como aprovados nem reexecutados neste ambiente. Docker e Podman não estão instalados, e o WSL não tem distribuição Linux.
+- Imagem Docker e runtime Nginx não foram validados. O arquivo `Dockerfile` e `nginx.conf` foram inspecionados; a configuração declara `PORT`, `/healthz`, fallback SPA e 404 para assets/API ausentes, mas não houve build de container nem requisição HTTP real.
+- O histórico de migrations aplicado no Supabase não foi consultado por falta da CLI e de credencial de leitura nesta sessão. Nenhuma operação remota de banco foi feita.
 
-Antes de publicar, resolva a sequência das migrations e revise os avisos de dependências de produção. Valide também a imagem Docker e o Nginx no Railway ou em ambiente Docker disponível, depois rode os pedidos HTTP da seção 7. A resposta do health check confirma apenas que o Nginx responde, não que login, banco ou integrações funcionem.
+A classificação continua **BLOQUEADO PARA DEPLOY** até concluir a rotação manual das credenciais expostas, comparar migrations com o histórico remoto, executar os testes PostgreSQL em ambiente não privilegiado, validar o container e concluir a homologação em ambiente isolado.

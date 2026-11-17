@@ -1,5 +1,7 @@
 # Testes do banco
 
+No Windows, execute os testes em terminal sem “Executar como administrador”: o PostgreSQL 17 nativo recusa processos com token administrativo. Para registrar a saída de initdb/postgres durante o diagnóstico, use a variável PG_TEST_DEBUG=1 (PowerShell: configure-a antes de npm test). O harness preserva o trecho final dos logs na mensagem de erro e limpa o cluster temporário se a inicialização ou as migrations-base falharem.
+
 Sobem um PostgreSQL 17 local e temporário (`embedded-postgres`), aplicam os stubs do Supabase
 (`supabase-stubs.sql`: papéis `anon`, `authenticated`, `service_role`, `auth`, `storage`) e a cadeia
 de `supabase/migrations/`, e executam o SQL como cada usuário (`set local role` + claims do JWT).

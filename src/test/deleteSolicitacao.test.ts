@@ -5,7 +5,7 @@ vi.mock('../lib/supabase', () => ({
 }));
 
 import { supabase } from '../lib/supabase';
-import apiService from '../services/apiService';
+import apiService, { MENSAGEM_LIXEIRA_INDISPONIVEL } from '../services/apiService';
 
 // Regra vigente: apagar um pedido é movê-lo para a Lixeira (RPC inutilizar_chamado). Nada é
 // removido da tabela nem do bucket de etiquetas, e o pedido pode ser restaurado depois.
@@ -75,5 +75,28 @@ describe('apiService.deleteSolicitacao (move para a Lixeira)', () => {
     await expect(apiService.deleteSolicitacao('uuid-1')).rejects.toThrow(
       'Erro ao mover o chamado para a Lixeira.'
     );
+  });
+
+  it('função ausente no banco (erro reportado em produção): mensagem clara, sem exclusão física nem nova tentativa', async () => {
+    const consoleErro = vi.spyOn(console, 'error').mockImplementation(() => {});
+    (supabase.rpc as ReturnType<typeof vi.fn>).mockResolvedValue({
+      data: null,
+      error: { code: 'PGRST202', message: 'Could not find the function public.inutilizar_chamado(p_solicitacao_id) in the schema cache' },
+    });
+
+    await expect(apiService.deleteSolicitacao('uuid-1')).rejects.toThrow(MENSAGEM_LIXEIRA_INDISPONIVEL);
+    expect(supabase.rpc).toHaveBeenCalledTimes(1);
+    expect(supabase.from).not.toHaveBeenCalled();
+    expect(bucket.remove).not.toHaveBeenCalled();
+    expect(consoleErro).toHaveBeenCalledWith(expect.stringContaining('20261030120000_lixeira_chamados.sql'), expect.anything());
+    consoleErro.mockRestore();
+  });
+
+  it('listar e restaurar também explicam a função ausente', async () => {
+    const consoleErro = vi.spyOn(console, 'error').mockImplementation(() => {});
+    (supabase.rpc as ReturnType<typeof vi.fn>).mockResolvedValue({ data: null, error: { code: '42883', message: 'function public.restaurar_chamado(uuid) does not exist' } });
+    await expect(apiService.restaurarSolicitacao('uuid-1')).rejects.toThrow(MENSAGEM_LIXEIRA_INDISPONIVEL);
+    await expect(apiService.getSolicitacoesLixeira()).rejects.toThrow(MENSAGEM_LIXEIRA_INDISPONIVEL);
+    consoleErro.mockRestore();
   });
 });

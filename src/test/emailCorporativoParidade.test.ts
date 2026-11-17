@@ -20,6 +20,7 @@ describe('paridade da regra de e-mail corporativo (interface × Edge Function)',
   it.each([
     '  Maria@AZIME.com.br ', 'maria@gmail.com', 'maria@azime.com.br.outro.com', 'maria@sub.azime.com.br', '', 'a..b@azime.com.br',
     'a+b@azime.com.br', 'x@azime.com',
+    ' Ana@ALINARE.com.br', 'ana@novitah.com.br', 'ana@alinare.com.br.evil.com', 'ana@evilnovitah.com.br', 'ana@sub.alinare.com.br', 'ana@novitah.com', 'ana@alinare.com.br@azime.com.br',
   ])('mesmo resultado para %j', (entrada) => {
     const resultado = (funcao: (valor: string) => string) => { try { return funcao(entrada); } catch (erro) { return `erro:${(erro as Error).message}`; } };
     expect(resultado(noFront)).toBe(resultado(noBackend));

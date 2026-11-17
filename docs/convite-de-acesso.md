@@ -1,6 +1,6 @@
 # Cadastro por convite
 
-O administrador informa **nome**, **e-mail corporativo** (`@azime.com.br`) e as **permissões**. O backend cria a conta e envia o convite ou a recuperação da definição de senha diretamente por SMTP, usando o link gerado pelo Supabase Auth. O colaborador define a **própria senha do Reverso** (independente da senha Microsoft) e depois entra pelo login atual com e-mail e essa senha. Não há login Microsoft, Microsoft Graph nem sincronização de diretório.
+O administrador informa **nome**, **e-mail corporativo** (`@azime.com.br`, `@alinare.com.br` ou `@novitah.com.br`) e as **permissões**. O backend cria a conta e envia o convite ou a recuperação da definição de senha diretamente por SMTP, usando o link gerado pelo Supabase Auth. O colaborador define a **própria senha do Reverso** (independente da senha Microsoft) e depois entra pelo login atual com e-mail e essa senha. Não há login Microsoft, Microsoft Graph nem sincronização de diretório.
 
 O envio atual e suas configurações estão em [`envio-email-smtp.md`](./envio-email-smtp.md). Os arquivos em `docs/power-automate/` descrevem o transporte anterior e são apenas referência histórica. Regras de permissão (telas, empresas e setores): [`cadastro-de-usuarios-por-tela.md`](./cadastro-de-usuarios-por-tela.md).
 
@@ -10,7 +10,7 @@ O envio atual e suas configurações estão em [`envio-email-smtp.md`](./envio-e
 
 1. **Tela Usuários → Novo usuário.** Campos: nome, e-mail corporativo e permissões (as mesmas do cadastro por tela). Botão **Salvar e enviar convite**. Não existe campo de senha. A tela valida o domínio e o backend valida de novo.
 2. **Edge Function `admin-usuarios`, ação `invite`** (somente administrador: tela `usuarios` ou perfil mestre, conferido no backend):
-   1. valida nome, e-mail (domínio **exato** `azime.com.br`, espaços externos e caixa normalizados) e o acesso;
+   1. valida nome, e-mail (domínio **exato** `azime.com.br`, `alinare.com.br` ou `novitah.com.br`, desde 12/11/2026; espaços externos e caixa normalizados) e o acesso;
    2. localiza a conta pelo e-mail (`admin_convite_localizar_usuario`);
    3. cria a conta **sem senha e sem confirmação**, já com as permissões (`app_metadata`) e o escopo de aprovação, ou reaproveita a pendente;
    4. reserva a tentativa no banco (`admin_convite_iniciar_envio`), o que impede envios simultâneos;

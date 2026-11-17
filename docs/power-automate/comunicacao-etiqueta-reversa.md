@@ -14,7 +14,7 @@ Há dois tipos de aviso, e a diferença importa no envio:
 | Evento | Canal / destinatário | Criado quando | Deixa de ser enviado quando |
 | --- | --- | --- | --- |
 | `pedido_criado` | E-mail ao autor | Inserção da solicitação | Autor sem acesso ou sem e-mail válido |
-| `aprovacao_pendente` | Teams a cada aprovador que **pode decidir** aquele pedido (config. empresa/setor + capacidade `aprovar-reversa` + empresa; o autor e o produtor da versão ficam de fora, salvo autoaprovação ligada) | Criação do pedido; **nova rodada** (alteração relevante que devolve à análise = nova versão); novo aprovador configurado (só para pedidos já na fila de comunicação) | Decisão tomada, versão mudou, aprovador perdeu escopo/capacidade |
+| `aprovacao_pendente` | Teams a cada aprovador que **pode decidir** aquele pedido (config. empresa/setor + capacidade `aprovar-reversa` + empresa; o autor e o produtor da versão ficam de fora; não há autoaprovação) | Criação do pedido; **nova rodada** (alteração relevante que devolve à análise = nova versão); novo aprovador configurado (só para pedidos já na fila de comunicação) | Decisão tomada, versão mudou, aprovador perdeu escopo/capacidade |
 | `pedido_aprovado` | E-mail ao autor | Decisão "aprovada" registrada | Autor sem acesso; registro da decisão ausente |
 | `emissao_pendente` | Teams a quem tem `emitir-etiqueta` na empresa | Decisão "aprovada" registrada | Emissão já concluída com PDF vinculado, pedido fora da etapa, acesso retirado |
 | `pedido_rejeitado` | E-mail ao autor, **com a justificativa da decisão** | Decisão "rejeitada" registrada | Autor sem acesso; registro da decisão ausente |
@@ -134,7 +134,7 @@ Use o template deste repositório. A compatibilidade do template com o que o wor
 
 ## Worker, variáveis e agendamento
 
-Edge Function `comunicacao-etiqueta` (`verify_jwt = true`; somente JWT `service_role`; corpo ignorado). Variáveis, só no servidor/cofre: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `ETIQUETA_TRANSPORTE`, `POWER_AUTOMATE_FLOW_URL` (HTTPS), `POWER_AUTOMATE_TENANT_ID`, `POWER_AUTOMATE_CLIENT_ID`, `POWER_AUTOMATE_CLIENT_SECRET`, `POWER_AUTOMATE_SCOPE`, `APP_BASE_URL` (HTTPS, sem caminho/credenciais).
+Edge Function `comunicacao-etiqueta` (`verify_jwt = false`; validação local por comparação em tempo constante; o corpo é ignorado). O cron envia a chave em `apikey`; durante a migração, o worker também aceita a antiga chave `service_role` em `Authorization`. Variáveis, só no servidor/cofre: `SUPABASE_URL`, `SUPABASE_SECRET_KEYS` (JSON do Dashboard, preferida), `SUPABASE_SERVICE_ROLE_KEY` (fallback temporário), `ETIQUETA_TRANSPORTE`, `POWER_AUTOMATE_FLOW_URL` (HTTPS), `POWER_AUTOMATE_TENANT_ID`, `POWER_AUTOMATE_CLIENT_ID`, `POWER_AUTOMATE_CLIENT_SECRET`, `POWER_AUTOMATE_SCOPE`, `APP_BASE_URL` (HTTPS, sem caminho/credenciais).
 
 **Transporte simulado** (qualquer variável ausente, URL não-HTTPS, origem inválida ou `ETIQUETA_TRANSPORTE` diferente de `power_automate`): a função só **conta** pendências. Não reserva, não abre tentativa, não chama a rede e não marca nada como enviado.
 

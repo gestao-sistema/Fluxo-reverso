@@ -17,6 +17,11 @@ import {
 const MIGRATION_APROVACAO = '20261023100000_aprovacao_reversas.sql';
 const MIGRATION_FILA_APROVACAO_ATUALIZADA = '20261023130000_motivos_reverso_endereco_troca.sql';
 const MIGRATION_APROVADORES_EMPRESA_SETOR = '20261023190000_aprovadores_empresa_setor.sql';
+const MIGRATIONS_DEFINICAO_VIGENTE_APROVACAO = [
+  '20261109130000_fila_aprovacao_classificacao_nc.sql',
+  '20261112100000_decisao_aprovacao_somente_terceiros.sql',
+  '20261112110000_fila_aprovacao_decisao_de_terceiros.sql',
+];
 
 let banco;
 let db; // dono do banco: prepara dados e confere resultados sem RLS
@@ -238,6 +243,8 @@ describe('aprovação — legado e migração', () => {
     // O replay de uma migration histórica é artificial; reaplica a definição
     // vigente para não deixar a fila no contrato anterior por empresa apenas.
     await banco.aplicar(MIGRATION_APROVADORES_EMPRESA_SETOR);
+    // Depois do replay, volta às definições vigentes da fila e da decisão (sem autoaprovação)
+    for (const arquivo of MIGRATIONS_DEFINICAO_VIGENTE_APROVACAO) await banco.aplicar(arquivo);
     const depois = await reversa(r.id);
     assert.equal(depois.aprovacao_status, 'aguardando_aprovacao');
     assert.equal(depois.aprovacao_legada, false);
@@ -248,6 +255,7 @@ describe('aprovação — legado e migração', () => {
              has_function_privilege('anon', 'public.fila_aprovacao_reversas()', 'EXECUTE') as anon
     `);
     assert.match(filaAtualizada.retorno, /endereco_destino_troca/);
+    assert.match(filaAtualizada.retorno, /nc_tipo_problema/);
     assert.equal(filaAtualizada.authenticated, true);
     assert.equal(filaAtualizada.anon, false);
   });
@@ -626,8 +634,8 @@ describe('aprovação — decisões', () => {
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
-describe('aprovação — próprio pedido (configuração provisória)', () => {
-  it('por padrão, quem registrou não aprova a própria solicitação, mas pode rejeitá-la', async () => {
+describe('aprovação — decisão só por terceiros (sem autoaprovação)', () => {
+  it('quem registrou não aprova nem rejeita a própria solicitação; outro aprovador decide', async () => {
     const config = await um('select permitir_autoaprovacao from public.aprovacao_config');
     assert.equal(config.permitir_autoaprovacao, false);
 
@@ -639,12 +647,51 @@ describe('aprovação — próprio pedido (configuração provisória)', () => {
     const erro = await falha(aprovar(u.solicitanteAprovador, propria.id, 1));
     assert.equal(erro?.code, '42501');
     assert.match(erro.message, /registrada ou alterada por você/);
-    // Outro aprovador da empresa decide normalmente
-    assert.equal((await aprovar(u.aprovadorAlinare, propria.id, 1)).rows[0].aprovacao_status, 'aprovada');
+    const rejeicao = await falha(rejeitar(u.solicitanteAprovador, propria.id, 1, 'Pedido aberto por engano'));
+    assert.equal(rejeicao?.code, '42501');
+    assert.match(rejeicao.message, /nem rejeitar/);
+    assert.equal((await reversa(propria.id)).aprovacao_status, 'aguardando_aprovacao');
+    assert.equal((await eventos(propria.id)).length, 0, 'tentativa recusada não grava decisão');
 
-    const desistencia = await novaReversa(u.solicitanteAprovador, 'Alinare', nc.alinare.id, 'Cliente Desistência');
-    const rejeitada = (await rejeitar(u.solicitanteAprovador, desistencia.id, 1, 'Pedido aberto por engano')).rows[0];
-    assert.equal(rejeitada.aprovacao_status, 'rejeitada');
+    // Outro aprovador da empresa decide normalmente
+    assert.equal((await fila(u.aprovadorAlinare)).find((i) => i.id === propria.id).pode_aprovar, true);
+    assert.equal((await aprovar(u.aprovadorAlinare, propria.id, 1)).rows[0].aprovacao_status, 'aprovada');
+    // Decisão repetida (mesma versão) não altera o resultado
+    const repetida = await falha(rejeitar(u.aprovadorAlinare, propria.id, 1, 'Segunda decisão'));
+    assert.equal(repetida?.code, '55000');
+    assert.equal((await reversa(propria.id)).aprovacao_status, 'aprovada');
+    assert.equal((await eventos(propria.id)).length, 1);
+  });
+
+  it('usuário sem escopo de aprovação é recusado e não altera o pedido', async () => {
+    const r = await novaReversa(u.solicitanteAlinare, 'Alinare', nc.alinare.id, 'Cliente Sem Escopo');
+    for (const persona of [u.solicitanteNovitah, u.solicitanteAlinare, u.aprovadorNovitah].filter(Boolean)) {
+      const erro = await falha(aprovar(persona, r.id, 1));
+      assert.equal(erro?.code, '42501', persona.email);
+    }
+    assert.equal((await reversa(r.id)).aprovacao_status, 'aguardando_aprovacao');
+  });
+
+  it('pedido sem autor identificado não recebe decisão nem aparece liberado na fila', async () => {
+    // Só é possível por SQL sem JWT (ex.: SQL Editor); em produção havia 2 linhas assim em 12/11/2026
+    const semAutor = (await db.query(INSERIR_REVERSA, ['Alinare', nc.alinare.id, 'Cliente Sem Autor'])).rows[0];
+    assert.equal(semAutor.solicitado_por, null);
+    const item = (await fila(u.aprovadorAlinare)).find((i) => i.id === semAutor.id);
+    assert.equal(item.pode_aprovar, false);
+    const erro = await falha(aprovar(u.aprovadorAlinare, semAutor.id, 1));
+    assert.equal(erro?.code, '42501');
+    assert.match(erro.message, /autor identificado/);
+    assert.equal((await reversa(semAutor.id)).aprovacao_status, 'aguardando_aprovacao');
+  });
+
+  it('chamado na Lixeira não recebe decisão', async () => {
+    const r = await novaReversa(u.solicitanteAlinare, 'Alinare', nc.alinare.id, 'Cliente Na Lixeira');
+    await como(c1, u.adminPedidos, 'select public.inutilizar_chamado($1)', [r.id]);
+    const erro = await falha(aprovar(u.aprovadorAlinare, r.id, 1));
+    assert.equal(erro?.code, '55000');
+    assert.match(erro.message, /Lixeira/);
+    await como(c1, u.adminPedidos, 'select public.restaurar_chamado($1)', [r.id]);
+    assert.equal((await aprovar(u.aprovadorAlinare, r.id, 1)).rows[0].aprovacao_status, 'aprovada');
   });
 
   it('quem alterou o pedido não aprova a versão que produziu', async () => {
@@ -690,27 +737,20 @@ describe('aprovação — próprio pedido (configuração provisória)', () => {
     assert.equal(await nome(legado.semTelasAntigo), 'Sem');
   });
 
-  it('só o admin muda a configuração; ligada, o próprio pedido pode ser aprovado', async () => {
-    const naoAdmin = await como(
-      c1,
-      u.aprovadorAlinare,
-      'update public.aprovacao_config set permitir_autoaprovacao = true returning *'
-    );
-    assert.equal(naoAdmin.rows.length, 0, 'não-admin não altera');
+  it('ninguém liga a autoaprovação: nem o admin pela API, nem o dono do banco', async () => {
+    for (const persona of [u.aprovadorAlinare, u.admin]) {
+      const erro = await falha(como(c1, persona, 'update public.aprovacao_config set permitir_autoaprovacao = true returning *'));
+      assert.equal(erro?.code, '42501', persona.email);
+    }
     const inserir = await falha(como(c1, u.admin, 'insert into public.aprovacao_config (id) values (true)'));
     assert.equal(inserir?.code, '42501');
-
-    const ligada = (
-      await como(c1, u.admin, 'update public.aprovacao_config set permitir_autoaprovacao = true returning *')
-    ).rows[0];
-    assert.equal(ligada.permitir_autoaprovacao, true);
-    assert.equal(ligada.atualizado_por, u.admin.id);
+    const dono = await falha(db.query('update public.aprovacao_config set permitir_autoaprovacao = true'));
+    assert.equal(dono?.code, '23514');
+    assert.equal((await um('select permitir_autoaprovacao from public.aprovacao_config')).permitir_autoaprovacao, false);
 
     const propria = await novaReversa(u.solicitanteAprovador, 'Alinare', nc.alinare.id, 'Cliente Autoaprovação');
-    assert.equal((await fila(u.solicitanteAprovador)).find((i) => i.id === propria.id).pode_aprovar, true);
-    assert.equal((await aprovar(u.solicitanteAprovador, propria.id, 1)).rows[0].aprovacao_status, 'aprovada');
-
-    await como(c1, u.admin, 'update public.aprovacao_config set permitir_autoaprovacao = false');
+    assert.equal((await fila(u.solicitanteAprovador)).find((i) => i.id === propria.id).pode_aprovar, false);
+    assert.equal((await falha(aprovar(u.solicitanteAprovador, propria.id, 1)))?.code, '42501');
   });
 });
 
@@ -1117,8 +1157,8 @@ describe('aprovação — histórico protegido', () => {
   it('PDF de reversa já apagada: só o admin vê e remove', async () => {
     const caminho = `${legado.paraApagar}/etiqueta.pdf`;
     await como(c1, u.emissorAlinare, "insert into storage.objects (bucket_id, name) values ('etiquetas', $1)", [caminho]);
-    // A exclusão apaga o registro antes dos PDFs (a tela faz nessa ordem)
-    await como(c1, u.adminPedidos, 'delete from public.solicitacoes_reverso where id = $1', [legado.paraApagar]);
+    // O registro órfão representa dados legados anteriores à Lixeira; não é o fluxo da aplicação.
+    await db.query('delete from public.solicitacoes_reverso where id = $1', [legado.paraApagar]);
     const ver = (persona) => como(c1, persona, 'select count(*)::int as n from storage.objects where name = $1', [caminho]);
     assert.equal((await ver(u.expedicao)).rows[0].n, 0);
     assert.equal((await como(c1, u.expedicao, 'delete from storage.objects where name = $1 returning id', [caminho])).rows.length, 0);
@@ -1126,15 +1166,23 @@ describe('aprovação — histórico protegido', () => {
     assert.equal((await como(c1, u.admin, 'delete from storage.objects where name = $1 returning id', [caminho])).rows.length, 1);
   });
 
-  it('reversa com decisão não pode ser apagada; sem decisão, o admin apaga', async () => {
-    const decidida = await novaReversa(u.solicitanteAlinare, 'Alinare', nc.alinare.id, 'Cliente Apagar Decidida');
+  it('o admin usa a Lixeira sem excluir reversas nem apagar decisões', async () => {
+    const decidida = await novaReversa(u.solicitanteAlinare, 'Alinare', nc.alinare.id, 'Cliente arquivado com decisão');
     await aprovar(u.aprovadorAlinare, decidida.id, 1);
-    const erro = await falha(como(c1, u.adminPedidos, 'delete from public.solicitacoes_reverso where id = $1', [decidida.id]));
-    assert.equal(erro?.code, '55000');
 
-    const semDecisao = await novaReversa(u.solicitanteAlinare, 'Alinare', nc.alinare.id, 'Cliente Apagar Livre');
-    const apagadas = await como(c1, u.adminPedidos, 'delete from public.solicitacoes_reverso where id = $1 returning id', [semDecisao.id]);
-    assert.equal(apagadas.rows.length, 1);
+    const exclusaoDecidida = await falha(como(c1, u.adminPedidos, 'delete from public.solicitacoes_reverso where id = $1', [decidida.id]));
+    assert.equal(exclusaoDecidida?.code, '42501', 'authenticated não tem privilégio para exclusão física');
+    await como(c1, u.adminPedidos, 'select public.inutilizar_chamado($1)', [decidida.id]);
+    const arquivada = await reversa(decidida.id);
+    assert.ok(arquivada.inutilizada_em, 'a RPC arquiva sem remover o registro');
+    assert.equal(arquivada.aprovacao_status, 'aprovada');
+    assert.equal((await eventos(decidida.id)).length, 1, 'a decisão e seu histórico permanecem');
+
+    const semDecisao = await novaReversa(u.solicitanteAlinare, 'Alinare', nc.alinare.id, 'Cliente arquivado sem decisão');
+    const exclusaoSemDecisao = await falha(como(c1, u.adminPedidos, 'delete from public.solicitacoes_reverso where id = $1', [semDecisao.id]));
+    assert.equal(exclusaoSemDecisao?.code, '42501', 'a tabela não concede DELETE nem para administradores autenticados');
+    await como(c1, u.adminPedidos, 'select public.inutilizar_chamado($1)', [semDecisao.id]);
+    assert.ok((await reversa(semDecisao.id)).inutilizada_em, 'a reversa permanece disponível na Lixeira');
   });
 });
 
@@ -1188,9 +1236,14 @@ describe('base — permissões em app_metadata', () => {
     assert.equal((await atualizar(u.solicitanteNovitah, r.id, { anotacoes: 'ok' })).rows.length, 1);
   });
 
-  it('só admin apaga reversas', async () => {
-    const r = await novaReversa(u.solicitanteAlinare, 'Alinare', nc.alinare.id, 'Cliente Não Apagar');
-    assert.equal((await como(c1, u.expedicao, 'delete from public.solicitacoes_reverso where id = $1 returning id', [r.id])).rows.length, 0);
+  it('só admin move reversas para a Lixeira', async () => {
+    const r = await novaReversa(u.solicitanteAlinare, 'Alinare', nc.alinare.id, 'Cliente sem permissão para Lixeira');
+    const erro = await falha(como(c1, u.expedicao, 'select public.inutilizar_chamado($1)', [r.id]));
+    assert.equal(erro?.code, '42501');
+    assert.equal((await reversa(r.id)).inutilizada_em, null, 'o chamado continua ativo');
+
+    await como(c1, u.adminPedidos, 'select public.inutilizar_chamado($1)', [r.id]);
+    assert.ok((await reversa(r.id)).inutilizada_em, 'o administrador usa a operação da aplicação');
   });
 
   it('anon não lê NCs nem chama ncs_para_reversa', async () => {

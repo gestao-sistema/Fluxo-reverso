@@ -159,8 +159,10 @@ describe('consulta não altera, não aprova, não emite e não confirma postagem
   });
 
   it('não altera a configuração de autoaprovação', async () => {
-    const alterados = await linhas(u.consulta, 'update public.aprovacao_config set permitir_autoaprovacao = true returning id');
-    assert.equal(alterados.length, 0);
+    // Desde 20261112100000 ninguém tem UPDATE na configuração: a tentativa é recusada, não só ignorada
+    const erro = await linhas(u.consulta, 'update public.aprovacao_config set permitir_autoaprovacao = true returning id')
+      .then(() => null, (e) => e);
+    assert.equal(erro?.code, '42501');
     const { rows } = await db.query('select permitir_autoaprovacao from public.aprovacao_config');
     assert.equal(rows[0].permitir_autoaprovacao, false);
   });

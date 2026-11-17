@@ -60,11 +60,28 @@ function pedidoDoProprioUsuario(user: UsuarioAutenticado, pedido: Solicitacao): 
   return pedido.solicitado_por === user.id || (pedido as PedidoComVersao).aprovacao_versao_por === user.id;
 }
 
+/** Como registrar_decisao_reversa (20261112100000): decide só outra pessoa, e só pedido com autor identificado. */
+function decisaoDeTerceiro(user: UsuarioAutenticado, pedido: Solicitacao): boolean {
+  return !!pedido.solicitado_por && !pedidoDoProprioUsuario(user, pedido);
+}
+
 function podeAprovarDemo(user: UsuarioAutenticado, pedido: Solicitacao): boolean {
   if (!user.telas.includes('aprovar-reversa') || !(user.empresasAcesso ?? []).includes(pedido.empresa)) return false;
   return demoDados.configAprovadores().some((item) => item.empresa === pedido.empresa
     && item.usuario_id === user.id
     && (item.todos_setores || item.setores.includes(pedido.setor)));
+}
+
+/** Dados da NC vinculada, como a fila do banco devolve. Sem NC encontrada, nada é inventado: os campos ficam nulos. */
+function dadosNcDaFila(pedido: Solicitacao): Pick<SolicitacaoAprovacao, 'nc_codigo' | 'nc_origem' | 'nc_tipo_problema' | 'nc_causador' | 'nc_descricao'> {
+  const nc = pedido.nc_id ? demoDados.ncs().find((registro) => registro.id === pedido.nc_id) : undefined;
+  return {
+    nc_codigo: nc?.codigo ?? null,
+    nc_origem: nc?.origem ?? null,
+    nc_tipo_problema: nc?.tipo_problema ?? null,
+    nc_causador: nc?.causador ?? null,
+    nc_descricao: nc?.descricao ?? null,
+  };
 }
 
 function exigirAdminDemo(): void {
@@ -186,6 +203,26 @@ function eventoEmissaoDemo(emissao: DemoEmissao, tipo: string, descricao: string
   demoDados.salvarEventosEmissao(eventos);
 }
 
+/**
+ * Mesmas regras do trigger do banco (reversa_vincular_nc). Roda antes de qualquer gravação, então
+ * a recusa não deixa pedido nem histórico parcial. Vínculo que não muda (mesma NC e mesma empresa)
+ * não é revalidado: NC encerrada depois de vinculada não impede as atualizações logísticas.
+ */
+function validarVinculoNcDemo(vinculo: { nc_id?: string | null; empresa: Solicitacao['empresa'] }, anterior: Solicitacao | null): void {
+  const ncId = vinculo.nc_id || null;
+  if (!ncId) return;
+  if (anterior && anterior.nc_id === ncId && anterior.empresa === vinculo.empresa) return;
+  const nc = demoDados.ncs().find((registro) => registro.id === ncId);
+  if (!nc) throw new Error('NC de origem não encontrada.');
+  if (nc.empresa !== vinculo.empresa) {
+    throw new Error(`A reversa (${vinculo.empresa}) precisa ser da mesma empresa da NC (${nc.empresa}).`);
+  }
+  const novoVinculo = !anterior || anterior.nc_id !== ncId;
+  if (novoVinculo && nc.status !== 'Aberta' && nc.status !== 'Em tratativa') {
+    throw new Error('A NC precisa estar Aberta ou Em tratativa para gerar reversa.');
+  }
+}
+
 function atualizar(id: string, campos: UpdateSolicitacaoPayload, user?: UsuarioAutenticado | null, options?: UpdateSolicitacaoOptions): Solicitacao {
   const dados = demoDados.solicitacoes();
   const indice = dados.findIndex((item) => item.id === id);
@@ -199,6 +236,14 @@ function atualizar(id: string, campos: UpdateSolicitacaoPayload, user?: UsuarioA
     throw new Error('Este pedido mudou ou já foi decidido. Atualize a fila e revise os dados novamente.');
   }
 
+  // Só revalida o vínculo quando o payload troca a NC ou a empresa; o vínculo histórico segue como está
+  if (campos.nc_id !== undefined || campos.empresa !== undefined) {
+    validarVinculoNcDemo({
+      nc_id: campos.nc_id !== undefined ? campos.nc_id : atual.nc_id,
+      empresa: campos.empresa ?? atual.empresa,
+    }, atual);
+  }
+
   const atualizada = { ...atual, ...campos };
   dados[indice] = atualizada;
   demoDados.salvarSolicitacoes(dados);
@@ -210,6 +255,7 @@ function atualizar(id: string, campos: UpdateSolicitacaoPayload, user?: UsuarioA
 
 export const demoApi = {
   async createSolicitacao(data: CreateSolicitacaoPayload): Promise<Solicitacao> {
+    validarVinculoNcDemo(data, null);
     const autor = usuarioDemoAtual();
     const nova: Solicitacao = {
       ...data,
@@ -318,11 +364,9 @@ export const demoApi = {
         aprovacao_status: 'aguardando_aprovacao',
         aprovacao_versao: versaoDoPedido(item),
         proprio_pedido: pedidoDoProprioUsuario(user, item),
-        pode_aprovar: !pedidoDoProprioUsuario(user, item) || demoDados.permitirAutoaprovacao(),
+        pode_aprovar: decisaoDeTerceiro(user, item),
         solicitado_por_nome: item.solicitante,
-        nc_codigo: item.nc_numero ? `NC-${String(item.nc_numero).padStart(4, '0')}` : null,
-        nc_origem: item.nc_id ? 'Erro de separação' : null,
-        nc_descricao: item.nc_id ? 'Divergência identificada na conferência do pedido.' : null,
+        ...dadosNcDaFila(item),
       }));
   },
 
@@ -335,12 +379,16 @@ export const demoApi = {
     if (statusEfetivo(atualAntesDaDecisao) !== 'aguardando_aprovacao') {
       throw new Error('Este pedido mudou ou já foi decidido. Atualize a fila e revise os dados novamente.');
     }
-    // Como no banco: autoaprovação só com a configuração habilitada (desligada por padrão); a rejeição não é bloqueada
-    if (decisao === 'approve' && pedidoDoProprioUsuario(user, atualAntesDaDecisao) && !demoDados.permitirAutoaprovacao()) {
-      throw new Error('Você não pode aprovar uma solicitação registrada ou alterada por você.');
+    // Como no banco: sem autoaprovação nem exceção; o autor não aprova nem rejeita o próprio pedido
+    if (!atualAntesDaDecisao.solicitado_por) {
+      throw new Error('Esta solicitação não tem autor identificado e não pode ser decidida. Peça ao administrador para regularizar o registro.');
+    }
+    if (pedidoDoProprioUsuario(user, atualAntesDaDecisao)) {
+      throw new Error('Você não pode aprovar nem rejeitar uma solicitação registrada ou alterada por você. Outro aprovador precisa decidir.');
     }
     const aprovacaoStatus = decisao === 'approve' ? 'aprovada' : 'rejeitada';
-    const justificativaDecisao = decisao === 'reject' ? justificativa.trim() : null;
+    // Como no banco (registrar_decisao_reversa): a observação da aprovação também é guardada, quando existe
+    const justificativaDecisao = justificativa.trim() || null;
     // A decisão fica no registro de aprovações (como solicitacoes_aprovacoes no banco), não no histórico operacional
     const atualizada = atualizar(solicitacao.id, {
       autorizacao: user.nome,

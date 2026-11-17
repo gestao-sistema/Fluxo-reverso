@@ -140,7 +140,7 @@ Derivada dos gatilhos do banco (`20261026220000` e `20261027100000`), não de in
 | Evento | Tipo | Destinatário | Canal | Quando nasce |
 | --- | --- | --- | --- | --- |
 | `pedido_criado` | atualização | autor do pedido | e-mail | inserção do pedido |
-| `aprovacao_pendente` | **tarefa** | cada aprovador que **pode decidir** o pedido (empresa/setor configurados + capacidade `aprovar-reversa` + empresa; o autor fica de fora, salvo autoaprovação ligada) | Teams | criação do pedido ou nova rodada de aprovação (nova versão) |
+| `aprovacao_pendente` | **tarefa** | cada aprovador que **pode decidir** o pedido (empresa/setor configurados + capacidade `aprovar-reversa` + empresa; o autor e quem produziu a versão ficam de fora; não há autoaprovação) | Teams | criação do pedido ou nova rodada de aprovação (nova versão) |
 | `pedido_aprovado` | atualização | autor do pedido | e-mail | decisão "aprovada" registrada |
 | `pedido_rejeitado` | atualização | autor do pedido (com `justificativa`) | e-mail | decisão "rejeitada" registrada |
 | `emissao_pendente` | **tarefa** | quem tem `emitir-etiqueta` na empresa do pedido | Teams | decisão "aprovada" registrada |
@@ -206,7 +206,8 @@ Desative o retry do conector no fluxo (`retryPolicy.type = none` dentro de `inpu
 | Variável | Natureza | Observação |
 | --- | --- | --- |
 | `SUPABASE_URL` | pública | normalmente fornecida pelo Supabase |
-| `SUPABASE_SERVICE_ROLE_KEY` | **segredo** | normalmente fornecida pelo Supabase; só no backend |
+| `SUPABASE_SECRET_KEYS` | **segredo** | mapa JSON de chaves do Dashboard; a função usa a chave `default` ou a única disponível |
+| `SUPABASE_SERVICE_ROLE_KEY` | **segredo legado temporário** | fallback de compatibilidade até concluir a rotação; só no backend |
 | `ETIQUETA_TRANSPORTE` | configuração | `power_automate` liga o envio real. **Qualquer outro valor, ausente ou vazio = simulado (padrão)** |
 | `POWER_AUTOMATE_FLOW_URL` | **segredo** (contém assinatura) | HTTPS |
 | `POWER_AUTOMATE_TENANT_ID` | configuração (não secreta) | |
@@ -232,7 +233,7 @@ Publicação (por quem tem acesso, **primeiro em homologação**; nada disto foi
 
 1. Aplicar no banco as migrations ausentes, em ordem (conferir antes com `supabase migration list` ou `supabase/VERIFICAR_BANCO.sql`; o banco recebeu queries manuais, então não presuma que falta algo só pelo histórico).
 2. Cadastrar os segredos da seção 10 sem registrá-los em arquivo versionado nem no histórico do shell (`supabase secrets set --env-file <arquivo fora do repositório>` ou painel). Manter `ETIQUETA_TRANSPORTE=simulado`.
-3. `supabase functions deploy comunicacao-etiqueta --project-ref <ref>` (o `verify_jwt = true` está em `supabase/config.toml`).
+3. `supabase functions deploy comunicacao-etiqueta --project-ref <ref>` (a função usa `verify_jwt = false` no gateway e valida a chave secreta exata no código; chamadas do cron enviam `apikey`).
 4. Habilitar o agendamento com `supabase/agendamento/habilitar-worker-comunicacao.sql` (segredos do Vault digitados no SQL Editor) e conferir a resposta simulada `{"modo":"simulado","envio_real":false,"alteracoes_na_fila":false,…}`.
 5. Só depois da homologação, `ETIQUETA_TRANSPORTE=power_automate`.
 
@@ -285,7 +286,7 @@ Conferido em leitura no projeto Supabase vinculado (único projeto; o `.env` do 
 | Gatilhos da fila | instalados |
 | Fila de comunicação | **vazia (0 linhas)** |
 | Agendamento | só o job dos Correios (`correios-rastreio-30min`); **nenhum job do worker**; nenhum segredo `comunicacao_*` no Vault |
-| Edge Function `comunicacao-etiqueta` | **publicada** (v1, `verify_jwt = true`): 401 sem credencial, 403 com chave anônima, 200 com `service_role` em modo simulado (`envio_real: false`, fila 0) |
+| Edge Function `comunicacao-etiqueta` | Registro de uma validação anterior da v1. O estado remoto atual não foi consultado; a configuração local atual usa `verify_jwt = false` e validação explícita por chave secreta. |
 | Variáveis cadastradas | `ETIQUETA_TRANSPORTE=simulado`, `POWER_AUTOMATE_TENANT_ID`, `POWER_AUTOMATE_CLIENT_ID`, `POWER_AUTOMATE_SCOPE`, `APP_BASE_URL` |
 | Variáveis que **faltam** | `POWER_AUTOMATE_CLIENT_SECRET` (segredo novo) e `POWER_AUTOMATE_FLOW_URL` (URL protegida do gatilho), inseridas pelo administrador, nunca pelo chat |
 | Modo | simulado (também por faltarem as duas variáveis acima) |
@@ -329,9 +330,9 @@ O link é a rota estável `/admin/meus-pedidos?solicitacaoId=<pedido>`: exige lo
 **Configuração exata para ativar (somente na Edge Function `comunicacao-etiqueta`).**
 
 1. Cadastrar `POWER_AUTOMATE_FLOW_URL` (URL do gatilho do fluxo "Reverso — Notificações", HTTPS), sem passar pelo chat.
-2. Publicar a função desta versão (`verify_jwt = true`, em modo simulado).
+2. Publicar a função desta versão (`verify_jwt = false`, com validação explícita da chave secreta, em modo simulado).
 3. Conferir a resposta simulada `{"modo":"simulado","envio_real":false,...}`.
 4. Só então `ETIQUETA_TRANSPORTE=power_automate` e o agendamento existente (`supabase/agendamento/habilitar-worker-comunicacao.sql`, job `comunicacao-reversa-5min`); para pausar, `ETIQUETA_TRANSPORTE=simulado` ou `desabilitar-worker-comunicacao.sql`.
 5. Ligar o fluxo no Power Automate e confirmar a conexão do Teams.
 
-**Homologar com um pedido real.** Use um pedido criado pela interface por uma conta real (com autoria), aprovado e sem fila pendente de outras pessoas; anexe o PDF; confira em `/admin/comunicacoes` as duas linhas `etiqueta_disponivel` (e-mail e Teams) e o resultado de cada canal; o recebimento é confirmado pela própria pessoa. `acao_conector_concluida` prova só que o conector terminou a ação.
+**Homologar em ambiente de teste.** Use projeto Supabase de homologação, pedido sintético criado por usuário de teste, destinatário example.test e PDF fictício. Mantenha a fila vazia ou previamente revisada; confira em `/admin/comunicacoes` as linhas de e-mail/Teams e o resultado de cada canal. O fluxo Power Automate deve ser de teste e direcionar ações a sinks/coletor, sem Outlook/Teams reais. `acao_conector_concluida` prova só que o conector terminou a ação. Não use pedido, destinatário ou serviço de produção sem autorização específica.

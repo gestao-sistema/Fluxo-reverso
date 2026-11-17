@@ -21,7 +21,7 @@ import {
   telasOficiaisDe,
   type EscopoAprovacao,
 } from '../lib/acesso';
-import { DOMINIO_CONVITE, normalizarEmailCorporativo } from '../lib/emailCorporativo';
+import { DOMINIO_CONVITE, DOMINIOS_CONVITE_TEXTO, normalizarEmailCorporativo } from '../lib/emailCorporativo';
 import PageHeading from '../components/ui/PageHeading';
 import ConfirmDialog from '../components/ui/ConfirmDialog';
 import AprovadoresSetorConfig from '../components/admin/AprovadoresSetorConfig';
@@ -639,7 +639,7 @@ export default function UsuariosPage() {
                     required
                   />
                   <p className="mt-1 text-xs text-slate-500">
-                    A pessoa recebe um convite por e-mail e define a própria senha do Reverso (independente da senha Microsoft). Somente endereços @{DOMINIO_CONVITE}.
+                    A pessoa recebe um convite por e-mail e define a própria senha do Reverso (independente da senha Microsoft). Somente endereços {DOMINIOS_CONVITE_TEXTO}.
                   </p>
                 </div>
               ) : (<>

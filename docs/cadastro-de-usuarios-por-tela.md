@@ -23,7 +23,7 @@ Os perfis prontos e o personalizado seguem exatamente as mesmas regras efetivas:
 | Dashboard Geral / Alinare / Novitah | `dashboard-geral`, `dashboard-alinare`, `dashboard-novitah` | consultar os indicadores | a empresa da tela (geral = as duas) | aprovar, emitir |
 | Formulário Alinare / Novitah | `formulario-alinare`, `formulario-novitah` | solicitar reversa; acompanhar os próprios pedidos (Meus Pedidos) | a empresa da tela | aprovar, emitir |
 | Pedidos (das duas empresas / Alinare / Novitah) | `lista-geral`, `lista-alinare`, `lista-novitah` | consultar pedidos | a empresa da tela | aprovar, emitir, confirmar recebimento |
-| Aprovações | `aprovar-reversa` | consultar a fila; aprovar ou rejeitar (rejeição com justificativa) | **empresas marcadas + setores por empresa** (todos ou específicos) | aprovar o próprio pedido (autoaprovação desligada), emitir |
+| Aprovações | `aprovar-reversa` | consultar a fila; aprovar ou rejeitar (rejeição com justificativa) | **empresas marcadas + setores por empresa** (todos ou específicos) | aprovar ou rejeitar o próprio pedido (não há autoaprovação), emitir |
 | Emissão de etiquetas | `emitir-etiqueta` | consultar pedidos aprovados; registrar PDF, códigos e datas; reemitir | **empresas marcadas** | aprovar |
 | Não conformidades | `nc-edit` | consultar lista e painel; registrar e editar NC; abrir reversa a partir da NC | por tela (NC não tem escopo por empresa) | aprovar, emitir |
 | Gestão de usuários | `usuarios` | cadastrar e editar usuários e permissões; configurar aprovadores; consultar e reconciliar comunicações; listas de NC | — | **consultar pedidos e NC, aprovar, emitir, confirmar recebimento** |
@@ -57,7 +57,7 @@ Os perfis prontos e o personalizado seguem exatamente as mesmas regras efetivas:
 - Deixou de conceder **consulta e operação** de pedidos e NC: isso vem das telas marcadas. Foi removido o atalho `is_admin()` de `empresas_permitidas`, `empresas_consulta_ampliada`, `empresas_formulario`, `empresas_operaveis`, `empresas_recebimento_manual`, `pode_ver_nc` e `pode_editar_nc` (migration `20261028100000`), e o equivalente no front-end (`ProtectedRoute`, `perfil.ts`).
 - Aprovar, emitir e confirmar postagem **nunca** tiveram atalho de administrador no banco; o front-end mostrava o contrário e foi alinhado.
 - **Mestre** (`perfil_acesso = mestre`) mantém acesso total, de forma explícita no front-end (`isMestre`) e no banco (`is_mestre()`), e ganha o escopo de aprovação de todos os setores ao ser salvo.
-- Selecionar Aprovações **não** liga a autoaprovação: o pedido próprio aparece na fila, sem poder decidir (`pode_aprovar = false`). A configuração `permitir_autoaprovacao` continua valendo como estava.
+- Selecionar Aprovações **não** liga a autoaprovação: o pedido próprio aparece na fila, sem poder decidir (`pode_aprovar = false`). Desde `20261112100000` a configuração `permitir_autoaprovacao` fica travada em `false` (CHECK) e ninguém a altera; o autor também não rejeita o próprio pedido.
 
 ## Usuários existentes
 
@@ -102,5 +102,5 @@ Efeito imediato da migration em contas existentes: contas que só têm `usuarios
 3. Marque **Aprovações** (e, se também precisar, **Emissão de etiquetas**). Marque as **empresas** (por exemplo, Alinare). Em "Aprova pedidos da Alinare", escolha **Todos os setores** ou os setores específicos.
 4. Os acessos antigos que você já tem (por exemplo, Kanban) aparecem em "Acessos antigos (preservados)"; mantenha ou desmarque.
 5. **Salvar.** Saia e entre de novo (ou recarregue): **Aprovações** passa a aparecer no menu.
-6. Conferir a fila: **Aprovações** lista os pedidos da empresa e do setor que você escolheu. Pedidos que **você mesmo** registrou aparecem, mas sem poder decidir (autoaprovação desligada); eles são decididos pelos outros aprovadores configurados. Para testar uma decisão sua, um pedido de outra pessoa deve estar aguardando.
+6. Conferir a fila: **Aprovações** lista os pedidos da empresa e do setor que você escolheu. Pedidos que **você mesmo** registrou aparecem, mas sem poder aprovar nem rejeitar (não há autoaprovação); eles são decididos pelos outros aprovadores configurados. Para testar uma decisão sua, um pedido de outra pessoa deve estar aguardando.
 7. Se a lista vier vazia, confirme em Usuários o seu escopo (empresa e setores) e se o pedido é da empresa e do setor marcados.

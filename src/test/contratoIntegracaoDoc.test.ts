@@ -72,7 +72,7 @@ describe('CONTRATO_INTEGRACAO.md x código (notificações pelo Power Automate)'
       'emissao_pendente', 'etiqueta_disponivel', 'postagem_confirmada', 'recebimento_confirmado'];
     for (const evento of eventos) expect(documento).toContain(`\`${evento}\``);
     const nomes = [...(/ENV_NAMES = \[([\s\S]*?)\] as const/.exec(workerIndex)?.[1] ?? '').matchAll(/'([A-Z_]+)'/g)].map((m) => m[1]);
-    expect(nomes.length).toBe(9);
+    expect(nomes.length).toBe(10);
     for (const nome of nomes) expect(documento).toContain(`\`${nome}\``);
     expect(documento).not.toMatch(/VITE_[A-Z_]+=/);
   });

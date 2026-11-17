@@ -4,16 +4,16 @@
 -- executado manualmente no SQL Editor do projeto (primeiro em homologação).
 --
 -- Mecanismo: pg_cron + pg_net + Vault, o mesmo já usado em src/sql/setup_cron_rastreio.sql.
--- A chamada é autenticada com a chave service_role lida do Vault a cada execução; nenhuma
--- chave ou URL fica neste arquivo.
+-- A chamada é autenticada com sb_secret no cabeçalho apikey, lido do Vault a cada execução;
+-- nenhuma chave ou URL fica neste arquivo. O worker ainda aceita a chave antiga durante a migração.
 --
 -- Pré-requisitos (uma vez, valores digitados direto no SQL Editor, nunca em arquivo/chat):
 --   1) Extensões pg_cron e pg_net habilitadas (Database > Extensions).
 --   2) select vault.create_secret('<URL-DO-PROJETO>/functions/v1/comunicacao-etiqueta',
 --        'comunicacao_cron_url', 'URL da Edge Function comunicacao-etiqueta');
---   3) select vault.create_secret('<CHAVE-SERVICE-ROLE>',
---        'comunicacao_cron_service_key', 'Chave service_role do worker de comunicação');
---   4) Edge Function publicada com verify_jwt=true e os segredos descritos em
+--   3) select vault.create_secret('<SB_SECRET>',
+--        'comunicacao_cron_service_key', 'Chave secreta do worker de comunicação');
+--   4) Edge Function publicada com verify_jwt=false e validação interna de apikey, com secrets descritos em
 --      docs/power-automate/comunicacao-etiqueta-reversa.md.
 --
 -- Efeito: a cada 5 minutos o worker é chamado. Enquanto ETIQUETA_TRANSPORTE da função
@@ -47,7 +47,7 @@ begin
     select net.http_post(
       url := (select decrypted_secret from vault.decrypted_secrets where name = 'comunicacao_cron_url'),
       headers := jsonb_build_object(
-        'Authorization', 'Bearer ' || (select decrypted_secret from vault.decrypted_secrets where name = 'comunicacao_cron_service_key'),
+        'apikey', (select decrypted_secret from vault.decrypted_secrets where name = 'comunicacao_cron_service_key'),
         'Content-Type', 'application/json'
       ),
       body := '{}'::jsonb,

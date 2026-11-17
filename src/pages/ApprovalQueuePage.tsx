@@ -94,7 +94,8 @@ function normalizarParaAprovacao(record: Solicitacao | SolicitacaoAprovacao): So
     aprovacao_status: approvalRecord.aprovacao_status ?? (record.status === 'aguardando_aprovacao' ? 'aguardando_aprovacao' : null),
     aprovacao_versao: approvalRecord.aprovacao_versao ?? 1,
     proprio_pedido: approvalRecord.proprio_pedido ?? false,
-    pode_aprovar: approvalRecord.pode_aprovar ?? true,
+    // Sem a resposta da fila (fonte da regra), a decisão fica bloqueada: o banco é quem libera
+    pode_aprovar: approvalRecord.pode_aprovar ?? false,
   };
 }
 
@@ -350,9 +351,11 @@ export default function ApprovalQueuePage() {
   const expanded = records.find((record) => record.id === expandedId) ?? null;
   const expandedCanApprove = !!(expanded && user && podeAprovarReversa(user, expanded.empresa));
   const needsReview = expanded?.id === reviewRequiredId;
-  const canApprove = !!expanded && aguardaDecisao(expanded) && expandedCanApprove
-    && expanded.pode_aprovar !== false && !needsReview && !saving;
-  const canReject = !!expanded && aguardaDecisao(expanded) && expandedCanApprove && !needsReview && !saving;
+  // Aprovar e rejeitar seguem a mesma regra: quem decide é outra pessoa (registrar_decisao_reversa)
+  const canDecide = !!expanded && aguardaDecisao(expanded) && expandedCanApprove
+    && expanded.pode_aprovar === true && !needsReview && !saving;
+  const canApprove = canDecide;
+  const canReject = canDecide;
 
   useEffect(() => {
     if (!expandedId) {
@@ -648,10 +651,14 @@ export default function ApprovalQueuePage() {
                         {aguardaDecisao(record) && <button type="button" onClick={() => { setReviewRequiredId(null); setReviewMessage(''); setActionError(''); }}>Revisei os dados</button>}
                       </div>
                     )}
-                    {record.proprio_pedido && record.pode_aprovar === false && (
+                    {record.pode_aprovar !== true && aguardaDecisao(record) && (
                       <div className="approval-alert is-warning" role="status">
                         <AlertTriangle size={18} aria-hidden="true" />
-                        <span>Você registrou este pedido. Outro aprovador precisa aprová-lo; a rejeição continua disponível.</span>
+                        <span>
+                          {record.proprio_pedido
+                            ? 'Você registrou ou alterou este pedido. Outro aprovador precisa aprová-lo ou rejeitá-lo.'
+                            : 'Este pedido não pode ser decidido por você. Atualize a fila; se continuar, avise o administrador.'}
+                        </span>
                       </div>
                     )}
 

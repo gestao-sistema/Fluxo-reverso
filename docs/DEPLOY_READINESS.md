@@ -1,5 +1,7 @@
 # Prontidão para deploy — Logística Reversa
 
+> **Atualização de 12/11/2026.** Erros de produção (autoaprovação, Lixeira, PDF/rastreio, domínios, links com localhost, e-mails no Outlook escuro) investigados e corrigidos localmente; ver [`correcoes-producao-20261112.md`](./correcoes-producao-20261112.md). Estado remoto conferido em leitura nessa data: ledger com 7 versões (`20261111193000` registrada), sino `20261109150000` aplicado fora do ledger, Lixeira `20261030120000` e cadeia NC ainda ausentes. Segredo `APP_BASE_URL` das Edge Functions = `http://localhost:5173` (comparação por digest). O restante deste documento é a checagem de 11/11/2026.
+
 **Data da checagem:** 11/11/2026
 
 **Classificação final:** **BLOQUEADO PARA DEPLOY**

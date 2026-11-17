@@ -198,6 +198,22 @@ function funcaoRpcNaoDisponivel(erro: { code?: string; message: string }): boole
     || /could not find the function|function .* does not exist/i.test(erro.message);
 }
 
+/**
+ * Lixeira (20261030120000). Função ausente no banco não vira exclusão física nem nova tentativa:
+ * o usuário sabe que nada mudou e o detalhe técnico fica no console para quem publica o banco.
+ */
+export const MENSAGEM_LIXEIRA_INDISPONIVEL =
+  'A Lixeira ainda não está disponível no banco de dados. Nada foi alterado. Avise o responsável pelo sistema.';
+
+function checarErroLixeira(erro: { code?: string; message: string } | null, nome: string, fallback: string): void {
+  if (!erro) return;
+  if (funcaoRpcNaoDisponivel(erro)) {
+    console.error(`RPC ${nome} indisponível: aplique a migration 20261030120000_lixeira_chamados.sql no Supabase.`, erro);
+    throw new Error(MENSAGEM_LIXEIRA_INDISPONIVEL);
+  }
+  throw new Error(erro.message || fallback);
+}
+
 /** Onde o registro da etiqueta falhou; a tela usa para orientar sem expor detalhe técnico. */
 export type CausaFalhaEtiqueta = 'arquivo' | 'permissao' | 'nao_aprovado' | 'indisponivel' | 'upload' | 'vinculo';
 
@@ -487,18 +503,18 @@ const supabaseApiService: IApiService = {
 
   async getSolicitacoesLixeira(): Promise<Solicitacao[]> {
     const { data, error } = await supabase.rpc('listar_chamados_lixeira');
-    checarErro(error, 'Erro ao buscar os chamados da Lixeira.');
+    checarErroLixeira(error, 'listar_chamados_lixeira', 'Erro ao buscar os chamados da Lixeira.');
     return (data ?? []) as Solicitacao[];
   },
 
   async inutilizarSolicitacao(id: string): Promise<void> {
     const { error } = await supabase.rpc('inutilizar_chamado', { p_solicitacao_id: id });
-    checarErro(error, 'Erro ao mover o chamado para a Lixeira.');
+    checarErroLixeira(error, 'inutilizar_chamado', 'Erro ao mover o chamado para a Lixeira.');
   },
 
   async restaurarSolicitacao(id: string): Promise<void> {
     const { error } = await supabase.rpc('restaurar_chamado', { p_solicitacao_id: id });
-    checarErro(error, 'Erro ao restaurar o chamado.');
+    checarErroLixeira(error, 'restaurar_chamado', 'Erro ao restaurar o chamado.');
   },
 
   async getMeusSolicitacoes(): Promise<Solicitacao[]> {

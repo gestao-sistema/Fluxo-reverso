@@ -393,3 +393,36 @@ describe('ApprovalQueuePage: classificação da NC vinculada', () => {
     expect(screen.queryByText(/Referência vinculada/)).not.toBeInTheDocument();
   });
 });
+
+describe('ApprovalQueuePage — decisão só por terceiros', () => {
+  it('autor do pedido: aprovar e rejeitar ficam bloqueados, com a explicação, e nada é enviado', async () => {
+    queue = [record('11111111-1111-4111-8111-111111111111', 'Alinare', { proprio_pedido: true, pode_aprovar: false })];
+    renderPage();
+    await expandFirst();
+    expect(await screen.findByText(/Você registrou ou alterou este pedido\. Outro aprovador precisa aprová-lo ou rejeitá-lo\./)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Aprovar/ })).toBeDisabled();
+    expect(screen.getByRole('button', { name: /Rejeitar/ })).toBeDisabled();
+    expect(api.decidirAprovacao).not.toHaveBeenCalled();
+  });
+
+  it('sem pode_aprovar na resposta, a tela não libera a decisão (o banco é a fonte da regra)', async () => {
+    const semRegra = record('11111111-1111-4111-8111-111111111111', 'Alinare');
+    delete (semRegra as Partial<SolicitacaoAprovacao>).pode_aprovar;
+    queue = [semRegra];
+    renderPage();
+    await expandFirst();
+    expect(await screen.findByText(/não pode ser decidido por você/)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Aprovar/ })).toBeDisabled();
+    expect(screen.getByRole('button', { name: /Rejeitar/ })).toBeDisabled();
+  });
+
+  it('a recusa do banco (autor tentando pela API) aparece para quem decide e o pedido continua na fila', async () => {
+    api.decidirAprovacao.mockRejectedValueOnce(new Error('Você não pode aprovar nem rejeitar uma solicitação registrada ou alterada por você. Outro aprovador precisa decidir.'));
+    queue = [first];
+    renderPage();
+    const { user } = await expandFirst();
+    await user.click(screen.getByRole('button', { name: /Aprovar/ }));
+    expect(await screen.findByText(/não pode aprovar nem rejeitar/)).toBeInTheDocument();
+    expect(screen.getByText('RV-11111111')).toBeInTheDocument();
+  });
+});

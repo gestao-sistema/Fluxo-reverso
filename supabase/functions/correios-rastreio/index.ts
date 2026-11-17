@@ -13,10 +13,13 @@ import { serve } from 'https://deno.land/std@0.177.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.112.3';
 import { mapEventoParaStatus, extrairEventos, dataDaPostagem, funcaoAindaNaoExiste, type EventoRastro } from './logic.ts';
 import { MENSAGEM, analisarCorpo, ehAutomacao, tokenDo } from './acesso.ts';
+import { fetchSemBearerDaChave, obterChaveSupabase } from '../_shared/supabase-keys.ts';
 
+const envSupabase = { get: (name: string) => Deno.env.get(name) ?? undefined };
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL') ?? '';
-const SUPABASE_ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY') ?? '';
-const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
+const SUPABASE_PUBLISHABLE_KEY = obterChaveSupabase(envSupabase, 'publishable') ?? '';
+const SUPABASE_SECRET_KEY = obterChaveSupabase(envSupabase, 'secret') ?? '';
+const LEGACY_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
 
 // Origens do app que podem chamar pelo navegador (ex.: https://app.exemplo.com.br), separadas
 // por vírgula. Vazio: nenhuma origem recebe permissão de CORS (chamadas do navegador falham).
@@ -43,14 +46,15 @@ function resposta(req: Request, corpo: unknown, status = 200): Response {
 
 /** Cliente com service_role: só depois que a chamada foi autorizada. */
 function clienteAdmin() {
-  return createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
+  return createClient(SUPABASE_URL, SUPABASE_SECRET_KEY, {
+    global: { fetch: fetchSemBearerDaChave(SUPABASE_SECRET_KEY) },
     auth: { autoRefreshToken: false, persistSession: false },
   });
 }
 
 /** Confirma o token de usuário com o Auth do Supabase. */
 async function usuarioDo(token: string): Promise<boolean> {
-  const cliente = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+  const cliente = createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
     auth: { autoRefreshToken: false, persistSession: false },
   });
   const { data, error } = await cliente.auth.getUser(token);
@@ -62,7 +66,7 @@ async function usuarioDo(token: string): Promise<boolean> {
  * se ele já enxerga a empresa dela. Falha de leitura conta como "não visível".
  */
 async function solicitacaoVisivel(token: string, codigo: string): Promise<boolean> {
-  const cliente = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+  const cliente = createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
     global: { headers: { Authorization: `Bearer ${token}` } },
     auth: { autoRefreshToken: false, persistSession: false },
   });
@@ -277,21 +281,25 @@ serve(async (req: Request) => {
 
   try {
     const token = tokenDo(req.headers.get('authorization'));
-    if (!token) return resposta(req, { erro: MENSAGEM.naoAutorizado }, 401);
+    const chavesApresentadas = [token ?? '', req.headers.get('apikey') ?? ''];
+    const automacao = chavesApresentadas.some((chave) =>
+      ehAutomacao(chave, SUPABASE_SECRET_KEY) || ehAutomacao(chave, LEGACY_SERVICE_ROLE_KEY),
+    );
+    if (!automacao && !token) return resposta(req, { erro: MENSAGEM.naoAutorizado }, 401);
 
     const analise = analisarCorpo(await req.text());
     if (!analise.ok) return resposta(req, { erro: analise.mensagem }, 400);
     const { codigo } = analise;
 
-    // Automação: a chave service_role do cron, comparada em tempo constante
-    if (ehAutomacao(token, SUPABASE_SERVICE_ROLE_KEY)) {
+    // Automação: aceita sb_secret em apikey e mantém a chave antiga em Authorization durante a migração.
+    if (automacao) {
       const admin = clienteAdmin();
       if (codigo) return resposta(req, await processarCodigo(admin, codigo));
       return resposta(req, await processarLote(admin));
     }
 
     // Usuário logado: sessão válida, código obrigatório e solicitação visível para ele
-    if (!(await usuarioDo(token))) return resposta(req, { erro: MENSAGEM.naoAutorizado }, 401);
+    if (!token || !(await usuarioDo(token))) return resposta(req, { erro: MENSAGEM.naoAutorizado }, 401);
     if (!codigo) return resposta(req, { erro: MENSAGEM.loteRestrito }, 403);
     if (!(await solicitacaoVisivel(token, codigo))) return resposta(req, { erro: MENSAGEM.naoEncontrada }, 404);
 

@@ -51,7 +51,7 @@ describe('EtiquetaReversa', () => {
     mocks.atualizarDadosEmissao.mockResolvedValue(null);
     mocks.lerEtiquetaPdf.mockResolvedValue({
       metodo: 'texto',
-      campos: { codigo_autorizacao: 'AUT-889900', codigo_rastreio: 'AA123456789BR' },
+      campos: { codigo_autorizacao: 'AUT-889900', codigo_rastreio: 'AA123456785BR', codigos_rastreio: ['AA123456785BR'] },
     });
   });
 
@@ -67,7 +67,7 @@ describe('EtiquetaReversa', () => {
     const rastreio = screen.getByLabelText(/Código de rastreamento/);
     await waitFor(() => {
       expect(autorizacao).toHaveValue('AUT-889900');
-      expect(rastreio).toHaveValue('AA123456789BR');
+      expect(rastreio).toHaveValue('AA123456785BR');
     });
     expect(mocks.registrarEtiqueta).not.toHaveBeenCalled();
     expect(form).toBeInTheDocument();
@@ -77,7 +77,7 @@ describe('EtiquetaReversa', () => {
     await waitFor(() => expect(mocks.registrarEtiqueta).toHaveBeenCalledTimes(1));
     expect(mocks.registrarEtiqueta).toHaveBeenCalledWith(pedido, file, expect.objectContaining({
       codigoAutorizacao: 'AUT-889900',
-      codigoRastreio: 'AA123456789BR',
+      codigoRastreio: 'AA123456785BR',
       emitidaEm: null,
       validaAte: null,
       emissaoId: expect.any(String),
@@ -285,5 +285,77 @@ describe('EtiquetaReversa: arquivo e erros ao lado da ação', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent(/não foi ligado ao pedido/);
     expect(onAlterada).not.toHaveBeenCalled();
     expect(screen.getByLabelText('Conferir dados da emissão')).toBeInTheDocument();
+  });
+});
+
+describe('EtiquetaReversa: leitura do rastreio no PDF (auxiliar, sem sobrescrever)', () => {
+  const arquivo = () => new File(['%PDF-1.4 teste'], 'etiqueta.pdf', { type: 'application/pdf' });
+  const escolher = async () => {
+    await screen.findByRole('button', { name: /Anexar etiqueta/ });
+    fireEvent.change(screen.getByLabelText('Selecionar PDF da etiqueta'), { target: { files: [arquivo()] } });
+    await screen.findByLabelText('Conferir dados da emissão');
+  };
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mocks.getEmissaoAtual.mockResolvedValue(null);
+    mocks.registrarEtiqueta.mockResolvedValue({ ...pedido, status: 'etiqueta_gerada' });
+  });
+
+  it('pede ao leitor só o rastreio como motivo de OCR e preenche o código único, sem registrar nada', async () => {
+    mocks.lerEtiquetaPdf.mockResolvedValue({ metodo: 'texto', campos: { codigo_rastreio: 'AB123456785BR', codigos_rastreio: ['AB123456785BR'] } });
+    render(<EtiquetaReversa solicitacao={pedido} podeEmitir onAlterada={vi.fn()} />);
+    await escolher();
+    await waitFor(() => expect(screen.getByLabelText(/Código de rastreamento/)).toHaveValue('AB123456785BR'));
+    expect(mocks.lerEtiquetaPdf).toHaveBeenCalledWith(expect.any(File), undefined, { camposNecessarios: ['codigo_rastreio'] });
+    expect(screen.getByLabelText('Resultado da leitura do PDF')).toHaveTextContent(/lido do PDF: AB123456785BR\. Confira/);
+    expect(mocks.registrarEtiqueta).not.toHaveBeenCalled();
+  });
+
+  it('mais de um código: não escolhe sozinho e deixa a pessoa escolher', async () => {
+    mocks.lerEtiquetaPdf.mockResolvedValue({ metodo: 'texto', campos: { codigos_rastreio: ['AB123456785BR', 'JT987654326BR'] } });
+    render(<EtiquetaReversa solicitacao={pedido} podeEmitir onAlterada={vi.fn()} />);
+    await escolher();
+    expect(await screen.findByText(/mais de um código de rastreamento/)).toBeInTheDocument();
+    expect(screen.getByLabelText(/Código de rastreamento/)).toHaveValue('');
+    fireEvent.click(screen.getByRole('button', { name: 'JT987654326BR' }));
+    expect(screen.getByLabelText(/Código de rastreamento/)).toHaveValue('JT987654326BR');
+  });
+
+  it('emissão já gravada com outro código: mantém o código existente e só sugere o do PDF', async () => {
+    mocks.getEmissaoAtual.mockResolvedValue({
+      id: '00000000-0000-0000-0000-0000000000e1', solicitacao_id: pedido.id, sequencia: 1,
+      codigo_autorizacao: 'AUT-GRAVADA', codigo_rastreio: 'JT987654326BR', pdf_path: null, pdf_nome: null,
+      emitida_em: null, valida_ate: null, substituida_em: null, postagem_em: null,
+    });
+    mocks.lerEtiquetaPdf.mockResolvedValue({ metodo: 'texto', campos: { codigo_autorizacao: 'AUT-DO-PDF', codigo_rastreio: 'AB123456785BR', codigos_rastreio: ['AB123456785BR'] } });
+    render(<EtiquetaReversa solicitacao={pedido} podeEmitir onAlterada={vi.fn()} />);
+    await escolher();
+    expect(await screen.findByText(/O código já informado foi mantido/)).toBeInTheDocument();
+    expect(screen.getByLabelText(/Código de rastreamento/)).toHaveValue('JT987654326BR');
+    expect(screen.getByLabelText('Código de autorização de postagem')).toHaveValue('AUT-GRAVADA');
+    fireEvent.click(screen.getByRole('button', { name: 'Usar AB123456785BR' }));
+    expect(screen.getByLabelText(/Código de rastreamento/)).toHaveValue('AB123456785BR');
+  });
+
+  it('nenhum código reconhecido: informa e mantém a entrada manual', async () => {
+    mocks.lerEtiquetaPdf.mockResolvedValue({ metodo: 'texto', campos: {} });
+    render(<EtiquetaReversa solicitacao={pedido} podeEmitir onAlterada={vi.fn()} />);
+    await escolher();
+    expect(await screen.findByText(/Não identifiquei um código de rastreamento válido/)).toBeInTheDocument();
+    const campo = screen.getByLabelText(/Código de rastreamento/);
+    expect(campo).toHaveValue('');
+    expect(campo).not.toBeDisabled();
+  });
+
+  it('falha do leitor (ex.: worker do pdf.js recusado): registra a causa no console e segue pela digitação', async () => {
+    const consoleErro = vi.spyOn(console, 'error').mockImplementation(() => {});
+    mocks.lerEtiquetaPdf.mockRejectedValue(new Error('Setting up fake worker failed'));
+    render(<EtiquetaReversa solicitacao={pedido} podeEmitir onAlterada={vi.fn()} />);
+    await escolher();
+    expect(await screen.findByText('Não consegui ler os códigos do PDF. Preencha os campos.')).toBeInTheDocument();
+    expect(consoleErro).toHaveBeenCalledWith('Leitura automática da etiqueta falhou.', expect.any(Error));
+    expect(screen.getByLabelText(/Código de rastreamento/)).not.toBeDisabled();
+    consoleErro.mockRestore();
   });
 });
