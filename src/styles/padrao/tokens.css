@@ -1,5 +1,5 @@
 /* tokens.css — transcrição literal do Anexo C do Manual definitivo do frontend Alinare Novitah e AZIME
-   (padrao_front/Manual_Frontend_Alinare_Novitah_AZIME_Cores_Oficiais.md). Não editar à mão: ajustes do sistema ficam em ../ponte.css e nas folhas de cada tela. */
+   (padrao_front/Manual_Frontend_Alinare_Novitah_AZIME_Cores_Oficiais_Rev_2026-11-26.md). Não editar à mão: ajustes do sistema ficam em ../ponte.css e nas folhas de cada tela. */
 /* =====================================================================
    TOKENS — Plataforma AZIME
    Três camadas:  1) ambiente (fundo de luz e cor da marca)
@@ -129,22 +129,71 @@
   --art-bg: #a46f69; --art-text: #fbf3ef; --art-muted: #d6c0b8; --art-accent: #d6c0b8;
 }
 [data-brand='novitah'][data-theme='dark'] {
-  --amb-base: #130b0c; --amb-1: rgb(164 111 105 / .55); --amb-2: rgb(60 30 28 / .9); --amb-3: rgb(164 111 105 / .22); --amb-4: rgb(214 192 184 / .06);
-  --bg: #130b0c;
-  --surface: rgb(36 24 26 / .88); --surface-solid: #24181a; --surface-2: rgb(44 30 32 / .88); --surface-sunken: rgb(214 192 184 / .05);
-  --border: rgb(214 192 184 / .09); --border-strong: rgb(214 192 184 / .17);
-  --text: #f6eeea; --text-muted: #d6c0b8; --text-subtle: #a58f89;
-  --primary: #d6c0b8; --primary-hover: color-mix(in srgb, #d6c0b8 72%, #ffffff); --on-primary: #2b1a1b;
-  --accent: #a46f69; --accent-soft: rgb(164 111 105 / .12); --on-accent-soft: #d6c0b8;
-  --glass-bg: rgb(52 32 33 / .48); --glass-bg-strong: rgb(46 29 30 / .82); --glass-field: rgb(214 192 184 / .06);
-  --glass-border: rgb(214 192 184 / .12); --glass-edge: rgb(214 192 184 / .16); --glass-edge-low: rgb(0 0 0 / .3);
-  --glass-sheen: rgb(214 192 184 / .05);
-  --glass-shadow: 0 1px 2px rgb(0 0 0 / .4), 0 18px 44px -14px rgb(10 0 0 / .8);
-  --nav-text: #d6c0b8; --nav-muted: #9a8580; --nav-hover: rgb(214 192 184 / .06);
-  --nav-selected-bg: #d6c0b8; --nav-selected-text: #2b1a1b; --nav-selected-shadow: 0 8px 20px -8px rgb(214 192 184 / .3);
-  --nav-guide: rgb(214 192 184 / .14); --nav-sub-active: #d6c0b8;
-  --focus: #d6c0b8; --focus-ring: rgb(214 192 184 / .28);
-  --art-bg: #2c1e20; --art-text: #fbf3ef; --art-muted: #d6c0b8; --art-accent: #d7b79b;
+  /* Novitah Dark V2 — 26/11/2026; parâmetros propostos, validar contraste. */
+  --amb-base: #A46F69;
+  --amb-1: rgb(214 192 184 / .10);
+  --amb-2: rgb(255 255 255 / .08);
+  --amb-3: rgb(215 183 155 / .06);
+  --amb-4: rgb(164 111 105 / .22);
+  --bg: #A46F69;
+  --surface: rgb(255 255 255 / .05);
+  --surface-solid: #A46F69;
+  --surface-2: rgb(255 255 255 / .08);
+  --surface-sunken: rgb(255 255 255 / .05);
+  --border: rgb(214 192 184 / .45);
+  --border-strong: rgb(255 255 255 / .60);
+  --text: #FFFFFF;
+  --text-muted: rgb(255 255 255 / .85);
+  --text-subtle: rgb(255 255 255 / .70);
+  --primary: rgb(214 192 184 / .22);
+  --primary-hover: rgb(214 192 184 / .30);
+  --on-primary: #FFFFFF;
+  --accent: #D6C0B8;
+  --accent-soft: rgb(214 192 184 / .15);
+  --on-accent-soft: #FFFFFF;
+  --glass-bg: rgb(255 255 255 / .05);
+  --glass-bg-strong: rgb(164 111 105 / .95);
+  --glass-field: rgb(255 255 255 / .08);
+  --glass-border: rgb(214 192 184 / .45);
+  --glass-edge: rgb(255 255 255 / .60);
+  --glass-edge-low: rgb(198 196 199 / .20);
+  --glass-sheen: rgb(255 255 255 / .08);
+  --glass-shadow: 0 8px 24px rgb(164 111 105 / .15);
+  --nav-text: #FFFFFF;
+  --nav-muted: #D6C0B8;
+  --nav-hover: rgb(255 255 255 / .12);
+  --nav-selected-bg: rgb(214 192 184 / .22);
+  --nav-selected-text: #FFFFFF;
+  --nav-selected-shadow: 0 8px 20px -8px rgb(164 111 105 / .15);
+  --nav-guide: rgb(198 196 199 / .45);
+  --nav-sub-active: #FFFFFF;
+  --focus: #FFFFFF;
+  --focus-ring: rgb(255 255 255 / .28);
+  --art-bg: #A46F69;
+  --art-text: #FFFFFF;
+  --art-muted: rgb(255 255 255 / .85);
+  --art-accent: #D7B79B;
+  --glass-blur: 16px;
+  --glass-sat: 100%;
+  --surface-hover: rgb(255 255 255 / .12);
+  --surface-icon: rgb(255 255 255 / .15);
+  --accent-attention: #D7B79B;
+  --attention-surface: rgb(215 183 155 / .22);
+  --chart-line: #FFFFFF;
+  --chart-fill: rgb(255 255 255 / .15);
+  --chart-grid: rgb(214 192 184 / .40);
+  --divider: rgb(198 196 199 / .45);
+  --ok: #FFFFFF;
+  --ok-soft: rgb(255 255 255 / .08);
+  --warn: #D7B79B;
+  --warn-soft: rgb(215 183 155 / .13);
+  --danger: #FFFFFF;
+  --danger-soft: rgb(214 192 184 / .18);
+  --info: #D6C0B8;
+  --info-soft: rgb(214 192 184 / .13);
+  --neutral: #C6C4C7;
+  --neutral-soft: rgb(198 196 199 / .12);
+  --overlay: rgb(164 111 105 / .55);
 }
 
 /* ---------- Status operacionais (iguais em todas as marcas; sempre com texto ou ícone) ---------- */
@@ -162,7 +211,8 @@
 }
 
 /* ---------- Redução de transparência (preferência do sistema ou do usuário) ---------- */
-[data-transparency='reduced'] {
+[data-transparency='reduced'],
+[data-brand='novitah'][data-theme='dark'][data-transparency='reduced'] {
   --glass-blur: 0px; --glass-sat: 100%;
   --glass-bg: var(--surface-solid); --glass-bg-strong: var(--surface-solid); --glass-field: var(--surface-solid);
   --glass-sheen: transparent;
@@ -170,6 +220,6 @@
 }
 @media (prefers-reduced-transparency: reduce) {
   :root { --glass-blur: 0px; --glass-sat: 100%; }
-  [data-theme] { --glass-bg: var(--surface-solid); --glass-bg-strong: var(--surface-solid); --glass-field: var(--surface-solid); --glass-sheen: transparent; --surface: var(--surface-solid); }
+  [data-theme], [data-brand='novitah'][data-theme='dark'] { --glass-blur: 0px; --glass-sat: 100%; --glass-bg: var(--surface-solid); --glass-bg-strong: var(--surface-solid); --glass-field: var(--surface-solid); --glass-sheen: transparent; --surface: var(--surface-solid); }
 }
 

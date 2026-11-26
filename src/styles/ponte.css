@@ -140,4 +140,30 @@
   --flow-serie-novitah: #a46f69;       /* oficial: Terracota */
   --flow-serie-novitah-texto: #d6c0b8; /* oficial: Rosa nude */
 }
-[data-brand='novitah'][data-theme='dark'] { --flow-serie-novitah: #d7b79b; /* oficial: Bege areia */ }
+/* Novitah Dark V2 (manual Rev 26/11/2026, seção 7.6): só as cinco cores oficiais (terracota, nude, areia,
+   cinza claro, branco), sem preto nas sombras e sem cor de outra marca. Vale só para esta combinação. */
+[data-brand='novitah'][data-theme='dark'] {
+  --flow-serie-novitah: #d7b79b;       /* oficial: Bege areia */
+  --flow-serie-alinare: #ffffff;       /* Travertine é da Alinare: aqui a série vira branco */
+  --flow-serie-novitah-texto: #d7b79b;
+  --flow-violet: #d6c0b8;              /* categorias: nude no lugar do violeta */
+  --flow-orange: #d7b79b;              /* categorias: areia no lugar do laranja */
+  --flow-on-danger: #a46f69;           /* --danger é branco neste tema */
+  --flow-shadow-panel: var(--glass-shadow);
+  --flow-ativo-borda: var(--border-strong);
+  /* Legibilidade (medida em 26/11/2026): branco puro sobre o terracota oficial chega no máximo a 4,15:1;
+     com as opacidades propostas no B7 o texto auxiliar caía a 2,7–2,9:1 e as categorias em nude a 2,2:1.
+     O manual permite hierarquia por tamanho, peso e opacidade e proíbe reduzir a legibilidade em silêncio:
+     auxiliar vira branco, sutil e categorias ficam em branco a 85%. Nude segue em ícones, seleção e contornos. */
+  --text-muted: #ffffff;
+  --text-subtle: rgb(255 255 255 / .85);
+  --nav-muted: rgb(255 255 255 / .85);
+}
+
+/* Gráficos: série (linha/barra; o degradê da área usa a mesma cor com opacidade) e grade. Fora da
+   Novitah escura os tokens --chart-* não existem e vale o valor de sempre (fallback): os outros
+   cinco temas não mudam. */
+:root {
+  --flow-grafico-linha: var(--chart-line, var(--flow-accent));
+  --flow-grafico-grade: var(--chart-grid, var(--flow-line));
+}

@@ -96,3 +96,33 @@
 /* Botão de ícone destrutivo (ex.: remover usuário) */
 .icon-btn.is-danger:hover:not(:disabled) { background: var(--danger-soft); border-color: transparent; color: var(--danger); }
 .icon-btn:disabled { opacity: .35; cursor: not-allowed; }
+
+/* ── Novitah Dark V2: estados que dependiam de cor sólida (manual Rev 26/11/2026, seção 7.6) ── */
+/* Neste tema --primary vira nude translúcido e --surface-solid é o próprio terracota do fundo. O que se
+   apoiava neles (logotipo, botão ativo de filtro, item marcado) passa a usar branco, nude e contorno claro,
+   como o manual pede ("seleção inequívoca"). Só esta combinação de marca e tema. */
+[data-brand='novitah'][data-theme='dark'] .wordmark-img-novitah { --marca-tinta: #ffffff; }
+[data-brand='novitah'][data-theme='dark'] :is(.segmented button.active, .segmented button[aria-pressed='true'], .filter-preset.is-active, .dashboard-period-button.is-active) {
+  background: var(--nav-selected-bg); color: var(--nav-selected-text);
+  border-color: var(--border-strong); box-shadow: inset 0 0 0 1px var(--border-strong), var(--glass-shadow);
+}
+[data-brand='novitah'][data-theme='dark'] .kpi-card.is-clickable:hover { background: var(--surface-hover); box-shadow: var(--glass-shadow); }
+[data-brand='novitah'][data-theme='dark'] :is(.kpi-card.is-selected, .nc-escolha-opcao.is-marcada, .approval-button.is-primary) { border-color: var(--border-strong); }
+[data-brand='novitah'][data-theme='dark'] .nc-escolha-opcao.is-marcada { background: var(--nav-selected-bg); }
+[data-brand='novitah'][data-theme='dark'] input:is([type='checkbox'], [type='radio']) { accent-color: #d6c0b8; }
+[data-brand='novitah'][data-theme='dark'] .skip-link { background: var(--glass-bg-strong); border: 1px solid var(--border-strong); }
+/* Selos de situação: areia/nude como TEXTO sobre terracota ficam ilegíveis (~1,6:1 e ~2,4:1). O manual manda
+   identificar estados por texto, ícone e contorno: texto branco; a cor do estado fica no contorno, ponto e ícone. */
+[data-brand='novitah'][data-theme='dark'] :is(.badge-warn, .badge-info, .approval-status:not(.is-approved, .is-rejected)) { color: var(--text); }
+[data-brand='novitah'][data-theme='dark'] .badge-warn { box-shadow: inset 0 0 0 1px var(--warn); }
+[data-brand='novitah'][data-theme='dark'] .badge-info { box-shadow: inset 0 0 0 1px var(--info); }
+[data-brand='novitah'][data-theme='dark'] .badge-warn::before { background: var(--warn); }
+[data-brand='novitah'][data-theme='dark'] .badge-info::before { background: var(--info); }
+[data-brand='novitah'][data-theme='dark'] .approval-status:not(.is-approved, .is-rejected) { border-color: var(--warn); }
+[data-brand='novitah'][data-theme='dark'] .approval-status:not(.is-approved, .is-rejected) svg { color: var(--warn); }
+[data-brand='novitah'][data-theme='dark'] .approval-status:not(.is-approved, .is-rejected)::before { background: var(--warn); }
+/* Código do pedido na fila de aprovação: era nude (--flow-accent) sobre terracota; texto é branco neste tema */
+[data-brand='novitah'][data-theme='dark'] .approval-row-ident strong { color: var(--text); }
+/* Selos e textos com classes de cor do Tailwind (remapeadas para os estados em telas.css): areia/nude como texto
+   ficam em 1,8–2,0:1 sobre terracota. Texto branco; a cor do estado continua no contorno (border-*) e no fundo suave. */
+[data-brand='novitah'][data-theme='dark'] :is([class*='text-amber-'], [class*='text-yellow-'], [class*='text-orange-'], [class*='text-blue-'], [class*='text-sky-'], [class*='text-cyan-'], [class*='text-indigo-'], [class*='text-violet-'], [class*='text-purple-']) { color: var(--text); }

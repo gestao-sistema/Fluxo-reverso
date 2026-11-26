@@ -35,24 +35,26 @@
   min-height: 100svh;
   transition: background .35s, color .35s;
 }
+/* Novitah Dark V2 (manual Rev 26/11/2026, seção 7.6): base terracota #A46F69 e só as cinco cores
+   oficiais (terracota, nude #D6C0B8, areia #D7B79B, cinza #C6C4C7, branco) com opacidade; sem vinho nem preto. */
 .novitah-login.dark {
-  --bg: #130B0C;
-  --text: #F6EEEA;
-  --muted: #D6C0B8;
-  --hero: #24181A;
-  --ink: #D6C0B8;
-  --panel: #322123;
-  --line: #d6c0b838;
-  --edge: #f6eeea45;
-  --glass: linear-gradient(145deg, #d6c0b82e, #d6c0b80b 48%, #a46f6927);
-  --glass-shadow: #130b0cb0;
-  --field: #130b0c42;
-  --cta: #D6C0B8;
-  --on: #2B1A1B;
-  --halo: #d6c0b829;
-  --wave: #a46f6940;
-  --hover: #d6c0b825;
-  --hero-halo: #a46f6920;
+  --bg: #A46F69;
+  --text: #FFFFFF;
+  --muted: #FFFFFF;  /* branco a 85% caía a ~3:1; o máximo neste fundo é o branco (4,15:1) */
+  --hero: #FFFFFF0D;
+  --ink: #FFFFFF;
+  --panel: #FFFFFF14;
+  --line: #D6C0B873;
+  --edge: #FFFFFF99;
+  --glass: linear-gradient(145deg, #FFFFFF1F, #FFFFFF0D 48%, #D6C0B81F);
+  --glass-shadow: #A46F6926;
+  --field: #FFFFFF14;
+  --cta: #D6C0B838;
+  --on: #FFFFFF;
+  --halo: #FFFFFF29;
+  --wave: #D6C0B840;
+  --hover: #FFFFFF1F;
+  --hero-halo: #FFFFFF1A;
   color-scheme: dark;
 }
 .novitah-login button, .novitah-login input { font: inherit; color: inherit; }

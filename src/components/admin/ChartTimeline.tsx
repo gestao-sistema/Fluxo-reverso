@@ -37,11 +37,11 @@ export default function ChartTimeline({ data }: ChartTimelineProps) {
       <AreaChart data={data} margin={{ top: 8, right: 12, bottom: 4, left: 0 }}>
         <defs>
           <linearGradient id="dashboard-volume-area" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="var(--flow-accent)" stopOpacity={0.34} />
-            <stop offset="100%" stopColor="var(--flow-accent)" stopOpacity={0.01} />
+            <stop offset="0%" stopColor="var(--flow-grafico-linha)" stopOpacity={0.34} />
+            <stop offset="100%" stopColor="var(--flow-grafico-linha)" stopOpacity={0.01} />
           </linearGradient>
         </defs>
-        <CartesianGrid stroke="var(--flow-line)" vertical={false} />
+        <CartesianGrid stroke="var(--flow-grafico-grade)" vertical={false} />
         <XAxis
           dataKey="data"
           tickFormatter={(value: string) => formatarRotuloEixo(value)}
@@ -70,7 +70,7 @@ export default function ChartTimeline({ data }: ChartTimelineProps) {
             fontSize: 12,
           }}
           labelStyle={{ color: 'var(--flow-text-2)', fontWeight: 700, marginBottom: 5 }}
-          itemStyle={{ color: 'var(--flow-accent)' }}
+          itemStyle={{ color: 'var(--flow-grafico-linha)' }}
           labelFormatter={(value) => formatarDia(String(value))}
           formatter={(value) => [`${Number(value ?? 0).toLocaleString('pt-BR')} solicitações`, 'Volume']}
           cursor={{ stroke: 'var(--flow-accent-strong)', strokeDasharray: '3 3' }}
@@ -79,10 +79,10 @@ export default function ChartTimeline({ data }: ChartTimelineProps) {
           type="monotone"
           dataKey="quantidade"
           name="Solicitações"
-          stroke="var(--flow-accent)"
+          stroke="var(--flow-grafico-linha)"
           strokeWidth={2}
           fill="url(#dashboard-volume-area)"
-          dot={mostrarPontos ? { r: 2.5, fill: 'var(--flow-accent)', stroke: 'var(--flow-accent-strong)', strokeWidth: 4 } : false}
+          dot={mostrarPontos ? { r: 2.5, fill: 'var(--flow-grafico-linha)', stroke: 'var(--flow-accent-strong)', strokeWidth: 4 } : false}
           activeDot={{ r: 5, fill: 'var(--flow-accent-hover)', stroke: 'var(--flow-glow)', strokeWidth: 8 }}
           isAnimationActive
           animationDuration={180}

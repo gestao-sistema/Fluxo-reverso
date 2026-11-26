@@ -19,7 +19,7 @@ export default function ChartMotivo({ data }: ChartMotivoProps) {
   return (
     <ResponsiveContainer width="100%" height={268}>
       <BarChart data={data} layout="vertical" margin={{ top: 5, right: 14, bottom: 0, left: 0 }}>
-        <CartesianGrid stroke="var(--flow-line)" horizontal={false} />
+        <CartesianGrid stroke="var(--flow-grafico-grade)" horizontal={false} />
         <XAxis
           type="number"
           allowDecimals={false}
@@ -49,10 +49,10 @@ export default function ChartMotivo({ data }: ChartMotivoProps) {
             fontSize: 12,
           }}
           labelStyle={{ color: 'var(--flow-text-2)', fontWeight: 700, marginBottom: 5 }}
-          itemStyle={{ color: 'var(--flow-accent)' }}
+          itemStyle={{ color: 'var(--flow-grafico-linha)' }}
           formatter={(value) => [`${Number(value ?? 0).toLocaleString('pt-BR')} solicitações`, 'Volume']}
         />
-        <Bar dataKey="quantidade" name="Solicitações" fill="var(--flow-accent)" radius={[0, 5, 5, 0]} maxBarSize={19} isAnimationActive animationDuration={180} />
+        <Bar dataKey="quantidade" name="Solicitações" fill="var(--flow-grafico-linha)" radius={[0, 5, 5, 0]} maxBarSize={19} isAnimationActive animationDuration={180} />
       </BarChart>
     </ResponsiveContainer>
   );

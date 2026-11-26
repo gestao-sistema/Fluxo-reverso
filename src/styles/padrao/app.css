@@ -1,5 +1,5 @@
 /* app.css — transcrição literal do Anexo D do Manual definitivo do frontend Alinare Novitah e AZIME
-   (padrao_front/Manual_Frontend_Alinare_Novitah_AZIME_Cores_Oficiais.md). Não editar à mão: ajustes do sistema ficam em ../ponte.css e nas folhas de cada tela. */
+   (padrao_front/Manual_Frontend_Alinare_Novitah_AZIME_Cores_Oficiais_Rev_2026-11-26.md). Não editar à mão: ajustes do sistema ficam em ../ponte.css e nas folhas de cada tela. */
 *, *::before, *::after { box-sizing: border-box; }
 html, body, #root { min-height: 100%; }
 body {
@@ -577,4 +577,52 @@ table.tbl { width: 100%; border-collapse: separate; border-spacing: 0; font-size
 .layout-detail > *, .layout-form > *, .home-grid > *, .main, .content > * { min-width: 0; }
 @media (max-width: 760px) { .toast { width: calc(100vw - 24px); } .tabs { margin: 0; } }
 @media (max-width: 760px) { .hero > .hero-actions { flex-wrap: wrap; } .hero > .hero-actions .btn { flex: 1 1 140px; } }
+
+/* ---------- Novitah Dark V2 — somente esta combinação de marca e tema ---------- */
+[data-brand='novitah'][data-theme='dark'] .card,
+[data-brand='novitah'][data-theme='dark'] .focus-card,
+[data-brand='novitah'][data-theme='dark'] .interactive:hover,
+[data-brand='novitah'][data-theme='dark'] .ms-btn:hover,
+[data-brand='novitah'][data-theme='dark'] .env-card:hover,
+[data-brand='novitah'][data-theme='dark'] .seg-filter button[aria-pressed='true'],
+[data-brand='novitah'][data-theme='dark'] .seg button[aria-pressed='true'] {
+  box-shadow: var(--glass-shadow);
+}
+[data-brand='novitah'][data-theme='dark'] .focus-card {
+  background: var(--attention-surface); color: var(--text);
+  box-shadow: inset 0 0 0 1px var(--accent-attention), var(--glass-shadow);
+}
+[data-brand='novitah'][data-theme='dark'] .focus-card .btn {
+  background: var(--primary); color: var(--on-primary);
+  border-color: var(--border-strong);
+}
+[data-brand='novitah'][data-theme='dark'] .nav-item.active {
+  border-color: var(--border-strong);
+}
+[data-brand='novitah'][data-theme='dark'] .nav-sub a { color: var(--nav-text); }
+[data-brand='novitah'][data-theme='dark'] .icon-btn { color: var(--text); }
+[data-brand='novitah'][data-theme='dark'] .btn-primary {
+  border-color: var(--border-strong);
+}
+[data-brand='novitah'][data-theme='dark'] .btn-danger,
+[data-brand='novitah'][data-theme='dark'] .icon-btn .count {
+  background: var(--danger-soft); color: var(--text);
+  border-color: var(--border-strong);
+}
+[data-brand='novitah'][data-theme='dark'] .icon-btn .count {
+  box-shadow: 0 0 0 1px var(--border-strong);
+}
+[data-brand='novitah'][data-theme='dark'] .monogram {
+  box-shadow: inset 0 1px 0 var(--glass-edge), var(--glass-shadow);
+}
+[data-brand='novitah'][data-theme='dark'] .search .input {
+  box-shadow: inset 0 1px 2px rgb(164 111 105 / .08);
+}
+[data-brand='novitah'][data-theme='dark'] .env-swatch i {
+  border-color: var(--divider);
+}
+/* O módulo aplica --attention-surface, --accent-attention, --surface-icon,
+   --chart-line, --chart-fill e --chart-grid nos componentes reais existentes.
+   Revisar cores locais, SVGs e configurações de gráficos; preservar os dados.
+   Papel/documentos e logotipos oficiais não são recoloridos por este override. */
 

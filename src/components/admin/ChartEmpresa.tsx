@@ -23,7 +23,7 @@ export default function ChartEmpresa({ data }: ChartEmpresaProps) {
   return (
     <ResponsiveContainer width="100%" height={230}>
       <BarChart data={data} layout="vertical" margin={{ top: 18, right: 22, bottom: 2, left: 2 }}>
-        <CartesianGrid stroke="var(--flow-line)" horizontal={false} />
+        <CartesianGrid stroke="var(--flow-grafico-grade)" horizontal={false} />
         <XAxis
           type="number"
           allowDecimals={false}
@@ -44,7 +44,7 @@ export default function ChartEmpresa({ data }: ChartEmpresaProps) {
             fontSize: 12,
           }}
           labelStyle={{ color: 'var(--flow-text-2)', fontWeight: 700, marginBottom: 5 }}
-          itemStyle={{ color: 'var(--flow-accent)' }}
+          itemStyle={{ color: 'var(--flow-grafico-linha)' }}
           formatter={(value) => [`${Number(value ?? 0).toLocaleString('pt-BR')} solicitações`, 'Volume']}
         />
         <Bar dataKey="quantidade" name="Solicitações" radius={[0, 5, 5, 0]} maxBarSize={23} isAnimationActive animationDuration={180}>
