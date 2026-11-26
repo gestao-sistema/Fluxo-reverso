@@ -16,6 +16,8 @@ teste.txt
 docs/
 padrao_front/
 supabase/
+# O frontend importa este módulo compartilhado (src/lib/supabase.ts); o resto de supabase/ fica fora da imagem
+!supabase/functions/_shared/supabase-keys.ts
 *.sql
 run-sql*.cjs
 migrar_usuarios.ts
