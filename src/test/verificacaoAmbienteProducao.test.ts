@@ -22,6 +22,21 @@ describe('validarAmbienteProducao', () => {
     expect(validarAmbienteProducao({ VITE_SUPABASE_URL: URL_VALIDA, VITE_SUPABASE_ANON_KEY: 'sb_publishable_teste' })).toEqual([]);
   });
 
+  it('usa a variável antiga quando a nova chega vazia (ARG não informado no Dockerfile)', () => {
+    expect(validarAmbienteProducao({
+      VITE_SUPABASE_URL: URL_VALIDA,
+      VITE_SUPABASE_PUBLISHABLE_KEY: '',
+      VITE_SUPABASE_ANON_KEY: jwtFalso('anon'),
+    })).toEqual([]);
+    expect(validarAmbienteProducao({ VITE_SUPABASE_URL: URL_VALIDA, VITE_SUPABASE_PUBLISHABLE_KEY: '   ', VITE_SUPABASE_ANON_KEY: '' }))
+      .toEqual([expect.stringContaining('VITE_SUPABASE_PUBLISHABLE_KEY não está definida')]);
+  });
+
+  it('recusa service_role na variável antiga mesmo com a nova vazia', () => {
+    const erros = validarAmbienteProducao({ VITE_SUPABASE_URL: URL_VALIDA, VITE_SUPABASE_PUBLISHABLE_KEY: '', VITE_SUPABASE_ANON_KEY: jwtFalso('service_role') });
+    expect(erros).toEqual([expect.stringContaining('VITE_SUPABASE_ANON_KEY contém uma chave service_role')]);
+  });
+
   it('exige VITE_SUPABASE_URL e uma chave pública', () => {
     const erros = validarAmbienteProducao({});
     expect(erros).toHaveLength(2);

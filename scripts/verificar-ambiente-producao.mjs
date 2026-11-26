@@ -47,8 +47,12 @@ export function validarAmbienteProducao(env) {
     }
   }
 
-  const nomeChave = env.VITE_SUPABASE_PUBLISHABLE_KEY ? 'VITE_SUPABASE_PUBLISHABLE_KEY' : 'VITE_SUPABASE_ANON_KEY';
-  const chave = (env.VITE_SUPABASE_PUBLISHABLE_KEY ?? env.VITE_SUPABASE_ANON_KEY ?? '').trim();
+  // Vazio conta como ausente: o Dockerfile declara as duas como ARG/ENV, e a não informada chega como "".
+  // Mesma regra de src/lib/supabase.ts (publishable || anon).
+  const publishable = (env.VITE_SUPABASE_PUBLISHABLE_KEY ?? '').trim();
+  const anon = (env.VITE_SUPABASE_ANON_KEY ?? '').trim();
+  const nomeChave = publishable ? 'VITE_SUPABASE_PUBLISHABLE_KEY' : 'VITE_SUPABASE_ANON_KEY';
+  const chave = publishable || anon;
   if (!chave) {
     erros.push('VITE_SUPABASE_PUBLISHABLE_KEY não está definida (compatibilidade: VITE_SUPABASE_ANON_KEY). Informe a chave pública.');
   } else if (chave.startsWith('sb_secret_') || papelDoJwt(chave) === 'service_role') {
