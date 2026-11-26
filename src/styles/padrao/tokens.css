@@ -1,0 +1,175 @@
+/* tokens.css — transcrição literal do Anexo C do Manual definitivo do frontend Alinare Novitah e AZIME
+   (padrao_front/Manual_Frontend_Alinare_Novitah_AZIME_Cores_Oficiais.md). Não editar à mão: ajustes do sistema ficam em ../ponte.css e nas folhas de cada tela. */
+/* =====================================================================
+   TOKENS — Plataforma AZIME
+   Três camadas:  1) ambiente (fundo de luz e cor da marca)
+                  2) materiais de vidro (navegação, menus, diálogos, busca)
+                  3) superfícies de conteúdo (cards, tabelas, formulários)
+   A marca ativa (data-brand) troca os tokens; o usuário escolhe claro/escuro (data-theme).
+   Cores institucionais revisadas conforme Marketing em 24/11/2026; tons técnicos e estados mantêm sua função.
+   ===================================================================== */
+
+:root {
+  --font: 'Instrument Sans', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-display: 'Instrument Serif', Georgia, serif;
+
+  --s1: 4px; --s2: 8px; --s3: 12px; --s4: 16px; --s5: 20px; --s6: 24px; --s8: 32px; --s10: 40px; --s12: 48px;
+  --r-field: 12px; --r-card: 18px; --r-dialog: 26px; --r-nav: 26px; --r-pill: 999px;
+  --control-h: 44px;
+  --gap-frame: 12px;            /* respiro externo entre vidro e borda da janela */
+  --sidebar-w: 264px; --sidebar-w-collapsed: 80px; --header-h: 64px;
+
+  --dur-fast: 140ms; --dur: 200ms; --dur-slow: 420ms;
+  --ease: cubic-bezier(.2, .8, .2, 1);
+  --ease-spring: cubic-bezier(.34, 1.36, .64, 1);
+
+  /* materiais (sobrescritos por marca/tema) */
+  --glass-blur: 22px; --glass-sat: 170%;
+}
+
+/* ---------------------------------------------------------------------
+   AZIME · preto, branco vibrante, grafite e vidro neutro
+   --------------------------------------------------------------------- */
+[data-brand='azime'][data-theme='light'] {
+  --amb-base: #e4e5e8; --amb-1: rgb(255 255 255 / .95); --amb-2: rgb(120 124 136 / .5); --amb-3: rgb(214 216 222 / .95); --amb-4: rgb(40 42 50 / .22);
+  --bg: #e9eaed;
+  --surface: rgb(255 255 255 / .9); --surface-solid: #ffffff; --surface-2: rgb(247 247 249 / .9); --surface-sunken: rgb(20 20 24 / .05);
+  --border: rgb(20 20 24 / .09); --border-strong: rgb(20 20 24 / .18);
+  --text: #0b0b0c; --text-muted: #55575e; --text-subtle: #75777e;
+  --primary: #0b0b0c; --primary-hover: #26272b; --on-primary: #ffffff;
+  --accent: #0b0b0c; --accent-soft: rgb(11 11 12 / .07); --on-accent-soft: #0b0b0c;
+  --glass-bg: rgb(255 255 255 / .55); --glass-bg-strong: rgb(255 255 255 / .78); --glass-field: rgb(255 255 255 / .6);
+  --glass-border: rgb(255 255 255 / .75); --glass-edge: rgb(255 255 255 / .95); --glass-edge-low: rgb(0 0 0 / .04);
+  --glass-sheen: rgb(255 255 255 / .55);
+  --glass-shadow: 0 1px 2px rgb(16 16 20 / .06), 0 12px 32px -10px rgb(16 16 20 / .18);
+  --nav-text: #3c3e45; --nav-muted: #7a7c84; --nav-hover: rgb(255 255 255 / .55);
+  --nav-selected-bg: #0b0b0c; --nav-selected-text: #ffffff; --nav-selected-shadow: 0 6px 16px -6px rgb(0 0 0 / .45);
+  --nav-guide: rgb(11 11 12 / .14); --nav-sub-active: #0b0b0c;
+  --focus: #0b0b0c; --focus-ring: rgb(11 11 12 / .22);
+  --art-bg: #0b0b0c; --art-text: #fafafa; --art-muted: #9a9ca3; --art-accent: #ffffff;
+}
+[data-brand='azime'][data-theme='dark'] {
+  --amb-base: #08080a; --amb-1: rgb(70 72 80 / .55); --amb-2: rgb(38 40 46 / .9); --amb-3: rgb(120 122 132 / .22); --amb-4: rgb(255 255 255 / .05);
+  --bg: #08080a;
+  --surface: rgb(22 23 26 / .88); --surface-solid: #16171a; --surface-2: rgb(30 31 35 / .88); --surface-sunken: rgb(255 255 255 / .05);
+  --border: rgb(255 255 255 / .08); --border-strong: rgb(255 255 255 / .16);
+  --text: #fafafa; --text-muted: #a6a8b0; --text-subtle: #8a8c94;
+  --primary: #fafafa; --primary-hover: #e4e4e7; --on-primary: #0b0b0c;
+  --accent: #fafafa; --accent-soft: rgb(255 255 255 / .08); --on-accent-soft: #fafafa;
+  --glass-bg: rgb(30 31 36 / .5); --glass-bg-strong: rgb(30 31 36 / .78); --glass-field: rgb(255 255 255 / .06);
+  --glass-border: rgb(255 255 255 / .12); --glass-edge: rgb(255 255 255 / .16); --glass-edge-low: rgb(0 0 0 / .3);
+  --glass-sheen: rgb(255 255 255 / .06);
+  --glass-shadow: 0 1px 2px rgb(0 0 0 / .4), 0 16px 40px -12px rgb(0 0 0 / .7);
+  --nav-text: #c9cad0; --nav-muted: #80828a; --nav-hover: rgb(255 255 255 / .06);
+  --nav-selected-bg: #fafafa; --nav-selected-text: #0b0b0c; --nav-selected-shadow: 0 6px 18px -6px rgb(255 255 255 / .25);
+  --nav-guide: rgb(255 255 255 / .14); --nav-sub-active: #fafafa;
+  --focus: #fafafa; --focus-ring: rgb(255 255 255 / .25);
+  --art-bg: #111214; --art-text: #fafafa; --art-muted: #9a9ca3; --art-accent: #ffffff;
+}
+
+/* ---------------------------------------------------------------------
+   Alinare · Deep #242741, Off Light #F0EBE4, Travertine #D4C8B7, New-Ruby #7A353C, Ônix #121212 — vidro levemente azulado
+   --------------------------------------------------------------------- */
+[data-brand='alinare'][data-theme='light'] {
+  --amb-base: #f0ebe4; --amb-1: rgb(240 235 228 / .95); --amb-2: rgb(36 39 65 / .28); --amb-3: rgb(212 200 183 / .45); --amb-4: rgb(255 255 255 / .8);
+  --bg: #f0ebe4;
+  --surface: rgb(255 255 255 / .88); --surface-solid: #ffffff; --surface-2: rgb(250 247 243 / .9); --surface-sunken: rgb(36 39 65 / .05);
+  --border: rgb(36 39 65 / .1); --border-strong: rgb(36 39 65 / .2);
+  --text: #242741; --text-muted: #555870; --text-subtle: #72748a;
+  --primary: #242741; --primary-hover: color-mix(in srgb, #242741 90%, #f0ebe4); --on-primary: #f0ebe4;
+  --accent: #242741; --accent-soft: rgb(36 39 65 / .08); --on-accent-soft: #242741;
+  --glass-bg: rgb(246 246 252 / .55); --glass-bg-strong: rgb(248 248 253 / .8); --glass-field: rgb(255 255 255 / .6);
+  --glass-border: rgb(255 255 255 / .7); --glass-edge: rgb(255 255 255 / .95); --glass-edge-low: rgb(36 39 65 / .06);
+  --glass-sheen: rgb(255 255 255 / .5);
+  --glass-shadow: 0 1px 2px rgb(36 39 65 / .08), 0 14px 34px -12px rgb(36 39 65 / .28);
+  --nav-text: #33364f; --nav-muted: #7a7c92; --nav-hover: rgb(255 255 255 / .6);
+  --nav-selected-bg: #242741; --nav-selected-text: #f0ebe4; --nav-selected-shadow: 0 8px 18px -8px rgb(36 39 65 / .7);
+  --nav-guide: rgb(36 39 65 / .16); --nav-sub-active: #242741;
+  --focus: #242741; --focus-ring: rgb(36 39 65 / .22);
+  --art-bg: #242741; --art-text: #f0ebe4; --art-muted: #d4c8b7; --art-accent: #d4c8b7;
+}
+[data-brand='alinare'][data-theme='dark'] {
+  --amb-base: #0c0e1f; --amb-1: rgb(36 39 65 / .5); --amb-2: rgb(36 39 65 / .95); --amb-3: rgb(212 200 183 / .22); --amb-4: rgb(240 235 228 / .06);
+  --bg: #0c0e1f;
+  --surface: rgb(26 29 54 / .86); --surface-solid: #1a1d36; --surface-2: rgb(33 37 66 / .86); --surface-sunken: rgb(240 235 228 / .05);
+  --border: rgb(240 235 228 / .08); --border-strong: rgb(240 235 228 / .16);
+  --text: #f0ebe4; --text-muted: #d4c8b7; --text-subtle: #8f8ea6;
+  --primary: #f0ebe4; --primary-hover: #ffffff; --on-primary: #242741;
+  --accent: #d4c8b7; --accent-soft: rgb(212 200 183 / .1); --on-accent-soft: #f0ebe4;
+  --glass-bg: rgb(36 39 65 / .48); --glass-bg-strong: rgb(36 39 65 / .8); --glass-field: rgb(240 235 228 / .06);
+  --glass-border: rgb(240 235 228 / .14); --glass-edge: rgb(240 235 228 / .18); --glass-edge-low: rgb(0 0 0 / .3);
+  --glass-sheen: rgb(240 235 228 / .06);
+  --glass-shadow: 0 1px 2px rgb(0 0 0 / .4), 0 18px 44px -14px rgb(0 0 10 / .8);
+  --nav-text: #f0ebe4; --nav-muted: #8886a3; --nav-hover: rgb(240 235 228 / .06);
+  --nav-selected-bg: #f0ebe4; --nav-selected-text: #242741; --nav-selected-shadow: 0 8px 20px -8px rgb(240 235 228 / .3);
+  --nav-guide: rgb(240 235 228 / .14); --nav-sub-active: #f0ebe4;
+  --focus: #d4c8b7; --focus-ring: rgb(212 200 183 / .3);
+  --art-bg: #1a1d36; --art-text: #f0ebe4; --art-muted: #d4c8b7; --art-accent: #d4c8b7;
+}
+
+/* ---------------------------------------------------------------------
+   Novitah · nude #D6C0B8, terracota #A46F69, areia #D7B79B, cinza #C6C4C7 — vidro quente
+   --------------------------------------------------------------------- */
+[data-brand='novitah'][data-theme='light'] {
+  --amb-base: #f2e8e2; --amb-1: rgb(214 192 184 / .9); --amb-2: rgb(164 111 105 / .32); --amb-3: rgb(215 183 155 / .7); --amb-4: rgb(255 250 246 / .9);
+  --bg: #f2e8e2;
+  --surface: rgb(255 253 251 / .9); --surface-solid: #ffffff; --surface-2: rgb(252 247 244 / .9); --surface-sunken: rgb(164 111 105 / .05);
+  --border: rgb(164 111 105 / .1); --border-strong: rgb(164 111 105 / .2);
+  --text: #2b1d1a; --text-muted: #6a5a56; --text-subtle: #83716c;
+  --primary: #a46f69; --primary-hover: color-mix(in srgb, #a46f69 72%, #130b0c); --on-primary: #ffffff;
+  --accent: #a46f69; --accent-soft: rgb(164 111 105 / .1); --on-accent-soft: #7a4842;
+  --glass-bg: rgb(255 248 244 / .55); --glass-bg-strong: rgb(255 249 246 / .8); --glass-field: rgb(255 255 255 / .6);
+  --glass-border: rgb(255 255 255 / .7); --glass-edge: rgb(255 255 255 / .95); --glass-edge-low: rgb(164 111 105 / .06);
+  --glass-sheen: rgb(255 255 255 / .5);
+  --glass-shadow: 0 1px 2px rgb(164 111 105 / .08), 0 14px 34px -12px rgb(164 111 105 / .26);
+  --nav-text: #4e3e3a; --nav-muted: #8d7a75; --nav-hover: rgb(255 255 255 / .6);
+  --nav-selected-bg: #a46f69; --nav-selected-text: #ffffff; --nav-selected-shadow: 0 8px 18px -8px rgb(164 111 105 / .7);
+  --nav-guide: rgb(164 111 105 / .16); --nav-sub-active: #a46f69;
+  --focus: #a46f69; --focus-ring: rgb(164 111 105 / .28);
+  --art-bg: #a46f69; --art-text: #fbf3ef; --art-muted: #d6c0b8; --art-accent: #d6c0b8;
+}
+[data-brand='novitah'][data-theme='dark'] {
+  --amb-base: #130b0c; --amb-1: rgb(164 111 105 / .55); --amb-2: rgb(60 30 28 / .9); --amb-3: rgb(164 111 105 / .22); --amb-4: rgb(214 192 184 / .06);
+  --bg: #130b0c;
+  --surface: rgb(36 24 26 / .88); --surface-solid: #24181a; --surface-2: rgb(44 30 32 / .88); --surface-sunken: rgb(214 192 184 / .05);
+  --border: rgb(214 192 184 / .09); --border-strong: rgb(214 192 184 / .17);
+  --text: #f6eeea; --text-muted: #d6c0b8; --text-subtle: #a58f89;
+  --primary: #d6c0b8; --primary-hover: color-mix(in srgb, #d6c0b8 72%, #ffffff); --on-primary: #2b1a1b;
+  --accent: #a46f69; --accent-soft: rgb(164 111 105 / .12); --on-accent-soft: #d6c0b8;
+  --glass-bg: rgb(52 32 33 / .48); --glass-bg-strong: rgb(46 29 30 / .82); --glass-field: rgb(214 192 184 / .06);
+  --glass-border: rgb(214 192 184 / .12); --glass-edge: rgb(214 192 184 / .16); --glass-edge-low: rgb(0 0 0 / .3);
+  --glass-sheen: rgb(214 192 184 / .05);
+  --glass-shadow: 0 1px 2px rgb(0 0 0 / .4), 0 18px 44px -14px rgb(10 0 0 / .8);
+  --nav-text: #d6c0b8; --nav-muted: #9a8580; --nav-hover: rgb(214 192 184 / .06);
+  --nav-selected-bg: #d6c0b8; --nav-selected-text: #2b1a1b; --nav-selected-shadow: 0 8px 20px -8px rgb(214 192 184 / .3);
+  --nav-guide: rgb(214 192 184 / .14); --nav-sub-active: #d6c0b8;
+  --focus: #d6c0b8; --focus-ring: rgb(214 192 184 / .28);
+  --art-bg: #2c1e20; --art-text: #fbf3ef; --art-muted: #d6c0b8; --art-accent: #d7b79b;
+}
+
+/* ---------- Status operacionais (iguais em todas as marcas; sempre com texto ou ícone) ---------- */
+[data-theme='light'] {
+  --ok: #15703f; --ok-soft: rgb(22 121 74 / .1); --warn: #7d5100; --warn-soft: rgb(196 140 20 / .14);
+  --danger: #b42318; --danger-soft: rgb(180 35 24 / .09); --info: #1f5aa0; --info-soft: rgb(31 95 168 / .09);
+  --neutral: #55575e; --neutral-soft: rgb(85 87 94 / .1);
+  --overlay: rgb(15 15 20 / .28);
+}
+[data-theme='dark'] {
+  --ok: #6fdba5; --ok-soft: rgb(95 211 154 / .13); --warn: #f2c25c; --warn-soft: rgb(242 194 92 / .13);
+  --danger: #ff8f83; --danger-soft: rgb(255 138 125 / .13); --info: #95c3f7; --info-soft: rgb(141 189 245 / .13);
+  --neutral: #b4b6bd; --neutral-soft: rgb(180 182 189 / .12);
+  --overlay: rgb(0 0 0 / .5);
+}
+
+/* ---------- Redução de transparência (preferência do sistema ou do usuário) ---------- */
+[data-transparency='reduced'] {
+  --glass-blur: 0px; --glass-sat: 100%;
+  --glass-bg: var(--surface-solid); --glass-bg-strong: var(--surface-solid); --glass-field: var(--surface-solid);
+  --glass-sheen: transparent;
+  --surface: var(--surface-solid);
+}
+@media (prefers-reduced-transparency: reduce) {
+  :root { --glass-blur: 0px; --glass-sat: 100%; }
+  [data-theme] { --glass-bg: var(--surface-solid); --glass-bg-strong: var(--surface-solid); --glass-field: var(--surface-solid); --glass-sheen: transparent; --surface: var(--surface-solid); }
+}
+

@@ -1,5 +1,7 @@
 # Aparência por empresa e tema
 
+> **Substituído por [padrao-visual.md](padrao-visual.md) em 24/11/2026.** O sistema passou a seguir o Manual definitivo do frontend Alinare Novitah e AZIME (cópia em `padrao_front/`). Este documento descreve o sistema anterior (`tokens.css` por empresa, cenário de joalheria) e fica apenas como histórico da procedência das cores oficiais.
+
 Estado em 10/11/2026. A paleta oficial de Alinare e Novitá está aplicada pelos tokens de `src/styles/tokens.css`. O que não é cor oficial está marcado como **proposta** e aguarda aprovação. Este documento substitui o levantamento anterior, que afirmava que alguns componentes apareciam na tela (ver seção 7).
 
 Legenda das tabelas: **O** = cor oficial exata; **P** = proposta (derivada, alfa, tema escuro ou estado).

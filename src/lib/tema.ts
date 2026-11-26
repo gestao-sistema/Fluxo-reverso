@@ -7,6 +7,18 @@
 
 export type Tema = 'alinare' | 'novitah' | 'conjunto';
 
+/** Marca do padrão visual (`data-brand`): a visão conjunta das duas empresas é a AZIME. */
+export type Marca = 'azime' | 'alinare' | 'novitah';
+
+export function marcaDoTema(tema: Tema): Marca {
+  return tema === 'conjunto' ? 'azime' : tema;
+}
+
+/** Tema do padrão visual (`data-theme`) a partir do modo de cor escolhido pelo usuário. */
+export function temaDoModo(modo: 'claro' | 'escuro'): 'light' | 'dark' {
+  return modo === 'claro' ? 'light' : 'dark';
+}
+
 /** Converte a empresa selecionada (ou "Ambas"/vazio) no tema correspondente. */
 export function temaDaEmpresa(empresa: string | null | undefined): Tema {
   if (empresa === 'Alinare') return 'alinare';
@@ -16,6 +28,8 @@ export function temaDaEmpresa(empresa: string | null | undefined): Tema {
 
 /** Empresa implícita na rota: formulário da empresa ou query `?empresa=`. */
 export function empresaDaRota(pathname: string, search: string): string | null {
+  if (pathname === '/login/alinare') return 'Alinare';
+  if (pathname === '/login/novitah') return 'Novitah';
   if (pathname === '/admin/alinare') return 'Alinare';
   if (pathname === '/admin/novitah') return 'Novitah';
   return new URLSearchParams(search).get('empresa');

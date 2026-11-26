@@ -61,26 +61,36 @@ export default function LixeiraPage() {
     }
   };
 
+  /** Ver histórico e restaurar: os mesmos botões na tabela e nos cards. */
+  const acoes = (chamado: (typeof filtrados)[number]) => (
+    <div className="record-actions">
+      <button type="button" className="btn btn-secondary btn-xs always" onClick={() => setSelecionado(chamado)} aria-label={`Ver histórico de ${chamado.nome_cliente}`} title="Ver histórico completo"><Eye size={15} aria-hidden="true" /></button>
+      <button type="button" className="btn btn-primary btn-xs always" onClick={() => setIdParaRestaurar(chamado.id)} aria-label={`Restaurar ${chamado.nome_cliente}`} title="Restaurar chamado"><RotateCcw size={14} aria-hidden="true" /> Restaurar</button>
+    </div>
+  );
+
   return (
     <div className="space-y-6">
-      <PageHeading icon={Archive} title="Lixeira" />
-      <p className="max-w-3xl text-sm text-slate-600">
-        Os chamados aqui ficam fora das filas de trabalho. Dados, decisões, movimentações, etiquetas e PDFs permanecem guardados. Você pode abrir o histórico completo ou restaurar um chamado.
-      </p>
+      <PageHeading
+        icon={Archive}
+        title="Lixeira"
+        description="Os chamados aqui ficam fora das filas de trabalho. Dados, decisões, movimentações, etiquetas e PDFs permanecem guardados. Você pode abrir o histórico completo ou restaurar um chamado."
+      />
 
       <div className="list-toolbar">
         <div className="list-summary">{loading ? 'Carregando' : `${filtrados.length} ${filtrados.length === 1 ? 'chamado' : 'chamados'}`}</div>
-        <label className="relative block w-full max-w-sm">
-          <Search size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" aria-hidden="true" />
+        <div className="input-icon" style={{ flex: '1 1 280px', maxWidth: 420 }}>
+          <Search size={16} aria-hidden="true" />
           <input
             type="search"
             value={busca}
             onChange={(event) => setBusca(event.target.value)}
             placeholder="Buscar cliente ou número do chamado"
             aria-label="Buscar na Lixeira"
-            className="h-10 w-full rounded-lg border border-slate-300 bg-white pl-9 pr-3 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500/30"
+            className="input"
+            style={{ height: 40, borderRadius: 11 }}
           />
-        </label>
+        </div>
       </div>
 
       {erro && (
@@ -91,41 +101,52 @@ export default function LixeiraPage() {
       )}
 
       {loading ? (
-        <div className="surface-panel records-estado" role="status"><div className="chart-skeleton records-estado-skeleton" /><span>Carregando chamados arquivados...</span></div>
+        <div className="card records-estado" role="status"><div className="skel records-estado-skeleton" /><span>Carregando chamados arquivados...</span></div>
       ) : filtrados.length === 0 ? (
-        <div className="surface-panel records-estado">
+        <div className="card records-estado">
           <div className="records-estado-icone"><Archive size={24} aria-hidden="true" /></div>
           <h3>{busca ? 'Nenhum chamado encontrado' : 'A Lixeira está vazia'}</h3>
           <p>{busca ? 'Tente buscar por outro nome ou número.' : 'Chamados movidos para cá ficam disponíveis para consulta e restauração.'}</p>
         </div>
       ) : (
-        <section className="surface-panel records-container" aria-label="Chamados na Lixeira">
-          <div className="records-table-scroll">
-            <table className="data-table records-table">
-              <thead><tr><th>Chamado / Cliente</th><th>Empresa</th><th>Situação</th><th>Movido para a Lixeira</th><th style={{ textAlign: 'right' }}>Ações</th></tr></thead>
+        <section className="card records-container" aria-label="Chamados na Lixeira">
+          <div className="table-wrap responsive">
+            <table className="tbl records-table">
+              <thead><tr><th>Chamado / Cliente</th><th>Empresa</th><th>Situação</th><th>Movido para a Lixeira</th><th className="r">Ações</th></tr></thead>
               <tbody>{filtrados.map((chamado) => (
                 <tr key={chamado.id}>
                   <td>
-                    <div className="table-strong">{codigoPedido(chamado.id)} · {chamado.nome_cliente}</div>
-                    <div className="record-secondary">#{chamado.codigo_cliente} · {chamado.solicitante} · {chamado.setor}</div>
+                    <div className="strong">{codigoPedido(chamado.id)} · {chamado.nome_cliente}</div>
+                    <div className="xs muted">#{chamado.codigo_cliente} · {chamado.solicitante} · {chamado.setor}</div>
                   </td>
                   <td>{chamado.empresa}</td>
                   <td>{STATUS_LABEL[statusEfetivo(chamado)]}</td>
                   <td>
                     <div>{dataHora(chamado.inutilizada_em)}</div>
-                    {chamado.inutilizada_por_nome && <div className="record-secondary">por {chamado.inutilizada_por_nome}</div>}
+                    {chamado.inutilizada_por_nome && <div className="xs muted">por {chamado.inutilizada_por_nome}</div>}
                   </td>
-                  <td>
-                    <div className="record-actions">
-                      <button type="button" className="record-action-view" onClick={() => setSelecionado(chamado)} aria-label={`Ver histórico de ${chamado.nome_cliente}`} title="Ver histórico completo"><Eye size={16} /></button>
-                      <button type="button" className="record-action-progress" onClick={() => setIdParaRestaurar(chamado.id)} aria-label={`Restaurar ${chamado.nome_cliente}`} title="Restaurar chamado"><RotateCcw size={15} /> Restaurar</button>
-                    </div>
-                  </td>
+                  <td className="row-action">{acoes(chamado)}</td>
                 </tr>
               ))}</tbody>
             </table>
           </div>
-          <div className="records-bottom"><span>Exibindo {filtrados.length.toLocaleString('pt-BR')} chamado(s)</span><span>Decisões, movimentações e PDFs são preservados</span></div>
+          <div className="mobile-cards">
+            {filtrados.map((chamado) => (
+              <article key={chamado.id} className="m-card">
+                <strong className="strong" style={{ display: 'block', overflowWrap: 'anywhere' }}>{codigoPedido(chamado.id)} · {chamado.nome_cliente}</strong>
+                <span className="xs muted" style={{ display: 'block' }}>#{chamado.codigo_cliente} · {chamado.solicitante} · {chamado.setor}</span>
+                <span className="row-wrap small" style={{ marginTop: 8, gap: '4px 12px' }}>
+                  <span className="badge badge-neutral">{STATUS_LABEL[statusEfetivo(chamado)]}</span>
+                  <span className="muted">{chamado.empresa}</span>
+                </span>
+                <span className="xs muted" style={{ display: 'block', marginTop: 8 }}>
+                  Movido em {dataHora(chamado.inutilizada_em)}{chamado.inutilizada_por_nome ? ` por ${chamado.inutilizada_por_nome}` : ''}
+                </span>
+                <div style={{ marginTop: 12 }}>{acoes(chamado)}</div>
+              </article>
+            ))}
+          </div>
+          <div className="records-bottom"><span>Exibindo {filtrados.length.toLocaleString('pt-BR')} chamado(s)</span><span className="hide-mobile">Decisões, movimentações e PDFs são preservados</span></div>
         </section>
       )}
 

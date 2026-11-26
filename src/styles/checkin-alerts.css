@@ -31,12 +31,10 @@
   min-width: 0;
   padding: 9px 11px;
   border: 1px solid var(--flow-line);
-  border-radius: var(--flow-radius-control);
   color: var(--flow-text);
   background: var(--flow-surface-nested);
   font-size: 14px;
-  line-height: 1.45;
-}
+  line-height: 1.45; border-radius: 14px; }
 
 .checkin-alert-row > svg { flex: 0 0 auto; margin-top: 1px; color: var(--flow-text-3); }
 .checkin-alert-row.is-warning { border-color: var(--flow-warning); }

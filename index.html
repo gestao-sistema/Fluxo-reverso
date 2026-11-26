@@ -1,18 +1,30 @@
 <!doctype html>
-<html lang="pt-BR">
+<html lang="pt-BR" data-brand="azime" data-theme="light">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <meta name="color-scheme" content="dark light" />
+    <meta name="theme-color" content="#e4e5e8" />
     <title>Reverso - Azime</title>
+    <!-- Instrument Sans (interface) e Instrument Serif (assinaturas de marca): padrão visual AZIME -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&family=Instrument+Serif&display=swap" rel="stylesheet" />
     <script>
-      // Modo claro/escuro antes do primeiro quadro (mesma regra de src/hooks/useModoCor.ts)
+      // Modo claro/escuro antes do primeiro quadro (mesma regra de src/hooks/useModoCor.ts).
+      // A marca (data-brand) é definida por context/TemaContext.tsx assim que a rota e o perfil são conhecidos.
       try {
         var modo = localStorage.getItem('flowdesk.modo-cor');
         if (modo !== 'claro' && modo !== 'escuro') modo = matchMedia('(prefers-color-scheme: light)').matches ? 'claro' : 'escuro';
-        document.documentElement.dataset.modo = modo;
+        var raiz = document.documentElement;
+        raiz.dataset.modo = modo;
+        raiz.dataset.theme = modo === 'claro' ? 'light' : 'dark';
+        raiz.style.colorScheme = modo === 'claro' ? 'light' : 'dark';
+        // Barra do navegador no celular já no tom do ambiente AZIME (o TemaContext corrige ao montar)
+        if (modo === 'escuro') document.querySelector('meta[name="theme-color"]').setAttribute('content', '#08080a');
       } catch (erro) {
-        document.documentElement.dataset.modo = 'escuro';
+        document.documentElement.dataset.modo = 'claro';
+        document.documentElement.dataset.theme = 'light';
       }
     </script>
   </head>

@@ -115,8 +115,8 @@ function DialogoReconciliacao({ comunicacao, acao, onCancelar, onConcluir }: Dia
           <p className="text-xs text-slate-500">Seu nome, a data do servidor e os valores anteriores e novos ficam registrados. Esta ação vale somente para esta comunicação.</p>
           {erro && <p role="alert" className="rounded-lg bg-red-50 border border-red-200 px-3 py-2 text-sm text-red-700">{erro}</p>}
           <div className="flex justify-end gap-2">
-            <button type="button" className="btn-secondary" onClick={onCancelar} disabled={enviando}>Cancelar</button>
-            <button type="submit" className="btn-primary" disabled={!valido || enviando}>
+            <button type="button" className="btn btn-secondary" onClick={onCancelar} disabled={enviando}>Cancelar</button>
+            <button type="submit" className="btn btn-primary" disabled={!valido || enviando}>
               {enviando && <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" />}
               {textos.confirmar}
             </button>
@@ -244,7 +244,7 @@ export default function ComunicacoesPage() {
         icon={MessageSquareWarning}
         title="Comunicações"
         description="A aceitação pelo SMTP ou a ação de um conector não comprovam entrega nem leitura."
-        action={<button type="button" className="btn-secondary" onClick={() => void carregar()} disabled={carregando}><RefreshCw className="w-4 h-4" aria-hidden="true" />Atualizar</button>}
+        action={<button type="button" className="btn btn-secondary" onClick={() => void carregar()} disabled={carregando}><RefreshCw className="w-4 h-4" aria-hidden="true" />Atualizar</button>}
       />
 
       {statusExistentes.length > 0 && (
@@ -292,7 +292,7 @@ export default function ComunicacoesPage() {
       {erro && (
         <div role="alert" className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700 flex items-center justify-between gap-3">
           <span>{erro}</span>
-          <button type="button" className="btn-secondary" onClick={() => void carregar()}>Tentar novamente</button>
+          <button type="button" className="btn btn-secondary" onClick={() => void carregar()}>Tentar novamente</button>
         </div>
       )}
 
@@ -337,8 +337,8 @@ export default function ComunicacoesPage() {
                         <td className="px-3 py-3">
                           {item.status === STATUS_INDETERMINADO ? (
                             <div className="flex flex-wrap gap-2">
-                              <button type="button" className="btn-secondary" onClick={() => setDialogo({ comunicacao: item, acao: 'confirmar_conclusao_conector' })}>Confirmar conclusão</button>
-                              <button type="button" className="btn-secondary" onClick={() => setDialogo({ comunicacao: item, acao: 'autorizar_nova_tentativa' })}>Autorizar nova tentativa</button>
+                              <button type="button" className="btn btn-secondary btn-xs" onClick={() => setDialogo({ comunicacao: item, acao: 'confirmar_conclusao_conector' })}>Confirmar conclusão</button>
+                              <button type="button" className="btn btn-secondary btn-xs" onClick={() => setDialogo({ comunicacao: item, acao: 'autorizar_nova_tentativa' })}>Autorizar nova tentativa</button>
                             </div>
                           ) : <span className="text-xs text-slate-400">—</span>}
                         </td>
@@ -371,7 +371,7 @@ export default function ComunicacoesPage() {
         {!carregando && itens.length < total && (
           <div className="flex items-center justify-between border-t border-slate-200 px-4 py-3 text-sm text-slate-600">
             <span>{itens.length} de {total} comunicações</span>
-            <button type="button" className="btn-secondary" onClick={() => void carregarMais()} disabled={carregandoMais}>
+            <button type="button" className="btn btn-secondary" onClick={() => void carregarMais()} disabled={carregandoMais}>
               {carregandoMais && <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" />}Carregar mais
             </button>
           </div>

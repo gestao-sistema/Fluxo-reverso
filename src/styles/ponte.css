@@ -1,0 +1,143 @@
+/* PONTE — nomes de token do sistema (--flow-*) apontando para os tokens do padrão visual.
+   Fonte de verdade das cores, raios, sombras e materiais: padrao/tokens.css (Manual definitivo do
+   frontend Alinare Novitah e AZIME). Aqui não nasce cor nova: só alias, mais as poucas cores de
+   categoria de gráfico que o manual não define (identidade das duas empresas nas séries).
+   Marca e tema vêm de <html data-brand="azime|alinare|novitah" data-theme="light|dark">,
+   aplicados por context/TemaContext.tsx. Folhas novas devem usar os tokens do padrão
+   (--surface, --text, --primary…); os --flow-* existem para as telas ainda não migradas. */
+
+:root {
+  --flow-font-sans: var(--font);
+  --flow-font-serif: var(--font);          /* o padrão usa Instrument Serif só nas assinaturas de marca */
+  --flow-tracking-eyebrow: .08em;
+  --flow-peso-titulo: 600;
+
+  --flow-space-1: var(--s1);
+  --flow-space-2: var(--s2);
+  --flow-space-3: var(--s3);
+  --flow-space-4: var(--s4);
+  --flow-space-5: var(--s5);
+  --flow-space-6: var(--s6);
+  --flow-space-8: var(--s8);
+  --flow-space-10: var(--s10);
+  --flow-gutter: var(--gap-frame);
+  --flow-content-max: 1400px;
+  --flow-form-max: 980px;
+
+  --flow-radius-panel: var(--r-card);
+  --flow-radius-card: var(--r-card);
+  --flow-radius-control: var(--r-field);
+  --flow-radius-pill: var(--r-pill);
+
+  --flow-glass-blur: var(--glass-blur);
+  --flow-glass-saturate: 1.7;
+  --flow-foco-largura: 2px;
+  --flow-motion-hover: var(--dur-fast);
+  --flow-motion: var(--dur);
+  --flow-ease: var(--ease);
+
+  --flow-topbar-height: var(--header-h);
+  --flow-safe-bottom: env(safe-area-inset-bottom, 0px);
+
+  /* Camadas do padrão (manual, seção 8.3) */
+  --flow-z-fundo: 0;
+  --flow-z-topbar: 20;
+  --flow-z-dock: 30;
+  --flow-z-dropdown: 50;
+  --flow-z-modal: 60;
+  --flow-z-toast: 100;
+
+  --flow-bg: var(--amb-base);
+  --flow-surface: var(--surface);
+  --flow-surface-solid: var(--surface-solid);
+  --flow-surface-raised: var(--surface-solid);
+  --flow-surface-raised-solid: var(--surface-solid);
+  --flow-surface-inset: var(--surface-sunken);
+  --flow-surface-nested: var(--surface-sunken);
+  --flow-surface-hover: var(--accent-soft);
+  --flow-field: var(--surface-solid);
+  --flow-field-solid: var(--surface-solid);
+  --flow-overlay: var(--overlay);
+
+  --flow-text: var(--text);
+  --flow-text-2: var(--text-muted);
+  --flow-text-3: var(--text-subtle);
+  --flow-titulo: var(--text);
+
+  --flow-accent: var(--accent);
+  --flow-accent-hover: var(--primary-hover);
+  --flow-accent-soft: var(--accent-soft);
+  --flow-accent-strong: var(--focus-ring);
+  --flow-fill: var(--primary);
+  --flow-fill-hover: var(--primary-hover);
+  --flow-fill-solid: var(--primary);
+  --flow-on-fill: var(--on-primary);
+
+  --flow-line: var(--border);
+  --flow-line-strong: var(--border-strong);
+  --flow-edge: var(--glass-edge);
+  --flow-glow: var(--focus-ring);
+
+  --flow-success: var(--ok);
+  --flow-success-soft: var(--ok-soft);
+  --flow-warning: var(--warn);
+  --flow-warning-soft: var(--warn-soft);
+  --flow-danger: var(--danger);
+  --flow-danger-deep: var(--danger);
+  --flow-danger-soft: var(--danger-soft);
+  --flow-info: var(--info);
+  --flow-info-soft: var(--info-soft);
+
+  --flow-ativo-bg: var(--nav-selected-bg);
+  --flow-ativo-text: var(--nav-selected-text);
+  --flow-ativo-borda: transparent;
+
+  --flow-chrome: var(--glass-bg-strong);
+  --flow-chrome-text: var(--nav-text);
+  --flow-chrome-text-forte: var(--text);
+  --flow-chrome-hover: var(--nav-hover);
+  --flow-chrome-inset: var(--glass-edge);
+  --flow-chrome-line: var(--glass-border);
+  --flow-chrome-ativo-bg: var(--nav-selected-bg);
+  --flow-chrome-ativo-text: var(--nav-selected-text);
+  --flow-chrome-ativo-borda: transparent;
+
+  --flow-shadow-panel: 0 1px 2px rgb(0 0 0 / .03), 0 8px 24px -16px rgb(0 0 0 / .18);
+  --flow-shadow-float: var(--glass-shadow);
+  --flow-shadow-modal: var(--glass-shadow);
+  --flow-highlight: inset 0 1px 0 var(--glass-edge);
+  --flow-realce: rgb(255 255 255 / .12);
+  --flow-realce-forte: rgb(255 255 255 / .18);
+  --flow-sombra-texto: none;
+  --flow-veu: none;
+  --flow-brilho: none;
+  --flow-particula: 198, 196, 199;
+
+  /* Painel claro dentro do escuro (indicadores): o padrão mantém superfícies do próprio tema */
+  --flow-surface-light: var(--surface-solid);
+  --flow-text-on-light: var(--text);
+  --flow-text-on-light-2: var(--text-muted);
+  --flow-line-on-light: var(--border);
+  --flow-on-light-accent: var(--on-accent-soft);
+  --flow-on-light-line: var(--border-strong);
+  --flow-on-light-inset: var(--accent-soft);
+}
+
+/* Cores de categoria (séries de gráfico e etiquetas das duas empresas) — identidade institucional */
+[data-theme='light'] {
+  --flow-on-danger: #ffffff;
+  --flow-violet: #573d94;
+  --flow-orange: #8a4612;
+  --flow-serie-alinare: #242741;       /* oficial: Deep */
+  --flow-serie-novitah: #a46f69;       /* oficial: Terracota */
+  --flow-serie-novitah-texto: #8b5e59;
+}
+[data-theme='dark'] {
+  --flow-on-danger: #1a0a08;
+  --flow-violet: #c9b6f0;
+  --flow-orange: #f2ae7e;
+  --flow-serie-alinare: #d4c8b7;       /* oficial: Travertine */
+  --flow-serie-novitah: #a46f69;       /* oficial: Terracota */
+  --flow-serie-novitah-texto: #d6c0b8; /* oficial: Rosa nude */
+}
+[data-brand='novitah'][data-theme='dark'] { --flow-serie-novitah: #d7b79b; /* oficial: Bege areia */ }

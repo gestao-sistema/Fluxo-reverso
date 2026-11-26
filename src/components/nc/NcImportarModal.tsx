@@ -83,7 +83,7 @@ export default function NcImportarModal({ listas, onFechar, onImportado }: Props
             seu navegador; cada NC mantém o ID da planilha (NC-0001…). NCs já importadas são ignoradas.
           </p>
 
-          <label className="btn-secondary cursor-pointer" style={{ width: 'fit-content' }}>
+          <label className="btn btn-secondary cursor-pointer" style={{ width: 'fit-content' }}>
             {lendo ? <Loader2 className="animate-spin" size={15} /> : <FileSpreadsheet size={15} />} {arquivo ?? 'Escolher arquivo .xlsx'}
             <input type="file" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" className="hidden" disabled={lendo || enviando} onChange={(e) => ler(e.target.files?.[0])} />
           </label>
@@ -132,8 +132,8 @@ export default function NcImportarModal({ listas, onFechar, onImportado }: Props
         </div>
 
         <div className="flex items-center justify-end gap-2 px-6 py-4 border-t border-slate-200">
-          <button type="button" onClick={onFechar} className="btn-secondary">Cancelar</button>
-          <button type="button" onClick={importar} className="btn-primary" disabled={!resumo || resumo.novas.length === 0 || enviando || lendo}>
+          <button type="button" onClick={onFechar} className="btn btn-secondary">Cancelar</button>
+          <button type="button" onClick={importar} className="btn btn-primary" disabled={!resumo || resumo.novas.length === 0 || enviando || lendo}>
             {enviando ? <Loader2 className="animate-spin" size={15} /> : <Upload size={15} />}
             Importar {resumo ? resumo.novas.length : ''} NC(s)
           </button>

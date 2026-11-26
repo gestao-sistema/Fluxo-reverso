@@ -256,7 +256,7 @@ function FilaEmissao({
       <PageHeading
         icon={Tag}
         title="Aguardando etiqueta"
-        action={<button type="button" onClick={() => void refetch()} disabled={refreshing} className="btn-secondary"><RefreshCw size={15} className={refreshing ? 'approval-refreshing' : ''} /> Atualizar</button>}
+        action={<button type="button" onClick={() => void refetch()} disabled={refreshing} className="btn btn-secondary"><RefreshCw size={15} className={refreshing ? 'approval-refreshing' : ''} /> Atualizar</button>}
       />
 
       {emissaoConfirmada && (

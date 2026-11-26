@@ -17,7 +17,6 @@ vi.mock('../services/authService', async () => {
 });
 vi.mock('../context/AuthContext', () => ({ useAuth: () => ({ user: mocks.user, logout: mocks.logout }) }));
 vi.mock('../components/ui/BotaoModoCor', () => ({ default: () => null }));
-vi.mock('../components/ui/BotaoEfeitosFundo', () => ({ default: () => null }));
 vi.mock('react-hot-toast', () => ({ default: mocks.toast }));
 
 import DefinirSenhaPage from '../pages/DefinirSenhaPage';
@@ -33,7 +32,7 @@ function abrir(url = `/definir-senha?token_hash=${TOKEN}&type=invite`) {
       <Routes>
         <Route path="/definir-senha" element={<DefinirSenhaPage />} />
         <Route path="/" element={<div>HOME</div>} />
-        <Route path="/login" element={<div>LOGIN</div>} />
+        <Route path="/login/azime" element={<div>LOGIN</div>} />
       </Routes>
     </MemoryRouter>,
   );
@@ -93,7 +92,7 @@ describe('página de definição de senha do convite', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent(MSG_CONVITE_INVALIDO);
     expect(screen.queryByLabelText(/nova senha/i)).not.toBeInTheDocument();
     expect(mocks.definirSenhaDoConvite).not.toHaveBeenCalled();
-    expect(screen.getByRole('link', { name: /ir para o login/i })).toHaveAttribute('href', '/login');
+    expect(screen.getByRole('link', { name: /ir para o login/i })).toHaveAttribute('href', '/login/azime');
   });
 
   it('falha de rede ao abrir o convite mantém o formulário e permite tentar de novo com o mesmo link', async () => {

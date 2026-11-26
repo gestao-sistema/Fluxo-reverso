@@ -3,6 +3,7 @@
 // no escopo de empresa e setor informado aqui mesmo. O banco é a autoridade; esta tela valida com
 // as mesmas regras da Edge Function admin-usuarios.
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { CONSULTA_CELULAR, useMediaQuery } from '../hooks/useMediaQuery';
 import toast from 'react-hot-toast';
 import { Loader2, Plus, Pencil, Trash2, X, UserPlus, Send } from 'lucide-react';
 import authService from '../services/authService';
@@ -104,6 +105,7 @@ function escopoDoUsuario(config: ConfigAprovadoresReversa | null, usuarioId: str
 
 export default function UsuariosPage() {
   const { user } = useAuth();
+  const emCelular = useMediaQuery(CONSULTA_CELULAR);
   const [lista, setLista] = useState<Usuario[]>([]);
   const [configAprovadores, setConfigAprovadores] = useState<ConfigAprovadoresReversa | null>(null);
   const [erroConfig, setErroConfig] = useState<string | null>(null);
@@ -454,21 +456,124 @@ export default function UsuariosPage() {
 
   const setoresConhecidos = configAprovadores?.setores ?? [];
 
+  /** Selos de acesso e situação do convite de uma pessoa (mesma informação na tabela e nos cards). */
+  const chipsDeAcesso = (u: Usuario) => (
+      <div className="row-wrap" style={{ gap: 6 }}>
+        {isMestre(u) ? (
+          <span className="badge badge-accent">
+            Mestre · acesso total
+          </span>
+        ) : (
+          <>
+            <span className="badge badge-neutral plain">
+              {PERFIL_ACESSO_LABEL[u.perfilAcesso ?? 'personalizado']}
+            </span>
+            {(u.empresasAcesso ?? []).map((empresa) => (
+              <span key={empresa} className={`record-empresa-pill ${empresa === 'Alinare' ? 'is-alinare' : 'is-novitah'} badge plain`}>
+                {empresa}
+              </span>
+            ))}
+            {u.perfilAcesso === 'personalizado' && u.telas.slice(0, 3).map((t) => (
+              <span
+                key={t}
+                className="badge badge-neutral plain"
+              >
+                {rotuloDaTela(t)}
+              </span>
+            ))}
+            {u.perfilAcesso === 'personalizado' && u.telas.length > 3 && (
+              <span className="badge badge-neutral plain">
+                +{u.telas.length - 3}
+              </span>
+            )}
+            {u.perfilAcesso !== 'personalizado' && u.telas.includes('usuarios') && (
+              <span className="badge badge-neutral plain">
+                {rotuloDaTela('usuarios')}
+              </span>
+            )}
+          </>
+        )}
+        {u.situacao === 'convite_pendente' && (
+          <span
+            className="badge badge-warn"
+            title="A pessoa ainda não aceitou o convite e não definiu a senha."
+          >
+            Convite pendente{u.convite ? ` · ${ROTULO_ESTADO_CONVITE[u.convite.estado] ?? u.convite.estado}` : ''}
+          </span>
+        )}
+        {u.situacao === 'senha_nao_definida' && (
+          <span
+            className="badge badge-danger"
+            title="O convite foi aberto, mas a senha não foi definida. Use Reenviar para enviar um link de definição de senha."
+          >
+            Convite aceito · senha não definida
+          </span>
+        )}
+        {(pendenciasPorUsuario[u.id]?.length ?? 0) > 0 && (
+          <span
+            className="badge badge-warn"
+            title={pendenciasPorUsuario[u.id].join(' ')}
+          >
+            Revisar acesso
+          </span>
+        )}
+      </div>
+  );
+
+  /** Ações da linha: reenviar convite, editar e remover. */
+  const acoesDoUsuario = (u: Usuario) => (
+  <div className="record-actions">
+    {(u.situacao === 'convite_pendente' || u.situacao === 'senha_nao_definida') && (
+      <button
+        type="button"
+        onClick={() => setReenvio({
+          usuario: { id: u.id, nome: u.nome },
+          incerto: u.convite?.estado === 'resultado_indeterminado',
+          definicaoSenha: u.situacao === 'senha_nao_definida',
+        })}
+        className="icon-btn"
+        aria-label={u.situacao === 'senha_nao_definida' ? `Enviar link de definição de senha para ${u.nome}` : `Reenviar convite para ${u.nome}`}
+        title={u.situacao === 'senha_nao_definida' ? 'Enviar link de definição de senha' : 'Reenviar convite'}
+      >
+        <Send size={18} aria-hidden="true" />
+      </button>
+    )}
+    <button
+      type="button"
+      onClick={() => abrirEditar(u)}
+      className="icon-btn"
+      aria-label={`Editar ${u.nome}`}
+    >
+      <Pencil size={18} aria-hidden="true" />
+    </button>
+    <button
+      type="button"
+      onClick={() => onRemover(u)}
+      disabled={u.protegido}
+      className="icon-btn is-danger"
+      aria-label={`Remover ${u.nome}`}
+      title={u.protegido ? 'Administrador padrão não pode ser removido' : 'Remover'}
+    >
+      <Trash2 size={18} aria-hidden="true" />
+    </button>
+  </div>
+  );
+
+
   return (
     <div>
-      <div className="flex items-center justify-between flex-wrap gap-3 mb-6">
-        <PageHeading icon={ShieldCheck} title="Usuários" />
-        <button
-          type="button"
-          onClick={abrirNovo}
-          className="btn-primary"
-        >
-          <Plus className="w-4 h-4" />
-          Novo usuário
-        </button>
-      </div>
+      <PageHeading
+        icon={ShieldCheck}
+        title="Usuários"
+        action={(
+          <button type="button" onClick={abrirNovo} className="btn btn-primary">
+            <Plus size={16} aria-hidden="true" />
+            Novo usuário
+          </button>
+        )}
+      />
 
-      <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+      <div className="card" style={{ overflow: 'hidden' }}>
         {loading ? (
           <div className="flex items-center justify-center py-16">
             <Loader2 className="w-6 h-6 animate-spin text-slate-400" />
@@ -479,125 +584,42 @@ export default function UsuariosPage() {
             <p className="text-sm">Nenhum usuário cadastrado.</p>
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse min-w-[560px]">
-              <thead>
-                <tr className="bg-slate-50 border-b border-slate-200">
-                  <th className="px-3 sm:px-5 py-3.5 text-xs font-semibold text-slate-500 uppercase tracking-wider">Nome</th>
-                  <th className="px-3 sm:px-5 py-3.5 text-xs font-semibold text-slate-500 uppercase tracking-wider">Login</th>
-                  <th className="px-3 sm:px-5 py-3.5 text-xs font-semibold text-slate-500 uppercase tracking-wider">Acesso</th>
-                  <th className="px-3 sm:px-5 py-3.5 text-xs font-semibold text-slate-500 uppercase tracking-wider text-center">Ações</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100">
-                {lista.map((u) => (
-                  <tr key={u.id} className="hover:bg-slate-50/80 transition-colors">
-                    <td className="px-3 sm:px-5 py-3 whitespace-nowrap text-sm font-medium text-slate-900">{u.nome}</td>
-                    <td className="px-3 sm:px-5 py-3 whitespace-nowrap text-sm text-slate-700">{u.usuario}</td>
-                    <td className="px-3 sm:px-5 py-3">
-                      <div className="flex flex-wrap gap-1">
-                        {isMestre(u) ? (
-                          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-700">
-                            Mestre · acesso total
-                          </span>
-                        ) : (
-                          <>
-                            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-slate-100 text-slate-700">
-                              {PERFIL_ACESSO_LABEL[u.perfilAcesso ?? 'personalizado']}
-                            </span>
-                            {(u.empresasAcesso ?? []).map((empresa) => (
-                              <span key={empresa} className={`record-empresa-pill ${empresa === 'Alinare' ? 'is-alinare' : 'is-novitah'} inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium`}>
-                                {empresa}
-                              </span>
-                            ))}
-                            {u.perfilAcesso === 'personalizado' && u.telas.slice(0, 3).map((t) => (
-                              <span
-                                key={t}
-                                className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-slate-100 text-slate-600"
-                              >
-                                {rotuloDaTela(t)}
-                              </span>
-                            ))}
-                            {u.perfilAcesso === 'personalizado' && u.telas.length > 3 && (
-                              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-slate-50 text-slate-500">
-                                +{u.telas.length - 3}
-                              </span>
-                            )}
-                            {u.perfilAcesso !== 'personalizado' && u.telas.includes('usuarios') && (
-                              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-slate-100 text-slate-600">
-                                {rotuloDaTela('usuarios')}
-                              </span>
-                            )}
-                          </>
-                        )}
-                        {u.situacao === 'convite_pendente' && (
-                          <span
-                            className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800"
-                            title="A pessoa ainda não aceitou o convite e não definiu a senha."
-                          >
-                            Convite pendente{u.convite ? ` · ${ROTULO_ESTADO_CONVITE[u.convite.estado] ?? u.convite.estado}` : ''}
-                          </span>
-                        )}
-                        {u.situacao === 'senha_nao_definida' && (
-                          <span
-                            className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800"
-                            title="O convite foi aberto, mas a senha não foi definida. Use Reenviar para enviar um link de definição de senha."
-                          >
-                            Convite aceito · senha não definida
-                          </span>
-                        )}
-                        {(pendenciasPorUsuario[u.id]?.length ?? 0) > 0 && (
-                          <span
-                            className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800"
-                            title={pendenciasPorUsuario[u.id].join(' ')}
-                          >
-                            Revisar acesso
-                          </span>
-                        )}
-                      </div>
-                    </td>
-                    <td className="px-3 sm:px-5 py-3 whitespace-nowrap text-center">
-                      <div className="flex items-center justify-center gap-1">
-                        {(u.situacao === 'convite_pendente' || u.situacao === 'senha_nao_definida') && (
-                          <button
-                            type="button"
-                            onClick={() => setReenvio({
-                              usuario: { id: u.id, nome: u.nome },
-                              incerto: u.convite?.estado === 'resultado_indeterminado',
-                              definicaoSenha: u.situacao === 'senha_nao_definida',
-                            })}
-                            className="p-2.5 -m-1 rounded-lg text-slate-500 hover:bg-slate-200 active:bg-slate-300 hover:text-slate-700 transition-colors cursor-pointer"
-                            aria-label={u.situacao === 'senha_nao_definida' ? `Enviar link de definição de senha para ${u.nome}` : `Reenviar convite para ${u.nome}`}
-                            title={u.situacao === 'senha_nao_definida' ? 'Enviar link de definição de senha' : 'Reenviar convite'}
-                          >
-                            <Send className="w-5 h-5" />
-                          </button>
-                        )}
-                        <button
-                          type="button"
-                          onClick={() => abrirEditar(u)}
-                          className="p-2.5 -m-1 rounded-lg text-slate-500 hover:bg-slate-200 active:bg-slate-300 hover:text-slate-700 transition-colors cursor-pointer"
-                          aria-label={`Editar ${u.nome}`}
-                        >
-                          <Pencil className="w-5 h-5" />
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => onRemover(u)}
-                          disabled={u.protegido}
-                          className="p-2.5 -m-1 rounded-lg text-slate-500 hover:bg-red-100 active:bg-red-200 hover:text-red-600 transition-colors disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer"
-                          aria-label={`Remover ${u.nome}`}
-                          title={u.protegido ? 'Administrador padrão não pode ser removido' : 'Remover'}
-                        >
-                          <Trash2 className="w-5 h-5" />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+          emCelular ? (
+          <div className="mobile-cards" style={{ display: 'block' }}>
+            {lista.map((u) => (
+              <article key={u.id} className="m-card">
+                <div className="row" style={{ justifyContent: 'space-between', alignItems: 'flex-start', gap: 12 }}>
+                  <div style={{ minWidth: 0 }}>
+                    <strong className="strong" style={{ display: 'block', overflowWrap: 'anywhere' }}>{u.nome}</strong>
+                    <span className="xs muted">@{u.usuario}</span>
+                  </div>
+                  {acoesDoUsuario(u)}
+                </div>
+                <div style={{ marginTop: 10 }}>{chipsDeAcesso(u)}</div>
+              </article>
+            ))}
           </div>
+          ) : (
+          <>
+            <div className="table-wrap">
+              <table className="tbl" style={{ minWidth: 560 }}>
+                <thead>
+                  <tr><th>Nome</th><th>Login</th><th>Acesso</th><th className="r">Ações</th></tr>
+                </thead>
+                <tbody>
+                  {lista.map((u) => (
+                    <tr key={u.id}>
+                      <td className="strong" style={{ whiteSpace: 'nowrap' }}>{u.nome}</td>
+                      <td style={{ whiteSpace: 'nowrap' }}>{u.usuario}</td>
+                      <td>{chipsDeAcesso(u)}</td>
+                      <td className="r">{acoesDoUsuario(u)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </>
+          )
         )}
       </div>
 

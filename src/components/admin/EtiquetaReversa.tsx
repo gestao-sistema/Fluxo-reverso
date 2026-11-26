@@ -361,7 +361,7 @@ export default function EtiquetaReversa({ solicitacao, podeEmitir, onAlterada }:
                 {emissao?.sequencia && <p className="text-xs text-slate-500">Emissão #{emissao.sequencia}</p>}
               </div>
             </div>
-            <button type="button" onClick={() => setVisualizandoPdf(true)} className="btn-secondary">
+            <button type="button" onClick={() => setVisualizandoPdf(true)} className="btn btn-secondary">
               <Eye size={15} /> Abrir PDF
             </button>
             {visualizandoPdf && (
@@ -410,8 +410,8 @@ export default function EtiquetaReversa({ solicitacao, podeEmitir, onAlterada }:
             </div>
             {erroDatas && <p className="text-sm text-rose-700" role="alert">{erroDatas}</p>}
             <div className="flex flex-wrap gap-2">
-              <button type="button" onClick={() => void salvarCodigos()} disabled={salvando || !!erroDatas} className="btn-primary">{salvando ? 'Salvando…' : 'Salvar dados'}</button>
-              <button type="button" onClick={() => setEditandoCodigos(false)} disabled={salvando} className="btn-secondary">Cancelar</button>
+              <button type="button" onClick={() => void salvarCodigos()} disabled={salvando || !!erroDatas} className="btn btn-primary">{salvando ? 'Salvando…' : 'Salvar dados'}</button>
+              <button type="button" onClick={() => setEditandoCodigos(false)} disabled={salvando} className="btn btn-secondary">Cancelar</button>
             </div>
           </div>
         )}
@@ -420,7 +420,7 @@ export default function EtiquetaReversa({ solicitacao, podeEmitir, onAlterada }:
         {podeRegistrar && !arquivo && (
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
             {precisaReemitir && <p className="flex-1 text-sm text-slate-500">A etiqueta atual fica guardada no histórico.</p>}
-            <button type="button" onClick={() => inputRef.current?.click()} disabled={carregandoEmissao || salvando} className="btn-secondary">
+            <button type="button" onClick={() => inputRef.current?.click()} disabled={carregandoEmissao || salvando} className="btn btn-secondary">
               <Upload size={15} /> {precisaReemitir ? 'Substituir etiqueta' : 'Anexar etiqueta'}
             </button>
           </div>
@@ -463,10 +463,10 @@ export default function EtiquetaReversa({ solicitacao, podeEmitir, onAlterada }:
               </div>
             )}
             <div className="flex flex-wrap gap-2">
-              <button type="button" onClick={() => void confirmarEmissao()} disabled={lendoPdf || salvando || !!erroDatas} className="btn-primary">
+              <button type="button" onClick={() => void confirmarEmissao()} disabled={lendoPdf || salvando || !!erroDatas} className="btn btn-primary">
                 {salvando ? 'Salvando…' : 'Confirmar'}
               </button>
-              <button type="button" onClick={cancelarSelecao} disabled={salvando} className="btn-secondary">Cancelar</button>
+              <button type="button" onClick={cancelarSelecao} disabled={salvando} className="btn btn-secondary">Cancelar</button>
             </div>
           </div>
         )}

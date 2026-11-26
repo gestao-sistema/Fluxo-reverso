@@ -224,7 +224,7 @@ export default function ListPage() {
       <div className="list-toolbar">
         <div className="list-summary">{loading ? 'Carregando' : `${dados.length} ${dados.length === 1 ? 'pedido' : 'pedidos'}`}</div>
         <div className="flex items-center gap-2 flex-wrap">
-          <button type="button" onClick={handleExportXlsx} className="btn-secondary"><FileSpreadsheet size={15}/> <span>Exportar XLSX</span> <Download size={13}/></button>
+          <button type="button" onClick={handleExportXlsx} className="btn btn-secondary"><FileSpreadsheet size={15}/> <span>Exportar XLSX</span> <Download size={13}/></button>
           <div className="segmented" role="group" aria-label="Filtrar por situação">
             {([['pendentes','Em aberto'],['concluidos','Concluídos'],['todos','Todos']] as const).map(([key,label])=><button type="button" key={key} className={verFiltro===key?'active':''} onClick={()=>{setVerFiltro(key);setStatusDoDashboard([])}} aria-pressed={verFiltro===key}>{label}</button>)}
           </div>

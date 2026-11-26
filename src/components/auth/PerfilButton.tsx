@@ -1,19 +1,24 @@
-// ── Conta do usuário na barra superior ──────────────────────────────────────
-// Gatilho só com as iniciais. Menu: nome, badge Admin, "Alterar senha", efeitos
-// de fundo, "Reiniciar demonstração" (só na demo) e "Sair"
+// ── Conta do usuário no cabeçalho (padrão visual, seção 10.4) ────────────────
+// Botão com avatar (iniciais) e primeiro nome; menu de vidro com nome, usuário e papel,
+// "Alterar senha", aparência (modo, reduzir movimento e transparência), "Reiniciar demonstração"
+// (só na demo) e "Sair". O diálogo de senha vai para o body: assim nenhum ancestral com filtro
+// ou transformação prende o overlay `position: fixed` à própria caixa.
+// ─────────────────────────────────────────────────────────────────────────────
 import { useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
-import { KeyRound, LogOut, Pause, Play, RotateCcw } from 'lucide-react';
+import { ChevronDown, KeyRound, LogOut, Moon, ZapOff, RotateCcw, Sun, Layers } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { isAdmin } from '../../types';
-import { useEfeitosFundoPausados } from '../../hooks/useEfeitosFundo';
+import { useModoCor } from '../../hooks/useModoCor';
+import { usePreferenciasVisuais } from '../../hooks/usePreferenciasVisuais';
 import { demoDados } from '../../demo/demoDatabase';
 
 export default function PerfilButton() {
   const { user, logout, alterarSenha, isDemo, sairDemonstracao } = useAuth();
-  const [efeitosPausados, definirEfeitos] = useEfeitosFundoPausados();
+  const [modo, definirModo] = useModoCor();
+  const [preferencias, definirPreferencia] = usePreferenciasVisuais();
   const navigate = useNavigate();
 
   const [aberto, setAberto] = useState(false);
@@ -24,7 +29,7 @@ export default function PerfilButton() {
   const [salvando, setSalvando] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
-  // Fecha dropdown ao clicar fora ou apertar Esc
+  // Fecha o menu ao clicar fora ou apertar Esc
   useEffect(() => {
     if (!aberto) return;
     const handler = (e: MouseEvent) => {
@@ -49,7 +54,7 @@ export default function PerfilButton() {
       return;
     }
     await logout();
-    navigate('/login', { replace: true });
+    navigate('/login/azime', { replace: true });
   };
 
   const abrirModal = () => {
@@ -96,6 +101,9 @@ export default function PerfilButton() {
   if (!user) return null;
 
   const iniciais = user.nome.trim().split(/\s+/).slice(0, 2).map((p) => p[0]).join('').toUpperCase();
+  const primeiroNome = user.nome.trim().split(/\s+/)[0];
+  const papel = isAdmin(user) ? 'Administração' : 'Colaboração';
+  const claro = modo === 'claro';
 
   return (
     <>
@@ -107,61 +115,86 @@ export default function PerfilButton() {
           aria-expanded={aberto}
           aria-label={`Conta de ${user.nome}`}
           title={user.nome}
-          className="profile-trigger"
+          className="user-btn"
         >
-          <span className="profile-avatar" aria-hidden="true">{iniciais}</span>
+          <span className="avatar" aria-hidden="true">{iniciais}</span>
+          <span className="u-name hide-mobile">
+            <span className="small strong" style={{ display: 'block', lineHeight: 1.2 }}>{primeiroNome}</span>
+            <span className="xs muted" style={{ display: 'block', lineHeight: 1.2 }}>{papel}</span>
+          </span>
+          <ChevronDown size={16} aria-hidden="true" className="hide-mobile" style={{ transition: 'transform var(--dur) var(--ease)', transform: aberto ? 'rotate(180deg)' : undefined }} />
         </button>
 
         {aberto && (
-          <div className="profile-menu" role="menu">
-            <div className="profile-menu-head">
-              <p className="profile-menu-nome">{user.nome}{isAdmin(user) && <span className="profile-badge">Admin</span>}</p>
-              <p className="profile-menu-usuario">@{user.usuario}</p>
+          <div className="popover glass-strong" role="menu" style={{ minWidth: 280 }}>
+            <div className="row" style={{ padding: '14px 16px 10px', gap: 12 }}>
+              <span className="avatar lg" aria-hidden="true">{iniciais}</span>
+              <div style={{ minWidth: 0 }}>
+                <p className="strong" style={{ overflowWrap: 'anywhere' }}>{user.nome}</p>
+                <p className="xs muted">@{user.usuario}</p>
+                {isAdmin(user) && <span className="badge badge-accent plain" style={{ marginTop: 6 }}>Admin</span>}
+              </div>
             </div>
-            {!isDemo && <button type="button" role="menuitem" onClick={abrirModal} className="profile-menu-item">
-              <KeyRound size={15} aria-hidden="true" />
-              Alterar senha
-            </button>}
-            <button type="button" role="menuitem" onClick={() => definirEfeitos(!efeitosPausados)} className="profile-menu-item">
-              {efeitosPausados ? <Play size={15} aria-hidden="true" /> : <Pause size={15} aria-hidden="true" />}
-              {efeitosPausados ? 'Retomar efeitos de fundo' : 'Pausar efeitos de fundo'}
+            <div className="menu-sep" />
+            {!isDemo && (
+              <button type="button" role="menuitem" onClick={abrirModal} className="menu-item">
+                <KeyRound size={16} aria-hidden="true" />
+                Alterar senha
+              </button>
+            )}
+            <div className="menu-head">Aparência</div>
+            {/* Em telas pequenas o botão do cabeçalho some: a alternância fica aqui */}
+            <button type="button" role="menuitemcheckbox" aria-checked={!claro} onClick={() => definirModo(claro ? 'escuro' : 'claro')} className="menu-item">
+              {claro ? <Moon size={16} aria-hidden="true" /> : <Sun size={16} aria-hidden="true" />}
+              {claro ? 'Usar modo escuro' : 'Usar modo claro'}
             </button>
-            {import.meta.env.DEV && isDemo && <button type="button" role="menuitem" onClick={() => { demoDados.resetar(); window.location.reload(); }} className="profile-menu-item" title="Restaurar os dados fictícios">
-              <RotateCcw size={15} aria-hidden="true" />
-              Reiniciar demonstração
-            </button>}
-            <button type="button" role="menuitem" onClick={handleLogout} className="profile-menu-item is-danger">
-              <LogOut size={15} aria-hidden="true" />
+            <button type="button" role="menuitemcheckbox" aria-checked={preferencias.reduzirMovimento} onClick={() => definirPreferencia('reduzirMovimento', !preferencias.reduzirMovimento)} className="menu-item">
+              <ZapOff size={16} aria-hidden="true" />
+              Reduzir movimento
+            </button>
+            <button type="button" role="menuitemcheckbox" aria-checked={preferencias.reduzirTransparencia} onClick={() => definirPreferencia('reduzirTransparencia', !preferencias.reduzirTransparencia)} className="menu-item">
+              <Layers size={16} aria-hidden="true" />
+              Reduzir transparência
+            </button>
+            <div className="menu-sep" />
+            {import.meta.env.DEV && isDemo && (
+              <button type="button" role="menuitem" onClick={() => { demoDados.resetar(); window.location.reload(); }} className="menu-item" title="Restaurar os dados fictícios">
+                <RotateCcw size={16} aria-hidden="true" />
+                Reiniciar demonstração
+              </button>
+            )}
+            <button type="button" role="menuitem" onClick={handleLogout} className="menu-item" style={{ color: 'var(--danger)', marginBottom: 6 }}>
+              <LogOut size={16} aria-hidden="true" />
               Sair
             </button>
           </div>
         )}
       </div>
 
-      {/* Modal de alteração de senha. Vai para o body: a cápsula do topo tem backdrop-filter, que prende
-          descendentes position:fixed à própria caixa e cortava o diálogo pela metade. */}
       {mostrarModalSenha && createPortal(
-        <div className="modal-overlay">
-          <div className="modal-panel" role="dialog" aria-modal="true" aria-labelledby="titulo-alterar-senha">
-            <div className="modal-head">
-              <h2 id="titulo-alterar-senha" className="modal-title">Alterar senha</h2>
+        <div className="overlay">
+          <div className="dialog glass-strong" role="dialog" aria-modal="true" aria-labelledby="titulo-alterar-senha">
+            <div className="dialog-head">
+              <h2 id="titulo-alterar-senha">Alterar senha</h2>
             </div>
-            <form onSubmit={onSubmitSenha} noValidate className="modal-body">
-              <div className="modal-field">
-                <label htmlFor="senha-atual" className="field-label">Senha atual</label>
-                <input id="senha-atual" type="password" value={senhaAtual} onChange={(e) => setSenhaAtual(e.target.value)} className="field-control" required autoFocus />
+            <form onSubmit={onSubmitSenha} noValidate>
+              <div className="dialog-body stack">
+                <div className="field">
+                  <label htmlFor="senha-atual">Senha atual</label>
+                  <input id="senha-atual" type="password" value={senhaAtual} onChange={(e) => setSenhaAtual(e.target.value)} className="input" required autoFocus />
+                </div>
+                <div className="field">
+                  <label htmlFor="nova-senha">Nova senha</label>
+                  <input id="nova-senha" type="password" value={novaSenha} onChange={(e) => setNovaSenha(e.target.value)} className="input" required minLength={6} />
+                </div>
+                <div className="field">
+                  <label htmlFor="confirmar-senha">Confirmar nova senha</label>
+                  <input id="confirmar-senha" type="password" value={confirmarSenha} onChange={(e) => setConfirmarSenha(e.target.value)} className="input" required minLength={6} />
+                </div>
               </div>
-              <div className="modal-field">
-                <label htmlFor="nova-senha" className="field-label">Nova senha</label>
-                <input id="nova-senha" type="password" value={novaSenha} onChange={(e) => setNovaSenha(e.target.value)} className="field-control" required minLength={6} />
-              </div>
-              <div className="modal-field">
-                <label htmlFor="confirmar-senha" className="field-label">Confirmar nova senha</label>
-                <input id="confirmar-senha" type="password" value={confirmarSenha} onChange={(e) => setConfirmarSenha(e.target.value)} className="field-control" required minLength={6} />
-              </div>
-              <div className="modal-actions">
-                <button type="button" onClick={fecharModal} className="btn-secondary">Cancelar</button>
-                <button type="submit" disabled={salvando} className="btn-primary">{salvando ? 'Salvando…' : 'Salvar'}</button>
+              <div className="dialog-foot">
+                <button type="button" onClick={fecharModal} className="btn btn-secondary">Cancelar</button>
+                <button type="submit" disabled={salvando} className="btn btn-primary">{salvando ? 'Salvando…' : 'Salvar'}</button>
               </div>
             </form>
           </div>

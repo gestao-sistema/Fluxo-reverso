@@ -43,7 +43,14 @@ export default function ProtectedRoute({ telas, children }: ProtectedRouteProps)
     );
   }
 
-  if (!user) return <Navigate to="/login" replace state={{ from: location }} />;
+  if (!user) {
+    const loginPath = location.pathname.startsWith('/admin/alinare')
+      ? '/login/alinare'
+      : location.pathname.startsWith('/admin/novitah')
+        ? '/login/novitah'
+        : '/login/azime';
+    return <Navigate to={loginPath} replace state={{ from: location }} />;
+  }
 
   // A conta de convite sem senha pode apenas concluir o convite ou sair.
   // O banco também aplica esta regra nas permissões usadas por RLS e RPCs.

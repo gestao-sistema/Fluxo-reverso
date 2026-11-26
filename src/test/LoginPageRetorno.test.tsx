@@ -35,10 +35,12 @@ function renderLogin(from?: unknown) {
   );
 }
 
-async function entrar() {
-  fireEvent.change(screen.getByLabelText('USUÁRIO'), { target: { value: 'ana' } });
-  fireEvent.change(screen.getByLabelText('SENHA'), { target: { value: 'senha-fictícia' } });
-  fireEvent.click(screen.getByRole('button', { name: /Acessar plataforma/ }));
+const botaoEntrar = () => screen.getByRole('button', { name: /^Entrar/ });
+
+async function entrar(usuario = 'ana', senha = 'senha-fictícia') {
+  fireEvent.change(screen.getByLabelText('Usuário'), { target: { value: usuario } });
+  fireEvent.change(screen.getByLabelText('Senha'), { target: { value: senha } });
+  fireEvent.click(botaoEntrar());
 }
 
 beforeEach(() => {
@@ -77,16 +79,17 @@ describe('LoginPage: destino após autenticar', () => {
     mocks.login.mockRejectedValue(new Error('Usuário ou senha inválidos.'));
     renderLogin({ pathname: '/admin/aprovacoes', search: '?solicitacaoId=abc', hash: '' });
     await entrar();
-    expect(await screen.findByRole('alert')).toHaveTextContent('Usuário ou senha inválidos.');
+    // A tela atual comunica o erro por toast (não há mensagem fixa no formulário)
+    await waitFor(() => expect(toast.error).toHaveBeenCalledWith('Usuário ou senha inválidos.'));
     expect(screen.queryByTestId('destino')).not.toBeInTheDocument();
-    await waitFor(() => expect(screen.getByRole('button', { name: /Acessar plataforma/ })).toBeEnabled());
-    expect(toast.error).toHaveBeenCalledWith('Usuário ou senha inválidos.');
+    await waitFor(() => expect(botaoEntrar()).toBeEnabled());
   });
 
-  it('não envia sem usuário e senha', async () => {
+  it('não envia com usuário em branco', async () => {
+    // Só espaços passa pelo "required" do campo; a própria tela recusa antes de chamar o login
     renderLogin();
-    fireEvent.click(screen.getByRole('button', { name: /Acessar plataforma/ }));
-    expect(await screen.findByRole('alert')).toHaveTextContent('Informe seu usuário e sua senha.');
+    await entrar('   ', 'senha-fictícia');
+    await waitFor(() => expect(toast.error).toHaveBeenCalledWith('Informe seu usuário e sua senha.'));
     expect(mocks.login).not.toHaveBeenCalled();
   });
 });

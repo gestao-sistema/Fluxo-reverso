@@ -10,7 +10,7 @@ export default function BotaoModoCor({ className = '' }: { className?: string })
   return (
     <button
       type="button"
-      className={`modo-cor-toggle ${className}`}
+      className={`icon-btn ${className}`.trim()}
       onClick={() => definir(claro ? 'escuro' : 'claro')}
       aria-label={rotulo}
       title={rotulo}

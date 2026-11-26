@@ -93,12 +93,13 @@ import { AuthError } from '../services/authService';
 
 function renderWithAuth(
   ui: React.ReactNode,
-  sessao: null | { id: string; nome: string; usuario: string; telas: string[] } = null
+  sessao: null | { id: string; nome: string; usuario: string; telas: string[] } = null,
+  caminho?: string
 ) {
   (authService.getSessao as ReturnType<typeof vi.fn>).mockResolvedValue(sessao);
   (authService.onMudancaSessao as ReturnType<typeof vi.fn>).mockReturnValue(() => {});
   return render(
-    <MemoryRouter>
+    <MemoryRouter initialEntries={caminho ? [caminho] : undefined}>
       <AuthProvider>
         {ui}
         <Toaster />
@@ -172,7 +173,7 @@ describe('LoginPage', () => {
     renderWithAuth(<LoginPage />);
     expect(screen.getByLabelText(/usuário/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/^senha$/i)).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /acessar plataforma/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /^entrar$/i })).toBeInTheDocument();
   });
 
   it('retorna ao pedido solicitado depois da autenticação', async () => {
@@ -194,7 +195,7 @@ describe('LoginPage', () => {
     );
     fireEvent.change(screen.getByLabelText(/usuário/i), { target: { value: 'alinare' } });
     fireEvent.change(screen.getByLabelText(/^senha$/i), { target: { value: 'senha-teste' } });
-    fireEvent.click(screen.getByRole('button', { name: /acessar plataforma/i }));
+    fireEvent.click(screen.getByRole('button', { name: /^entrar$/i }));
     expect(await screen.findByText('Pedido aberto após login')).toBeInTheDocument();
   });
 
@@ -206,15 +207,15 @@ describe('LoginPage', () => {
     renderWithAuth(<LoginPage />);
     fireEvent.change(screen.getByLabelText(/usuário/i), { target: { value: 'admin' } });
     fireEvent.change(screen.getByLabelText(/^senha$/i), { target: { value: 'errada' } });
-    fireEvent.click(screen.getByRole('button', { name: /acessar plataforma/i }));
+    fireEvent.click(screen.getByRole('button', { name: /^entrar$/i }));
 
-    // mensagem aparece tanto no <p> de erro do form quanto no toast
-    expect(await screen.findAllByText('Usuário ou senha inválidos.')).toHaveLength(2);
+    // a tela de login atual comunica o erro só pelo toast (não há mais mensagem fixa no formulário)
+    expect(await screen.findByText('Usuário ou senha inválidos.')).toBeInTheDocument();
   });
 
   it('login com campos vazios: HTML required bloqueia submit (validation)', () => {
     renderWithAuth(<LoginPage />);
-    const form = screen.getByRole('button', { name: /acessar plataforma/i }).closest('form')!;
+    const form = screen.getByRole('button', { name: /^entrar$/i }).closest('form')!;
     expect(form).toBeInTheDocument();
     // inputs têm required
     expect(screen.getByLabelText(/usuário/i)).toBeRequired();
@@ -300,11 +301,11 @@ describe('ReverseLogisticsForm — validação', () => {
     }
   });
 
-  it('todos os campos válidos: envia a reversa vinculada à NC', async () => {
-    renderWithAuth(<AlinareFormPage />, sessaoAdmin);
+  it('todos os campos válidos: aberto a partir da NC, envia a reversa vinculada a ela', async () => {
+    // O vínculo é automático pela URL (?nc=<id>); o formulário não tem mais seletor de NC
+    renderWithAuth(<AlinareFormPage />, sessaoAdmin, `/admin/alinare?nc=${NC_ID}`);
 
-    await userEvent.selectOptions(await screen.findByLabelText(/nc de origem/i), NC_ID);
-    fireEvent.change(screen.getByTestId('datepicker'), { target: { value: '2024-01-15' } });
+    fireEvent.change(await screen.findByTestId('datepicker'), { target: { value: '2024-01-15' } });
     expect(screen.getByLabelText(/solicitante/i)).toHaveValue('Admin');
     expect(screen.getByLabelText(/solicitante/i)).toHaveAttribute('readonly');
     await userEvent.selectOptions(screen.getByLabelText(/setor/i), 'Comercial Alinare');
@@ -326,7 +327,7 @@ describe('ReverseLogisticsForm — validação', () => {
     expect(screen.queryAllByRole('alert')).toHaveLength(0);
   });
 
-  it('NC aberta pela URL: vem selecionada e preenche a cliente', async () => {
+  it('NC aberta pela URL: preenche a cliente da NC', async () => {
     (authService.getSessao as ReturnType<typeof vi.fn>).mockResolvedValue(sessaoAdmin);
     render(
       <MemoryRouter initialEntries={[`/admin/alinare?nc=${NC_ID}`]}>
@@ -336,21 +337,61 @@ describe('ReverseLogisticsForm — validação', () => {
       </MemoryRouter>
     );
 
-    const select = (await screen.findByLabelText(/nc de origem/i)) as HTMLSelectElement;
-    expect(select.value).toBe(NC_ID);
     await waitFor(() => {
       expect((screen.getByLabelText(/nome da cliente/i) as HTMLInputElement).value).toBe('Cliente da NC');
     });
   });
 
-  it('sem NC aberta: permite enviar a reversa sem vínculo', async () => {
-    (ncService.opcoesParaReversa as ReturnType<typeof vi.fn>).mockResolvedValueOnce([]);
+  it('envia a reversa preenchendo só o formulário (sem seletor de NC): mantém o contrato do envio e marca as seções concluídas', async () => {
     renderWithAuth(<AlinareFormPage />, sessaoAdmin);
 
-    const ncSelect = await screen.findByLabelText(/nc de origem/i);
-    expect(ncSelect.querySelectorAll('option')).toHaveLength(1);
-    expect(ncSelect.querySelector('option')?.textContent).toBe('Sem NC vinculada');
-    fireEvent.change(screen.getByTestId('datepicker'), { target: { value: '2024-01-15' } });
+    fireEvent.change(await screen.findByTestId('datepicker'), { target: { value: '2024-01-15' } });
+    await userEvent.selectOptions(screen.getByLabelText(/setor/i), 'Comercial Alinare');
+    fireEvent.change(screen.getByLabelText(/código da cliente/i), { target: { value: '1234' } });
+    fireEvent.change(screen.getByLabelText(/nome da cliente/i), { target: { value: 'Cliente Teste' } });
+    fireEvent.change(screen.getByLabelText(/^endereço/i), { target: { value: 'Rua das Flores, Centro, São Paulo/SP' } });
+    fireEvent.change(screen.getByLabelText(/número/i), { target: { value: '123' } });
+    await userEvent.selectOptions(screen.getByLabelText(/motivo/i), 'Peça com defeito');
+
+    // as três seções ficam concluídas (o marcador numérico vira check)
+    await waitFor(() => expect(document.querySelectorAll('.step-num.done')).toHaveLength(3));
+
+    fireEvent.click(screen.getByRole('button', { name: /enviar solicitação/i }));
+
+    await waitFor(() => {
+      expect(apiService.createSolicitacao).toHaveBeenCalledWith(
+        expect.objectContaining({
+          nc_id: null,
+          empresa: 'Alinare',
+          nome_cliente: 'Cliente Teste',
+          solicitante: 'Admin',
+          codigo_cliente: 1234,
+          motivo: 'Peça com defeito',
+          endereco_postagem: 'Rua das Flores, Centro, São Paulo/SP, 123',
+        }),
+      );
+    });
+    expect(screen.queryAllByRole('alert')).toHaveLength(0);
+  });
+
+  it('campos inválidos: o erro de cada campo é anunciado e o campo é marcado como inválido', async () => {
+    renderWithAuth(<AlinareFormPage />, sessaoAdmin);
+    fireEvent.click(screen.getByRole('button', { name: /enviar solicitação/i }));
+
+    await waitFor(() => expect(screen.getAllByRole('alert').length).toBeGreaterThanOrEqual(3));
+    expect(screen.getByLabelText(/nome da cliente/i)).toHaveAttribute('aria-invalid', 'true');
+    expect(screen.getByLabelText(/nome da cliente/i)).toHaveAttribute('aria-required', 'true');
+    expect(screen.getByLabelText(/nome da cliente/i)).toHaveAttribute('aria-describedby', 'err-nome');
+    expect(document.getElementById('err-nome')).toHaveAttribute('role', 'alert');
+  });
+
+  it('NC da URL que não está aberta para a empresa: envia a reversa sem vínculo', async () => {
+    // Encerrada, cancelada ou de outra empresa: não aparece nas opções e o vínculo é descartado
+    (ncService.opcoesParaReversa as ReturnType<typeof vi.fn>).mockResolvedValueOnce([]);
+    renderWithAuth(<AlinareFormPage />, sessaoAdmin, `/admin/alinare?nc=${NC_ID}`);
+
+    await waitFor(() => expect(ncService.opcoesParaReversa).toHaveBeenCalled());
+    fireEvent.change(await screen.findByTestId('datepicker'), { target: { value: '2024-01-15' } });
     expect(screen.getByLabelText(/solicitante/i)).toHaveValue('Admin');
     await userEvent.selectOptions(screen.getByLabelText(/setor/i), 'Comercial Alinare');
     fireEvent.change(screen.getByLabelText(/código da cliente/i), { target: { value: '1234' } });

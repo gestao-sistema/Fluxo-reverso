@@ -30,7 +30,7 @@ describe('Alterar senha na barra superior', () => {
     const dialogo = screen.getByRole('dialog', { name: 'Alterar senha' });
     expect(container.contains(dialogo)).toBe(false);
     expect(dialogo.closest('.topbar-capsula')).toBeNull();
-    expect(dialogo.closest('.modal-overlay')?.parentElement).toBe(document.body);
+    expect(dialogo.closest('.overlay')?.parentElement).toBe(document.body);
     expect(screen.getByLabelText('Confirmar nova senha')).toBeInTheDocument();
   });
 
@@ -41,6 +41,6 @@ describe('Alterar senha na barra superior', () => {
     await user.click(screen.getByRole('menuitem', { name: 'Alterar senha' }));
     await user.click(screen.getByRole('button', { name: 'Cancelar' }));
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
-    expect(document.body.querySelector('.modal-overlay')).toBeNull();
+    expect(document.body.querySelector('.overlay')).toBeNull();
   });
 });

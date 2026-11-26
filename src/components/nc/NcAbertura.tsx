@@ -266,8 +266,8 @@ export default function NcAbertura({ listas, onRegistrada }: {
       <div className="nc-actions">
         {erroGravacao && <p className="nc-erro" role="alert">{erroGravacao}</p>}
         <div className="nc-actions-right">
-          <Link to="/admin/nc" className="btn-secondary">Cancelar</Link>
-          <button type="submit" className="btn-primary" disabled={salvando}>
+          <Link to="/admin/nc" className="btn btn-secondary">Cancelar</Link>
+          <button type="submit" className="btn btn-primary" disabled={salvando}>
             {salvando ? <Loader2 className="animate-spin" size={15} /> : <Save size={15} />}
             Registrar ocorrência
           </button>

@@ -103,10 +103,10 @@ function BotoesEtiqueta({ path, nome }: { path: string; nome: string }) {
 
   return (
     <div className="flex flex-wrap gap-2">
-      <button type="button" onClick={() => setVisualizando(true)} disabled={ocupado} className="btn-secondary">
+      <button type="button" onClick={() => setVisualizando(true)} disabled={ocupado} className="btn btn-secondary">
         <Eye size={15} /> Abrir etiqueta
       </button>
-      <button type="button" onClick={() => void baixar()} disabled={ocupado} className="btn-secondary">
+      <button type="button" onClick={() => void baixar()} disabled={ocupado} className="btn btn-secondary">
         <Download size={15} /> Baixar etiqueta
       </button>
       {visualizando && (
@@ -205,13 +205,13 @@ function DetalhesPedido({ pedido, abrirInicialmente = false }: { pedido: Solicit
           {codigoAutorizacao ? (
             <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-slate-200 bg-white p-3">
               <div><p className="text-xs text-slate-500">Autorização de postagem</p><code className="text-sm font-semibold text-slate-800">{codigoAutorizacao}</code></div>
-              <button type="button" onClick={() => copiarCodigo('Autorização de postagem', codigoAutorizacao)} className="btn-secondary" aria-label="Copiar autorização de postagem"><Copy size={14} /> Copiar</button>
+              <button type="button" onClick={() => copiarCodigo('Autorização de postagem', codigoAutorizacao)} className="btn btn-secondary" aria-label="Copiar autorização de postagem"><Copy size={14} /> Copiar</button>
             </div>
           ) : <p className="text-sm text-slate-500">Autorização de postagem não informada.</p>}
           {codigoRastreio ? (
             <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-slate-200 bg-white p-3">
               <div><p className="text-xs text-slate-500">Código de rastreamento</p><code className="text-sm font-semibold text-slate-800">{codigoRastreio}</code></div>
-              <button type="button" onClick={() => copiarCodigo('Código de rastreamento', codigoRastreio)} className="btn-secondary" aria-label="Copiar código de rastreamento"><Copy size={14} /> Copiar</button>
+              <button type="button" onClick={() => copiarCodigo('Código de rastreamento', codigoRastreio)} className="btn btn-secondary" aria-label="Copiar código de rastreamento"><Copy size={14} /> Copiar</button>
             </div>
           ) : <p className="text-sm text-slate-500">Sem código de rastreamento. O andamento dos Correios aparece quando ele for informado.</p>}
           {emissao && <EmissaoDatasResumo emissao={emissao} aguardandoPostagem={pedido.status === 'etiqueta_gerada'} />}
@@ -303,7 +303,7 @@ export default function MeusPedidosPage() {
       <PageHeading
         icon={ClipboardCheck}
         title="Meus pedidos"
-        action={<button type="button" onClick={() => void carregar()} disabled={atualizando || carregando} className="btn-secondary"><RefreshCw size={15} className={atualizando ? 'animate-spin' : ''} /> Atualizar</button>}
+        action={<button type="button" onClick={() => void carregar()} disabled={atualizando || carregando} className="btn btn-secondary"><RefreshCw size={15} className={atualizando ? 'animate-spin' : ''} /> Atualizar</button>}
       />
 
       <div className="list-toolbar">

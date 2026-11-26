@@ -213,7 +213,7 @@ export default function VisualizadorPdf({ titulo, nomeArquivo, carregarUrl, onFe
                 <Plus size={15} aria-hidden="true" />
               </button>
             </div>
-            <button type="button" className="btn-secondary pdf-baixar" onClick={baixar} disabled={!bytes}>
+            <button type="button" className="btn btn-secondary pdf-baixar" onClick={baixar} disabled={!bytes}>
               <Download size={15} aria-hidden="true" /> <span>Baixar</span>
             </button>
             <button ref={fecharRef} type="button" className="pdf-fechar" onClick={onFechar} aria-label="Fechar visualização">

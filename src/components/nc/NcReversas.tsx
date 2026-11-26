@@ -63,7 +63,7 @@ export default function NcReversas({ nc, onAlterada }: Props) {
           <p className="panel-desc">Cada reversa tem a própria etapa, o código de rastreio e a etiqueta dos Correios.</p>
         </div>
         {!bloqueio && empresaReversa && (
-          <Link to={`/admin/${empresaReversa.toLowerCase()}?nc=${nc.id}`} className="btn-primary">
+          <Link to={`/admin/${empresaReversa.toLowerCase()}?nc=${nc.id}`} className="btn btn-primary">
             <Plus size={14} /> Gerar reversa
           </Link>
         )}

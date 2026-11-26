@@ -195,17 +195,17 @@ export default function NotificacoesEmissaoBell() {
     <div className="notificacoes-emissao">
       <button
         type="button"
-        className="notificacoes-emissao-trigger"
+        className="icon-btn notificacoes-emissao-trigger"
         aria-label={naoLidas ? `Notificações, ${naoLidas} não lidas` : 'Notificações'}
         aria-expanded={aberto}
         aria-controls="notificacoes-emissao-painel"
         onClick={() => setAberto((atual) => !atual)}
       >
-        <Bell size={18} aria-hidden="true" />
-        {naoLidas > 0 && <span className="notificacoes-emissao-count" aria-hidden="true">{naoLidas > 99 ? '99+' : naoLidas}</span>}
+        <Bell size={19} aria-hidden="true" />
+        {naoLidas > 0 && <span className="count" aria-hidden="true">{naoLidas > 99 ? '99+' : naoLidas}</span>}
       </button>
       {aberto && (
-        <section id="notificacoes-emissao-painel" className="notificacoes-emissao-panel" role="dialog" aria-label="Notificações recentes">
+        <section id="notificacoes-emissao-painel" className="popover glass-strong notificacoes-emissao-panel" role="dialog" aria-label="Notificações recentes">
           <header>
             <div><strong>Notificações</strong><span>{naoLidas ? `${naoLidas} não lida${naoLidas === 1 ? '' : 's'}` : 'Nada novo'}</span></div>
             <button type="button" className="notificacoes-emissao-refresh" onClick={() => void carregar()} disabled={atualizando} aria-label="Atualizar notificações" title="Atualizar">

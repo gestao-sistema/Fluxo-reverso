@@ -1,0 +1,98 @@
+/* EXTENSÕES DO SISTEMA — o que o Manual deixa em aberto ou que só existe aqui.
+   Regra do manual (seção 28.3): extensão herda tokens e componentes existentes, sem redesenhar o
+   que já é referência. Cada bloco diz o que estende. Vem DEPOIS de padrao/app.css. */
+
+/* ── Acessibilidade: salto para o conteúdo (extensão) ─────────────────────── */
+.skip-link {
+  position: absolute; left: 16px; top: -64px; z-index: 200; height: 40px; padding: 0 16px; display: inline-flex; align-items: center;
+  border-radius: 12px; background: var(--primary); color: var(--on-primary); font-size: 14px; font-weight: 600; text-decoration: none;
+  transition: top var(--dur) var(--ease);
+}
+.skip-link:focus { top: 12px; }
+
+/* ── Marca: logos oficiais como máscara (seção 22) ────────────────────────── */
+/* O monograma do padrão (quadro de 36 px, raio de 30%) recebe o glifo oficial; cor do glifo = cor do texto do quadro. */
+.monogram { color: #fff; }
+.monogram-azime { background: #0b0b0c; color: #ffffff; }
+.monogram-alinare { background: #242741; color: #f0ebe4; }
+.monogram-novitah { background: linear-gradient(140deg, #d6c0b8, #a46f69); color: #ffffff; }
+.monogram .monogram-glifo {
+  display: block; width: 56%; height: 56%; background: currentColor;
+  -webkit-mask: var(--glifo) center / contain no-repeat; mask: var(--glifo) center / contain no-repeat;
+}
+.wordmark-img {
+  display: inline-block; flex-shrink: 0; background: var(--marca-tinta, var(--text));
+  -webkit-mask: var(--logo) center / contain no-repeat; mask: var(--logo) center / contain no-repeat;
+}
+.wordmark-img-novitah { --marca-tinta: var(--primary); }
+.brand-row { display: inline-flex; align-items: center; gap: 12px; min-width: 0; }
+.brand-word { display: inline-flex; align-items: center; min-width: 0; }
+
+/* ── Navegação lateral: complementos ──────────────────────────────────────── */
+/* O rodapé usa o próprio .nav-item (botão de recolher); no menu ele repete o recolhimento do padrão */
+.sidebar-foot .nav-item { color: var(--nav-muted); }
+.sidebar-foot .nav-item:hover { color: var(--nav-text); }
+.drawer .drawer-head { padding-right: 12px; }
+.drawer .sidebar-nav { padding-top: 8px; padding-bottom: 20px; }
+.profile-root { position: relative; display: flex; align-items: center; }
+.profile-root .user-btn { color: var(--text); }
+.demo-switcher select { min-width: 0; max-width: 190px; border: 0; background: transparent; color: inherit; font: inherit; font-size: 12px; font-weight: 600; cursor: pointer; padding: 0 2px; outline-offset: 4px; }
+.demo-switcher select option { background: var(--surface-solid); color: var(--text); }
+@media (max-width: 760px) { .demo-switcher select { max-width: 96px; } }
+
+/* ── Campo com ação no fim (ex.: mostrar senha) ───────────────────────────── */
+.input-icon .trail .icon-btn { width: 34px; height: 34px; border-radius: 10px; }
+.input-icon > .input[type='search']::-webkit-search-cancel-button { display: none; }
+
+/* ── Entrada: tipografia e arte (seção 21) ────────────────────────────────── */
+.entry-topo { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.entry-titulo { font-size: 30px; font-weight: 600; letter-spacing: -.02em; margin-bottom: 8px; line-height: 1.15; }
+.entry-lede { margin-bottom: 28px; }
+.entry-rodape { text-align: center; margin-top: 16px; }
+.btn-entry { height: 50px; font-size: 15px; border-radius: 14px; }
+.entry-brand { gap: 32px; }
+.entry-brand .wordmark-img { --marca-tinta: var(--art-text); }
+.art-topo, .art-centro, .art-marcas { position: relative; z-index: 1; }
+.art-centro { display: flex; flex-direction: column; }
+.art-titulo { max-width: 480px; font-size: 44px; font-weight: 600; line-height: 1.06; letter-spacing: -.025em; }
+.art-texto { max-width: 420px; margin-top: 18px; color: var(--art-muted); font-size: 16px; line-height: 1.5; }
+.art-marcas { display: flex; align-items: center; gap: 28px; opacity: .85; }
+.art-shape.art-anel-grande { width: 640px; height: 640px; right: -200px; top: -180px; border: 1px solid color-mix(in srgb, var(--art-text) 22%, transparent); }
+.art-shape.art-anel-medio { width: 440px; height: 440px; right: -100px; top: -80px; border: 1px solid color-mix(in srgb, var(--art-text) 14%, transparent); }
+.art-shape.art-mancha { width: 300px; height: 300px; right: 10px; top: 20px; background: radial-gradient(circle, color-mix(in srgb, var(--art-accent) 34%, transparent), transparent 70%); }
+.art-shape.art-circulo { width: 900px; height: 900px; left: -440px; bottom: -640px; background: color-mix(in srgb, var(--art-accent) 8%, transparent); }
+
+/* ── Estados do contador de aprovações e do menu ──────────────────────────── */
+.sidebar-nav .nav-item .nav-label { overflow: hidden; text-overflow: ellipsis; }
+
+/* ── Avisos (react-hot-toast): sobem acima da barra de ações no celular (seção 19.1) ─ */
+@media (max-width: 760px) { .toaster-padrao { bottom: 96px !important; } }
+
+/* ── Formulários (seções 14 e 23.5) ───────────────────────────────────────── */
+/* Contêiner estreito de 980 px para formulários de abertura (.content.narrow do padrão, aplicado à própria página) */
+.narrow-box { width: 100%; max-width: 980px; margin-inline: auto; }
+/* Rodapé de ações: a borda entre a última seção e o rodapé é uma só */
+.form-section + .form-actions { border-top: 0; }
+.form-card .form-actions { margin-top: -1px; border-top: 1px solid var(--border); }
+.form-card .form-section:last-of-type { border-bottom: 0; }
+/* Campo somente leitura (preenchido pelo sistema) */
+.input-readonly { background: var(--surface-sunken); color: var(--text-muted); cursor: not-allowed; }
+.input-readonly:hover { border-color: var(--border-strong); }
+/* Campo de data (react-datepicker) com ícone à esquerda */
+.input-icon .react-datepicker-wrapper { display: block; width: 100%; }
+.input-icon .react-datepicker__input-container .input { padding-left: 42px; }
+/* Aviso neutro: o padrão define info, warn, ok e danger; o neutro usa a superfície rebaixada */
+.banner-neutral { background: var(--surface-sunken); color: var(--text-muted); }
+/* Grupo dentro de uma seção (ex.: endereço da outra cliente) */
+.subsecao { padding: 16px; border: 1px solid var(--border); border-radius: 14px; background: var(--surface-2); }
+.subsecao > .form-grid { gap: 16px; }
+
+/* ── Cards de lista no celular (seção 15.5): o registro abre pelo botão principal; ações ficam no rodapé ── */
+.m-card-main { display: block; width: 100%; padding: 0; border: 0; background: none; color: inherit; text-align: left; cursor: pointer; }
+.m-card-main:focus-visible { outline-offset: 6px; }
+/* O ícone do campo fica acima do input mesmo quando o input está dentro de um contêiner posicionado (react-datepicker) */
+.input-icon > svg { z-index: 1; }
+
+/* Botão de ícone destrutivo (ex.: remover usuário) */
+.icon-btn.is-danger:hover:not(:disabled) { background: var(--danger-soft); border-color: transparent; color: var(--danger); }
+.icon-btn:disabled { opacity: .35; cursor: not-allowed; }

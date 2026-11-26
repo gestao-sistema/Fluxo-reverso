@@ -36,7 +36,7 @@ export default function NcResumoDashboard({ dataInicio, dataFim, empresa }: NcRe
           <h2 style={{ fontSize: 14, fontWeight: 800, color: '#1a304b', margin: 0, fontFamily: 'Plus Jakarta Sans, sans-serif' }}>Não conformidades</h2>
           <p style={{ color: '#93a0b0', fontSize: 11, margin: '4px 0 0' }}>Acompanhe as não conformidades registradas. Mesmo período e empresa dos filtros acima.</p>
         </div>
-        <Link to="/admin/nc/painel" className="btn-secondary">Painel de NC <ArrowRight size={13} /></Link>
+        <Link to="/admin/nc/painel" className="btn btn-secondary">Painel de NC <ArrowRight size={13} /></Link>
       </div>
       {erro ? (
         <div className="chart-empty" style={{ height: 90 }}>{erro}</div>

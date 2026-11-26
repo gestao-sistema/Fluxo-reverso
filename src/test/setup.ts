@@ -18,6 +18,8 @@ beforeEach(() => usarArmazenamentoDemo(criarArmazenamentoEmMemoria()));
 // ── Polyfills para jsdom ───────────────────────────────────────────────────────
 // matchMedia não existe em jsdom; vários libs (react-datepicker, transições) usam.
 beforeAll(() => {
+  // O shell leva a janela ao topo a cada rota; jsdom não implementa scrollTo
+  window.scrollTo = vi.fn() as unknown as typeof window.scrollTo;
   if (!window.matchMedia) {
     window.matchMedia = (query: string): MediaQueryList => ({
       matches: false,

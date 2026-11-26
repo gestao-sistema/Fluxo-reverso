@@ -90,7 +90,7 @@ export default function NcListPage() {
         eyebrow="QUALIDADE / NÃO CONFORMIDADES"
         title="Não conformidades"
         description="Registre e acompanhe toda não conformidade da Expedição, com ou sem reversa."
-        action={editar && <Link to="/admin/nc/nova" className="btn-primary"><Plus size={15} /> Registrar ocorrência</Link>}
+        action={editar && <Link to="/admin/nc/nova" className="btn btn-primary"><Plus size={15} /> Registrar ocorrência</Link>}
       />
 
       <section className="filter-panel" aria-label="Filtros de não conformidades">
@@ -157,7 +157,7 @@ export default function NcListPage() {
             <input id="nc-busca" type="search" className="field-control" placeholder="ID, cliente, vendedora, NF, romaneio ou rastreio" value={filtros.busca} onChange={(e) => setFiltros({ ...filtros, busca: e.target.value })} />
           </div>
           <div className="filter-actions">
-            {temFiltro && <button type="button" className="btn-secondary" onClick={() => setFiltros(SEM_FILTROS_NC)}><RotateCcw size={13} /> Limpar</button>}
+            {temFiltro && <button type="button" className="btn btn-secondary" onClick={() => setFiltros(SEM_FILTROS_NC)}><RotateCcw size={13} /> Limpar</button>}
           </div>
         </div>
       </section>
@@ -169,15 +169,15 @@ export default function NcListPage() {
             Mês do relatório
             <input id="nc-relatorio-mes" type="month" className="field-control" value={mesRelatorio} onChange={(e) => setMesRelatorio(e.target.value)} disabled={loading} />
           </label>
-          <button type="button" className="btn-secondary" onClick={exportarMensal} disabled={loading || !mesRelatorio}>
+          <button type="button" className="btn btn-secondary" onClick={exportarMensal} disabled={loading || !mesRelatorio}>
             <FileSpreadsheet size={15} /> Relatório mensal por empresa <Download size={13} />
           </button>
           {admin && (
-            <button type="button" className="btn-secondary" onClick={() => setImportando(true)}>
+            <button type="button" className="btn btn-secondary" onClick={() => setImportando(true)}>
               <Upload size={15} /> Importar planilha
             </button>
           )}
-          <button type="button" className="btn-secondary" onClick={exportar}>
+          <button type="button" className="btn btn-secondary" onClick={exportar}>
             <FileSpreadsheet size={15} /> Exportar XLSX <Download size={13} />
           </button>
         </div>
@@ -192,8 +192,9 @@ export default function NcListPage() {
         ) : filtradas.length === 0 ? (
           <div className="chart-empty">{ncs.length ? 'Nenhuma NC com esses filtros.' : 'Nenhuma NC registrada ainda.'}</div>
         ) : (
-          <div className="data-table-wrap">
-            <table className="data-table" style={{ minWidth: 1180 }}>
+          <>
+          <div className="table-wrap responsive">
+            <table className="tbl" style={{ minWidth: 1180 }}>
               <thead>
                 <tr>
                   <th>ID</th>
@@ -242,6 +243,30 @@ export default function NcListPage() {
               </tbody>
             </table>
           </div>
+          <div className="mobile-cards">
+            {filtradas.map((nc) => (
+              <Link key={nc.id} to={`/admin/nc/${nc.id}`} className="m-card">
+                <span className="row" style={{ justifyContent: 'space-between', alignItems: 'flex-start', gap: 12 }}>
+                  <span style={{ minWidth: 0 }}>
+                    <strong className="strong tnum">{nc.codigo}</strong>
+                    {nc.importada && <span className="nc-tag" title="Veio da planilha">planilha</span>}
+                    <span className="small muted" style={{ display: 'block' }}>{formatarDataBr(nc.data_ocorrencia)} · {nc.empresa ?? '—'}</span>
+                  </span>
+                  <NcStatusBadge status={nc.status} />
+                </span>
+                <span className="small" style={{ display: 'block', margin: '10px 0 2px' }}>{nc.tipo_problema ?? 'Tipo não informado'}</span>
+                <span className="xs muted" style={{ display: 'block' }}>{nc.cliente ?? 'Cliente não informada'}</span>
+                <span className="row-wrap xs muted" style={{ marginTop: 8, gap: '4px 12px' }}>
+                  <span>Causador: {nc.causador ?? 'não informada'}</span>
+                  <span>Tratativa: {nc.area_tratativa ?? 'não atribuída'}</span>
+                  <span>Dias: {diasEmAberto(nc) ?? '—'}</span>
+                  <span>Reversas: {nc.qtd_reversas}</span>
+                </span>
+                <span className="xs" style={{ display: 'block', marginTop: 6 }}><CustoLinha nc={nc} /></span>
+              </Link>
+            ))}
+          </div>
+          </>
         )}
       </section>
 

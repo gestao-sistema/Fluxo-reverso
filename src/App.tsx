@@ -6,10 +6,12 @@ import ProtectedRoute from './components/auth/ProtectedRoute';
 import RotaAposentada from './components/auth/RotaAposentada';
 import { homeDoUsuario } from './lib/perfil';
 import AdminLayout from './components/admin/AdminLayout';
-import FundoJoalheria from './components/ui/FundoJoalheria';
+import Ambiente from './components/shell/Ambiente';
 import { TemaProvider } from './context/TemaContext';
 
 const LoginPage = lazy(() => import('./pages/LoginPage'));
+const AlinareLoginPage = lazy(() => import('./pages/ReversoLoginAlinare'));
+const NovitahLoginPage = lazy(() => import('./pages/ReversoLoginNovitah'));
 const DefinirSenhaPage = lazy(() => import('./pages/DefinirSenhaPage'));
 const SemAcessoPage = lazy(() => import('./pages/SemAcessoPage'));
 const DashboardPage = lazy(() => import('./pages/DashboardPage'));
@@ -31,7 +33,7 @@ const LixeiraPage = lazy(() => import('./pages/LixeiraPage'));
 function HomeRedirect() {
   const { user, isLoading } = useAuth();
   if (isLoading) return null;
-  return <Navigate to={user ? homeDoUsuario(user) : '/login'} replace />;
+  return <Navigate to={user ? homeDoUsuario(user) : '/login/azime'} replace />;
 }
 
 export default function App() {
@@ -40,29 +42,38 @@ export default function App() {
       <AuthProvider>
       {/* Tema lê o perfil (AuthProvider) e a rota (BrowserRouter) */}
       <TemaProvider>
-      {/* Fundo compartilhado: montado uma vez, fora de <Routes>, persiste entre as rotas */}
-      <FundoJoalheria />
+      {/* Ambiente de fundo: montado uma vez, fora de <Routes>, persiste entre as rotas */}
+      <Ambiente />
+      {/* Avisos (padrão visual, seção 19.1): centro inferior, vidro denso, 5200 ms; no celular sobem acima da barra de ações */}
       <Toaster
-        position="top-right"
+        position="bottom-center"
+        containerClassName="toaster-padrao"
         toastOptions={{
-          duration: 4000,
+          duration: 5200,
           style: {
-            fontFamily: 'var(--flow-font-sans)',
-            fontSize: '13px',
-            fontWeight: 600,
-            borderRadius: '14px',
-            background: 'var(--flow-surface-raised-solid)',
-            border: '1px solid var(--flow-line-strong)',
-            color: 'var(--flow-text)',
-            boxShadow: 'var(--flow-shadow-modal)',
+            // Material do padrão (vidro denso): inline, porque a biblioteca aplica fundo próprio no elemento
+            background: 'linear-gradient(180deg, var(--glass-sheen), transparent 42%), var(--glass-bg-strong)',
+            border: '1px solid var(--glass-border)',
+            boxShadow: 'inset 0 1px 0 var(--glass-edge), inset 0 -1px 0 var(--glass-edge-low), var(--glass-shadow)',
+            backdropFilter: 'blur(calc(var(--glass-blur) + 10px)) saturate(var(--glass-sat))',
+            WebkitBackdropFilter: 'blur(calc(var(--glass-blur) + 10px)) saturate(var(--glass-sat))',
+            fontFamily: 'var(--font)',
+            fontSize: '14px',
+            fontWeight: 500,
+            borderRadius: '18px',
+            padding: '12px 14px',
+            maxWidth: 'min(600px, calc(100vw - 32px))',
+            color: 'var(--text)',
           },
-          success: { iconTheme: { primary: 'var(--flow-success)', secondary: 'var(--flow-surface-raised-solid)' } },
-          error: { iconTheme: { primary: 'var(--flow-danger)', secondary: 'var(--flow-surface-raised-solid)' } },
+          success: { iconTheme: { primary: 'var(--ok)', secondary: 'var(--ok-soft)' } },
+          error: { iconTheme: { primary: 'var(--danger)', secondary: 'var(--danger-soft)' } },
         }}
       />
         <Suspense fallback={<div className="estado-carregando" role="status" aria-label="Carregando tela" />}>
         <Routes>
-          <Route path="/login" element={<LoginPage />} />
+          <Route path="/login/azime" element={<LoginPage />} />
+          <Route path="/login/alinare" element={<AlinareLoginPage />} />
+          <Route path="/login/novitah" element={<NovitahLoginPage />} />
           {/* Pública de propósito: a pessoa convidada ainda não tem senha. O convite é verificado no servidor. */}
           <Route path="/definir-senha" element={<DefinirSenhaPage />} />
           <Route path="/sem-acesso" element={<ProtectedRoute><SemAcessoPage /></ProtectedRoute>} />
@@ -100,6 +111,7 @@ export default function App() {
           </Route>
           <Route path="/alinare" element={<Navigate to="/admin/alinare" replace />} />
           <Route path="/novitah" element={<Navigate to="/admin/novitah" replace />} />
+          <Route path="/azime" element={<Navigate to="/login/azime" replace />} />
           <Route path="/" element={<HomeRedirect />} />
           <Route path="*" element={<HomeRedirect />} />
         </Routes>

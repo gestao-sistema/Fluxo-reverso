@@ -14,6 +14,7 @@ teste.txt
 .DS_Store
 *.md
 docs/
+padrao_front/
 supabase/
 *.sql
 run-sql*.cjs

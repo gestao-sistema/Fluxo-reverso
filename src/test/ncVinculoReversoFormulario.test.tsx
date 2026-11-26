@@ -1,7 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import type { NcOpcaoReversa } from '../types';
+
+// Vínculo da NC no formulário de reversa: automático pela URL (?nc=<id>), sem seletor na tela.
+// O texto que identifica a NC (tipo do problema, causador, origem antiga) é coberto por
+// ncVinculoReverso.test.ts, onde vive o auxiliar usado pela fila de aprovação.
 
 const { ncService, auth } = vi.hoisted(() => ({
   ncService: { opcoesParaReversa: vi.fn() },
@@ -25,7 +29,7 @@ vi.mock('react-datepicker', () => ({ default: () => null, registerLocale: vi.fn(
 
 import ReverseLogisticsForm from '../components/forms/ReverseLogisticsForm';
 
-const NC_NOVA: NcOpcaoReversa = {
+const NC_ABERTA: NcOpcaoReversa = {
   id: 'nc-nova-2404',
   numero: 2404,
   codigo: 'NC-2404',
@@ -37,18 +41,6 @@ const NC_NOVA: NcOpcaoReversa = {
   causador: 'Comercial',
 };
 
-const NC_ANTIGA: NcOpcaoReversa = {
-  id: 'nc-antiga-2403',
-  numero: 2403,
-  codigo: 'NC-2403',
-  data_ocorrencia: '2026-10-25',
-  cliente: 'Casa Amora',
-  origem: 'Erro de separação',
-  status: 'Aberta',
-  tipo_problema: null,
-  causador: null,
-};
-
 function renderFormulario(caminho = '/formulario-alinare') {
   return render(
     <MemoryRouter initialEntries={[caminho]}>
@@ -57,9 +49,9 @@ function renderFormulario(caminho = '/formulario-alinare') {
   );
 }
 
-const selecaoDeNc = () => document.getElementById('nc_id') as HTMLSelectElement;
+const nomeDaCliente = () => screen.getByLabelText(/nome da cliente/i) as HTMLInputElement;
 
-describe('seletor de NC do formulário de reversa', () => {
+describe('vínculo da NC no formulário de reversa', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     auth.user = {
@@ -69,35 +61,27 @@ describe('seletor de NC do formulário de reversa', () => {
       telas: ['formulario-alinare'],
       empresasAcesso: ['Alinare'],
     };
-    ncService.opcoesParaReversa.mockResolvedValue([NC_NOVA, NC_ANTIGA]);
+    ncService.opcoesParaReversa.mockResolvedValue([NC_ABERTA]);
   });
 
-  it('NC nova sem origem antiga fica identificável: tipo do problema e origem / causador separados', async () => {
+  it('aberto a partir de uma NC da empresa: preenche a cliente da NC', async () => {
+    renderFormulario(`/formulario-alinare?nc=${NC_ABERTA.id}`);
+    await waitFor(() => expect(nomeDaCliente().value).toBe('Loja Nova Demonstração'));
+    expect(ncService.opcoesParaReversa).toHaveBeenCalledWith('Alinare');
+  });
+
+  it('não mostra seletor de NC: o vínculo vem só da URL', async () => {
     renderFormulario();
-    const opcao = (await screen.findByRole('option', { name: /NC-2404/ })) as HTMLOptionElement;
-    expect(opcao).toHaveTextContent('Tipo do problema: Endereço incorreto · Origem / causador: Comercial');
-    expect(opcao).not.toHaveTextContent('Origem antiga');
-    expect(opcao.value).toBe(NC_NOVA.id);
+    await waitFor(() => expect(ncService.opcoesParaReversa).toHaveBeenCalled());
+    expect(document.getElementById('nc_id')).toBeNull();
+    expect(screen.queryByLabelText(/nc de origem/i)).not.toBeInTheDocument();
   });
 
-  it('NC antiga mantém a identificação pela origem histórica', async () => {
-    renderFormulario();
-    const opcao = (await screen.findByRole('option', { name: /NC-2403/ })) as HTMLOptionElement;
-    expect(opcao).toHaveTextContent('Origem antiga: Erro de separação');
-    expect(opcao).not.toHaveTextContent('Tipo do problema');
-    expect(opcao.value).toBe(NC_ANTIGA.id);
-  });
-
-  it('reversa sem NC continua funcionando: "Sem NC vinculada" disponível e nada pré-selecionado', async () => {
-    renderFormulario();
-    await screen.findByRole('option', { name: /NC-2404/ });
-    expect((screen.getByRole('option', { name: 'Sem NC vinculada' }) as HTMLOptionElement).value).toBe('');
-    expect(selecaoDeNc().value).toBe('');
-  });
-
-  it('NC da URL que não está entre as opções da empresa não fica pré-selecionada', async () => {
+  it('NC da URL fora das opções da empresa (encerrada ou de outra empresa): não preenche a cliente', async () => {
     renderFormulario('/formulario-alinare?nc=nc-de-outra-empresa');
-    await screen.findByRole('option', { name: /NC-2404/ });
-    expect(selecaoDeNc().value).toBe('');
+    await waitFor(() => expect(ncService.opcoesParaReversa).toHaveBeenCalled());
+    // dá tempo de o efeito de preenchimento rodar, se fosse rodar
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    expect(nomeDaCliente().value).toBe('');
   });
 });

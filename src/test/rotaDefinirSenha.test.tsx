@@ -11,8 +11,6 @@ vi.mock('../context/TemaContext', () => ({
   TemaProvider: ({ children }: { children: React.ReactNode }) => children,
   useEmpresaDaTela: () => {},
 }));
-vi.mock('../components/ui/FundoJoalheria', () => ({ default: () => null }));
-vi.mock('../components/ui/BotaoEfeitosFundo', () => ({ default: () => null }));
 vi.mock('../components/ui/BotaoModoCor', () => ({ default: () => null }));
 vi.mock('../components/admin/AdminLayout', () => ({ default: () => <Outlet /> }));
 vi.mock('react-hot-toast', () => ({ Toaster: () => null, default: { success: vi.fn(), error: vi.fn() } }));
@@ -39,6 +37,6 @@ describe('rota /definir-senha', () => {
     window.history.pushState({}, '', '/admin/usuarios');
     render(<App />);
     expect(await screen.findByLabelText(/usuário/i)).toBeInTheDocument();
-    expect(window.location.pathname).toBe('/login');
+    expect(window.location.pathname).toBe('/login/azime');
   });
 });

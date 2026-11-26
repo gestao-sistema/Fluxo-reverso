@@ -85,14 +85,14 @@ function NcAberturaPagina() {
     };
   }, [tentativa]);
 
-  const voltar = <Link to="/admin/nc" className="btn-secondary"><ArrowLeft size={14} /> Voltar à lista</Link>;
+  const voltar = <Link to="/admin/nc" className="btn btn-secondary"><ArrowLeft size={14} /> Voltar à lista</Link>;
 
   if (erroCarga) {
     return (
       <div className="nc-page">
         <PageHeading icon={ShieldAlert} eyebrow="QUALIDADE / NÃO CONFORMIDADES" title="Não foi possível carregar" description={erroCarga} action={voltar} />
         <div>
-          <button type="button" className="btn-primary" onClick={() => setTentativa((t) => t + 1)}>
+          <button type="button" className="btn btn-primary" onClick={() => setTentativa((t) => t + 1)}>
             <RotateCw size={14} /> Tentar novamente
           </button>
         </div>
@@ -373,7 +373,7 @@ function NcRegistroCompleto({ id }: { id: string }) {
   };
 
   const voltar = (
-    <Link to="/admin/nc" className="btn-secondary"><ArrowLeft size={14} /> Voltar à lista</Link>
+    <Link to="/admin/nc" className="btn btn-secondary"><ArrowLeft size={14} /> Voltar à lista</Link>
   );
 
   if (carregando) {
@@ -394,7 +394,7 @@ function NcRegistroCompleto({ id }: { id: string }) {
       <div className="nc-page">
         <PageHeading icon={ShieldAlert} eyebrow="QUALIDADE / NÃO CONFORMIDADES" title="Não foi possível carregar" description={erroCarga ?? 'Registro indisponível.'} action={voltar} />
         <div>
-          <button type="button" className="btn-primary" onClick={() => setTentativa((t) => t + 1)}>
+          <button type="button" className="btn btn-primary" onClick={() => setTentativa((t) => t + 1)}>
             <RotateCw size={14} /> Tentar novamente
           </button>
         </div>
@@ -633,7 +633,7 @@ function NcRegistroCompleto({ id }: { id: string }) {
               {admin && (
                 <button
                   type="button"
-                  className="btn-danger"
+                  className="btn btn-danger"
                   onClick={() => setConfirmarApagamento(true)}
                   disabled={nc.qtd_reversas > 0}
                   title={nc.qtd_reversas > 0 ? 'NC com reversa vinculada não pode ser apagada' : 'Apagar NC'}
@@ -642,8 +642,8 @@ function NcRegistroCompleto({ id }: { id: string }) {
                 </button>
               )}
               <div className="nc-actions-right">
-                <Link to="/admin/nc" className="btn-secondary">Cancelar</Link>
-                <button type="submit" className="btn-primary" disabled={salvando}>
+                <Link to="/admin/nc" className="btn btn-secondary">Cancelar</Link>
+                <button type="submit" className="btn btn-primary" disabled={salvando}>
                   {salvando ? <Loader2 className="animate-spin" size={15} /> : <Save size={15} />}
                   Salvar alterações
                 </button>

@@ -1,7 +1,7 @@
-import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { act, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, useLocation } from 'react-router-dom';
-import { BadgeCheck, BarChart3, ClipboardList } from 'lucide-react';
+import { BadgeCheck, BarChart3 } from 'lucide-react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { NavItem } from '../lib/perfil';
 import type { SolicitacaoAprovacao, UsuarioAutenticado } from '../types';
@@ -40,7 +40,7 @@ vi.mock('../components/ui/BotaoModoCor', () => ({ default: () => mocks.cor() }))
 vi.mock('../context/TemaContext', () => ({ useTema: () => 'conjunto', useEmpresaDaTela: () => {} }));
 
 import AdminLayout from '../components/admin/AdminLayout';
-import FlowNav from '../components/admin/FlowNav';
+import MenuNavegacao from '../components/shell/MenuNavegacao';
 import ApprovalQueuePage from '../pages/ApprovalQueuePage';
 import { ContadorAprovacoesProvider, useContadorAprovacoes } from '../context/ContadorAprovacoesContext';
 
@@ -61,13 +61,6 @@ const OUTRO_APROVADOR: UsuarioAutenticado = { ...APROVADOR, id: 'aprovador-2', n
 
 const ITENS: NavItem[] = [
   { to: '/admin/dashboard', label: 'Dashboard', icon: BarChart3 },
-  { to: '/admin/aprovacoes', label: 'Aprovações', icon: BadgeCheck },
-];
-
-// Com três destinos e a largura simulada abaixo, só o primeiro cabe no dock; Aprovações fica em "Mais"
-const ITENS_COM_MAIS: NavItem[] = [
-  { to: '/admin/dashboard', label: 'Dashboard', icon: BarChart3 },
-  { to: '/admin/lista', label: 'Lista', icon: ClipboardList },
   { to: '/admin/aprovacoes', label: 'Aprovações', icon: BadgeCheck },
 ];
 
@@ -107,7 +100,7 @@ async function concluirConsultas() {
 
 function Painel({ itens = ITENS }: { itens?: NavItem[] }) {
   const { pendencias } = useContadorAprovacoes();
-  return <FlowNav items={itens} pendenciasPorDestino={{ '/admin/aprovacoes': pendencias }} />;
+  return <nav aria-label="Navegação principal"><MenuNavegacao items={itens} pendenciasPorDestino={{ '/admin/aprovacoes': pendencias }} /></nav>;
 }
 
 // Mostra a rota atual para conferir a navegação por botão
@@ -369,35 +362,7 @@ describe('contador de aprovações: página de Aprovações e decisões', () => 
   });
 });
 
-describe('contador de aprovações: menu e layout', () => {
-  it('quando o item cai dentro de "Mais", o botão mostra o indicador e o nome do item segue acessível', async () => {
-    Object.defineProperty(document.documentElement, 'clientWidth', { configurable: true, value: 304 });
-    vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockReturnValue({
-      width: 100, height: 56, top: 0, left: 0, right: 100, bottom: 56, x: 0, y: 0, toJSON: () => ({}),
-    } as DOMRect);
-    // Só o dock é medido com estes valores; os demais elementos mantêm o estilo real do jsdom
-    const estiloOriginal = window.getComputedStyle.bind(window);
-    vi.spyOn(window, 'getComputedStyle').mockImplementation((elemento: Element, pseudo?: string | null) => {
-      if (elemento.classList.contains('flow-nav')) {
-        return {
-          columnGap: '0px', gap: '0px', paddingLeft: '0px', paddingRight: '0px', borderLeftWidth: '0px', borderRightWidth: '0px',
-          getPropertyValue: () => '',
-        } as unknown as CSSStyleDeclaration;
-      }
-      return estiloOriginal(elemento, pseudo);
-    });
-    auth.user = APROVADOR;
-    api.getFilaAprovacao.mockResolvedValue([pedido(ID_1), pedido(ID_2)]);
-
-    renderNav(ITENS_COM_MAIS);
-
-    const mais = await screen.findByRole('button', { name: 'Mais, com Aprovações, 2 aguardando sua análise' });
-    expect(mais.querySelector('.flow-nav-badge')).not.toBeNull();
-    fireEvent.click(mais);
-    const linkNoMenu = await screen.findByRole('button', { name: 'Aprovações, 2 aguardando sua análise' });
-    expect(within(linkNoMenu).getByText('2')).toBeInTheDocument();
-  });
-
+describe('contador de aprovações: menu lateral e layout', () => {
   it('o layout administrativo mostra a contagem e mantém o sino de emissão no cabeçalho', async () => {
     auth.user = APROVADOR;
     api.getFilaAprovacao.mockResolvedValue([pedido(ID_1), pedido(ID_2)]);

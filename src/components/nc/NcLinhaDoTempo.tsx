@@ -73,7 +73,7 @@ export default function NcLinhaDoTempo({ ncId, podeAnotar, versao }: Props) {
             placeholder="Ex.: cliente avisada; pedido de indenização aberto…"
           />
           <div>
-            <button type="button" className="btn-secondary" onClick={anotar} disabled={salvando || !nota.trim()}>
+            <button type="button" className="btn btn-secondary" onClick={anotar} disabled={salvando || !nota.trim()}>
               <MessageSquarePlus size={14} /> {salvando ? 'Salvando…' : 'Adicionar anotação'}
             </button>
           </div>

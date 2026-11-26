@@ -2,8 +2,7 @@
 import { useNavigate } from 'react-router-dom';
 import { LockKeyhole, LogOut } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
-import BotaoEfeitosFundo from '../components/ui/BotaoEfeitosFundo';
-import BotaoModoCor from '../components/ui/BotaoModoCor';
+import EntradaLayout from '../components/shell/EntradaLayout';
 
 export default function SemAcessoPage() {
   const { logout } = useAuth();
@@ -11,27 +10,21 @@ export default function SemAcessoPage() {
 
   const handleLogout = async () => {
     await logout();
-    navigate('/login', { replace: true });
+    navigate('/login/azime', { replace: true });
   };
 
   return (
-    <div className="estado-pagina">
-      <section className="estado-cartao" aria-labelledby="sem-acesso-titulo">
-        <div className="estado-icone" aria-hidden="true">
+    <EntradaLayout rotulo="Acesso negado">
+      <section className="state" style={{ padding: '8px 0' }} aria-labelledby="sem-acesso-titulo">
+        <div className="state-icon" aria-hidden="true">
           <LockKeyhole size={22} />
         </div>
-        <h1 id="sem-acesso-titulo" className="estado-titulo">Sem acesso</h1>
-        <p className="estado-texto">
-          Sua conta ainda não tem telas liberadas. Peça a um administrador para liberar o acesso.
-        </p>
-        <button type="button" onClick={handleLogout} className="btn-secondary estado-acao">
+        <h1 id="sem-acesso-titulo" className="entry-titulo" style={{ marginBottom: 0 }}>Sem acesso</h1>
+        <p>Sua conta ainda não tem telas liberadas. Peça a um administrador para liberar o acesso.</p>
+        <button type="button" onClick={handleLogout} className="btn btn-secondary">
           <LogOut size={16} aria-hidden="true" /> Sair
         </button>
-        <div className="estado-preferencias">
-          <BotaoModoCor />
-          <BotaoEfeitosFundo className="estado-efeitos" />
-        </div>
       </section>
-    </div>
+    </EntradaLayout>
   );
 }

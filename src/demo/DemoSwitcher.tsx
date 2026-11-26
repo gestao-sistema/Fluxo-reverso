@@ -10,7 +10,7 @@ export default function DemoSwitcher() {
   const navigate = useNavigate();
   if (!isDemo) {
     if (!demoDisponivel()) return null;
-    return <button type="button" className="demo-launch" onClick={() => { iniciarDemonstracao(); navigate('/admin/dashboard', { replace: true }); }}>Abrir demonstração</button>;
+    return <button type="button" className="demo-pill" onClick={() => { iniciarDemonstracao(); navigate('/admin/dashboard', { replace: true }); }}>Abrir demonstração</button>;
   }
   if (!user) return null;
 
@@ -21,8 +21,8 @@ export default function DemoSwitcher() {
   };
 
   return (
-    <div className="demo-switcher" title="Demonstração: alterações salvas apenas neste navegador">
-      <FlaskConical size={15} aria-hidden="true" />
+    <div className="demo-switcher demo-pill" title="Demonstração: alterações salvas apenas neste navegador">
+      <FlaskConical size={14} aria-hidden="true" />
       <label className="sr-only" htmlFor="demo-perfil">Trocar perfil de demonstração</label>
       <select id="demo-perfil" value={user.id} onChange={(event) => trocar(event.target.value)}>
         {/* Só o papel, para caber na cápsula; o nome aparece no menu da conta */}

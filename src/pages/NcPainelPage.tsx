@@ -280,7 +280,7 @@ export default function NcPainelPage() {
         eyebrow="QUALIDADE / NÃO CONFORMIDADES"
         title="Painel de não conformidades"
         description="Volume, custo e tempo de tratativa por tipo do problema, origem / causador, área de tratativa, situação do custo, empresa, tipo de saída, resolução e mês."
-        action={<Link to="/admin/nc" className="btn-secondary">Ver registros</Link>}
+        action={<Link to="/admin/nc" className="btn btn-secondary">Ver registros</Link>}
       />
 
       <section className="filter-panel" aria-label="Filtros do painel">
@@ -307,7 +307,7 @@ export default function NcPainelPage() {
             </select>
           </div>
           <div className="filter-actions">
-            {temFiltro && <button type="button" className="btn-secondary" onClick={() => setFiltro(SEM_FILTRO)}><RotateCcw size={13} /> Limpar</button>}
+            {temFiltro && <button type="button" className="btn btn-secondary" onClick={() => setFiltro(SEM_FILTRO)}><RotateCcw size={13} /> Limpar</button>}
           </div>
         </div>
       </section>

@@ -56,6 +56,7 @@ src/
 ├── components/
 │   ├── admin/                 # Dashboard, listas, gráficos, Kanban, detalhe + etiqueta da reversa
 │   ├── auth/                  # ProtectedRoute
+│   ├── shell/                 # Casca do padrão visual: barra lateral, cabeçalho, gaveta, busca, entrada, marca
 │   ├── forms/                 # ReverseLogisticsForm (vínculo opcional com NC)
 │   └── nc/                    # NC: reversas da NC, linha do tempo, importação, resumo do dashboard
 ├── context/
@@ -69,6 +70,7 @@ src/
 │   ├── ncCalculos.ts          # Fórmulas da planilha de NC (REGISTRO_NC / PAINEL_NC)
 │   └── ncPlanilha.ts          # Importação/exportação da aba REGISTRO_NC
 ├── pages/                     # Páginas (Login, Dashboard, Formulários, NC, etc)
+├── styles/                    # Padrão visual (padrao/ = manual), ponte de tokens, telas e extensões — ver docs/padrao-visual.md
 ├── schemas/
 │   ├── formSchema.ts          # Validação Zod do formulário de reversa
 │   └── ncSchema.ts            # Validação Zod da NC

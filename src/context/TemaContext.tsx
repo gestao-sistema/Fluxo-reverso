@@ -8,7 +8,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 import { createContext, useCallback, useContext, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useLocation } from 'react-router-dom';
-import { empresaDoPerfil, resolverTema, type Tema } from '../lib/tema';
+import { empresaDoPerfil, marcaDoTema, resolverTema, temaDoModo, type Tema } from '../lib/tema';
 import { useAuth } from './AuthContext';
 import { useModoCor } from '../hooks/useModoCor';
 
@@ -42,9 +42,17 @@ export function TemaProvider({ children }: { children: ReactNode }) {
   const contexto = location.pathname.startsWith('/admin') ? 'app' : 'acesso';
 
   useLayoutEffect(() => {
-    document.documentElement.dataset.tema = tema;
-    document.documentElement.dataset.contexto = contexto;
-    document.documentElement.dataset.modo = modo;
+    const raiz = document.documentElement;
+    raiz.dataset.tema = tema;
+    raiz.dataset.contexto = contexto;
+    raiz.dataset.modo = modo;
+    // Padrão visual AZIME: a marca e o tema dos tokens vivem em <html>. O conjunto das duas empresas é a AZIME.
+    raiz.dataset.brand = marcaDoTema(tema);
+    raiz.dataset.theme = temaDoModo(modo);
+    // Controles nativos (campos de data, rolagem) e a barra do navegador no celular seguem o tema ativo
+    raiz.style.colorScheme = temaDoModo(modo);
+    const corDoAmbiente = getComputedStyle(raiz).getPropertyValue('--amb-base').trim();
+    if (corDoAmbiente) document.querySelector('meta[name="theme-color"]')?.setAttribute('content', corDoAmbiente);
   }, [tema, contexto, modo]);
 
   // Estável: as telas limpam a declaração só ao desmontar, não a cada troca de tema

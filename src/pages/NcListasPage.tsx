@@ -153,7 +153,7 @@ export default function NcListasPage() {
                           <input type="checkbox" aria-label={`Origem ${o.nome} ativa`} checked={r.ativo} onChange={(e) => editarOrigem(o.nome, { ativo: e.target.checked })} />
                         </td>
                         <td>
-                          <button type="button" className="btn-secondary" onClick={() => salvarOrigem(o.nome)} disabled={!alterada || salvando}>
+                          <button type="button" className="btn btn-secondary" onClick={() => salvarOrigem(o.nome)} disabled={!alterada || salvando}>
                             <Save size={13} /> Salvar
                           </button>
                         </td>
@@ -177,7 +177,7 @@ export default function NcListasPage() {
                     </td>
                     <td />
                     <td>
-                      <button type="button" className="btn-primary" onClick={adicionarOrigem} disabled={salvando}>
+                      <button type="button" className="btn btn-primary" onClick={adicionarOrigem} disabled={salvando}>
                         <Plus size={13} /> Adicionar
                       </button>
                     </td>
@@ -222,7 +222,7 @@ export default function NcListasPage() {
                       onChange={(e) => setNovosValores({ ...novosValores, [lista]: e.target.value })}
                       onKeyDown={(e) => { if (e.key === 'Enter') adicionarValor(lista); }}
                     />
-                    <button type="button" className="btn-secondary" onClick={() => adicionarValor(lista)} disabled={salvando}>
+                    <button type="button" className="btn btn-secondary" onClick={() => adicionarValor(lista)} disabled={salvando}>
                       <Plus size={13} /> Adicionar
                     </button>
                   </div>

@@ -31,8 +31,6 @@ vi.mock('../context/TemaContext', () => ({
   TemaProvider: ({ children }: { children: React.ReactNode }) => children,
   useEmpresaDaTela: () => {},
 }));
-vi.mock('../components/ui/FundoJoalheria', () => ({ default: () => null }));
-vi.mock('../components/ui/BotaoEfeitosFundo', () => ({ default: () => null }));
 vi.mock('../components/ui/BotaoModoCor', () => ({ default: () => null }));
 vi.mock('../components/admin/AdminLayout', () => ({ default: () => <Outlet /> }));
 vi.mock('react-hot-toast', () => ({ Toaster: () => null, default: { success: vi.fn(), error: vi.fn() } }));
@@ -161,9 +159,9 @@ describe('retorno pelo link depois do login', () => {
   const sessao = usuario(['formulario-alinare']);
 
   async function entrar() {
-    fireEvent.change(await screen.findByLabelText('USUÁRIO'), { target: { value: 'ana' } });
-    fireEvent.change(screen.getByLabelText('SENHA'), { target: { value: 'senha-fictícia' } });
-    fireEvent.click(screen.getByRole('button', { name: /Acessar plataforma/ }));
+    fireEvent.change(await screen.findByLabelText('Usuário'), { target: { value: 'ana' } });
+    fireEvent.change(screen.getByLabelText('Senha'), { target: { value: 'senha-fictícia' } });
+    fireEvent.click(screen.getByRole('button', { name: /^Entrar$/ }));
   }
 
   it('Meus Pedidos preserva o pedido do link (?solicitacaoId=) após autenticar', async () => {

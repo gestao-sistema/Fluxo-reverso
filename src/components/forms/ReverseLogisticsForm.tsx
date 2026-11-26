@@ -1,23 +1,23 @@
 // ── Formulário Base de Logística Reversa ─────────────────────────────────────
 //
 // Componente reutilizável que adapta identidade visual e listas de opções
-// conforme a prop `empresa`. O visual segue o tema da página (Alinare ou Novitah).
+// conforme a prop `empresa`. O visual segue o padrão da página (marca e tema em <html>).
 //
 // Cronômetro silencioso: captura o timestamp de montagem e calcula
 // `tempo_preenchimento_segundos` no momento do submit — sem exibir ao usuário.
 //
-// A NC de origem é opcional. Quando aberto a partir da NC (?nc=<id>), o campo
-// vem selecionado e volta para a NC depois de enviar.
+// A NC é vinculada automaticamente quando o formulário é aberto a partir dela (?nc=<id>)
+// e o usuário volta para a NC depois de enviar.
 // ─────────────────────────────────────────────────────────────────────────────
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import DatePicker, { registerLocale } from 'react-datepicker';
 import { ptBR } from 'date-fns/locale/pt-BR';
 import toast from 'react-hot-toast';
-import { Loader2, CalendarDays, Send, ShieldAlert } from 'lucide-react';
+import { Check, CircleAlert, Loader2, CalendarDays, Send } from 'lucide-react';
 
 import 'react-datepicker/dist/react-datepicker.css';
 
@@ -27,25 +27,10 @@ import apiService from '../../services/apiService';
 import ncService from '../../services/ncService';
 import { useAuth } from '../../context/AuthContext';
 import { formatarDataBr } from '../../lib/ncCalculos';
-import { textoClassificacaoVinculada } from '../../lib/ncVinculoReverso';
-import LeitorEtiqueta from './LeitorEtiqueta';
-import type { CamposEtiqueta } from '../../lib/etiquetaPdf';
 import { statusEfetivo } from '../../lib/situacaoPedido';
-
-import alinareLogoSrc from '../../assets/alinare_logo.jpg';
-import novitahLogoSrc from '../../assets/novitah_logo.jpg';
 
 // Registra localização pt-BR para o DatePicker
 registerLocale('pt-BR', ptBR);
-
-// ── Identidade por empresa ────────────────────────────────────────────────────
-// Cores e materiais vêm do tema da página (a rota da empresa define o tema);
-// aqui fica só o logo oficial. O anel de foco usa a paleta remapeada (destaque).
-const TEMA = {
-  Alinare: { logo: alinareLogoSrc, logoAlt: 'Logotipo Alinare' },
-  Novitah: { logo: novitahLogoSrc, logoAlt: 'Logotipo Novitah' },
-} as const;
-const FOCO = 'focus:ring-blue-500/30';
 
 // ── Setores filtrados por empresa ─────────────────────────────────────────────
 const SETORES_POR_EMPRESA: Record<Empresa, typeof SETORES[number][]> = {
@@ -70,15 +55,16 @@ const stringToDate = (str: string): Date | null => {
   return new Date(y, m - 1, d);
 };
 
-// ── Classes reutilizáveis ─────────────────────────────────────────────────────
-const inputBase =
-  'w-full h-11 px-4 rounded-lg border bg-white text-sm text-slate-900 ' +
-  'placeholder:text-slate-400 transition-colors duration-150 ' +
-  'focus:outline-none focus:ring-2 focus:ring-offset-0 focus:border-transparent ' +
-  'disabled:opacity-50 disabled:cursor-not-allowed';
+// ── Mensagem de erro de campo (padrão visual, seção 14.1) ─────────────────────
+function MensagemErro({ id, children }: { id: string; children: ReactNode }) {
+  return (
+    <p id={id} className="error-msg" role="alert">
+      <CircleAlert size={14} aria-hidden="true" />
+      {children}
+    </p>
+  );
+}
 
-const labelBase = 'block text-sm font-medium text-slate-700 mb-1.5';
-const errorBase = 'mt-1.5 text-xs text-red-600';
 const STATUS_EM_ABERTO: StatusSolicitacao[] = ['aguardando_aprovacao', 'pendente', 'etiqueta_gerada', 'postado', 'em_transito'];
 
 // ── Props do componente ───────────────────────────────────────────────────────
@@ -88,7 +74,6 @@ interface ReverseLogisticsFormProps {
 
 // ── Componente ────────────────────────────────────────────────────────────────
 export default function ReverseLogisticsForm({ empresa }: ReverseLogisticsFormProps) {
-  const tema = TEMA[empresa];
   const setores = SETORES_POR_EMPRESA[empresa];
   const { user } = useAuth();
 
@@ -97,13 +82,9 @@ export default function ReverseLogisticsForm({ empresa }: ReverseLogisticsFormPr
   // Aberto a partir de uma NC (botão "Gerar reversa")
   const ncDaUrl = searchParams.get('nc') ?? '';
   const [opcoesNc, setOpcoesNc] = useState<NcOpcaoReversa[]>([]);
-  const [carregandoNcs, setCarregandoNcs] = useState(true);
   const [historicoCliente, setHistoricoCliente] = useState<Awaited<ReturnType<typeof apiService.getHistoricoCliente>>>([]);
   const [carregandoHistoricoCliente, setCarregandoHistoricoCliente] = useState(false);
   const [erroHistoricoCliente, setErroHistoricoCliente] = useState(false);
-  const [etiquetaAguardandoConferencia, setEtiquetaAguardandoConferencia] = useState(false);
-  const [etiquetaEmLeitura, setEtiquetaEmLeitura] = useState(false);
-  const [chaveLeitorEtiqueta, setChaveLeitorEtiqueta] = useState(0);
   const [cep, setCep] = useState('');
   const [erroCep, setErroCep] = useState('');
   const [buscandoCep, setBuscandoCep] = useState(false);
@@ -199,23 +180,9 @@ export default function ReverseLogisticsForm({ empresa }: ReverseLogisticsFormPr
 
   const solicitacoesAbertasDaCliente = historicoCliente.filter((item) => STATUS_EM_ABERTO.includes(item.status)).length;
 
-  const aplicarCamposEtiqueta = (campos: CamposEtiqueta) => {
-    if (campos.nome_cliente) setValue('nome_cliente', campos.nome_cliente, { shouldValidate: true });
-    if (campos.endereco_postagem) setValue('endereco_postagem', campos.endereco_postagem, { shouldValidate: true });
-    if (campos.numero_endereco) setValue('numero_endereco', campos.numero_endereco, { shouldValidate: true });
-    if (campos.cep) {
-      cepRequestRef.current += 1;
-      setBuscandoCep(false);
-      setErroCep('');
-      setCep(campos.cep);
-    }
-    setEtiquetaAguardandoConferencia(true);
-  };
-
   // NCs abertas da empresa que podem originar a reversa
   useEffect(() => {
     let ativo = true;
-    setCarregandoNcs(true);
     ncService
       .opcoesParaReversa(empresa)
       .then((opcoes) => {
@@ -224,8 +191,7 @@ export default function ReverseLogisticsForm({ empresa }: ReverseLogisticsFormPr
         // NC da URL encerrada, cancelada ou de outra empresa: não fica pré-selecionada
         if (ncDaUrl && !opcoes.some((o) => o.id === ncDaUrl)) setValue('nc_id', '');
       })
-      .catch(() => { if (ativo) setOpcoesNc([]); })
-      .finally(() => { if (ativo) setCarregandoNcs(false); });
+      .catch(() => { if (ativo) setOpcoesNc([]); });
     return () => { ativo = false; };
   }, [empresa, ncDaUrl, setValue]);
 
@@ -287,14 +253,6 @@ export default function ReverseLogisticsForm({ empresa }: ReverseLogisticsFormPr
 
   // ── Submit ────────────────────────────────────────────────────────────────
   const onSubmit = async (data: FormData) => {
-    if (etiquetaEmLeitura) {
-      toast.error('Aguarde a leitura da etiqueta terminar.');
-      return;
-    }
-    if (etiquetaAguardandoConferencia) {
-      toast.error('Confira os dados preenchidos pela etiqueta antes de enviar.');
-      return;
-    }
     if (!user) {
       toast.error('Entre no sistema para enviar uma solicitação.');
       return;
@@ -336,8 +294,6 @@ export default function ReverseLogisticsForm({ empresa }: ReverseLogisticsFormPr
       });
 
       toast.success('Solicitação enviada com sucesso!');
-      setEtiquetaAguardandoConferencia(false);
-      setChaveLeitorEtiqueta((atual) => atual + 1);
       cepRequestRef.current += 1;
       cepDestinoRequestRef.current += 1;
       setBuscandoCep(false);
@@ -366,346 +322,277 @@ export default function ReverseLogisticsForm({ empresa }: ReverseLogisticsFormPr
     }
   };
 
+  // ── Seções concluídas: o marcador numérico vira check (padrão visual, seção 14.3) ──
+  const [dataSolicitacaoAtual, setorAtual, nomeClienteAtual, numeroAtual, enderecoAtual] = watch([
+    'data_solicitacao', 'setor', 'nome_cliente', 'numero_endereco', 'endereco_postagem',
+  ]);
+  const secaoSolicitacaoCompleta = !!dataSolicitacaoAtual && !!setorAtual;
+  const secaoClienteCompleta = typeof codigoClienteAtual === 'number' && Number.isFinite(codigoClienteAtual) && codigoClienteAtual > 0
+    && !!nomeClienteAtual?.trim() && !!numeroAtual?.trim() && !!enderecoAtual?.trim();
+  const secaoMotivoCompleta = !!motivoAtual;
+  const marcador = (numero: number, completa: boolean) => (
+    <span className={`step-num${completa ? ' done' : ''}`} aria-hidden="true">
+      {completa ? <Check size={13} /> : numero}
+    </span>
+  );
+  const mostrarHistorico = carregandoHistoricoCliente || historicoCliente.length > 0 || erroHistoricoCliente
+    || (typeof codigoClienteAtual === 'number' && Number.isSafeInteger(codigoClienteAtual) && codigoClienteAtual > 0);
+
   // ── Render ────────────────────────────────────────────────────────────────
   return (
-    <div className="form-view w-full h-full sm:py-2">
-      <div className="max-w-[830px] mx-auto">
+    <div className="form-view narrow-box">
+      <header className="page-head">
+        <div>
+          <h1 className="page-title">Novo pedido</h1>
+          <p className="page-sub">Solicitação de logística reversa · {empresa}</p>
+        </div>
+      </header>
 
-        {/* Card do formulário */}
-        <div className={`form-card bg-white sm:rounded-2xl shadow-sm border-0 sm:border border-slate-200 overflow-hidden`}>
+      <form
+        onSubmit={handleSubmit(onSubmit)}
+        noValidate
+        aria-label={`Formulário de logística reversa ${empresa}`}
+        className="card form-card"
+      >
+        {/* 1 · Solicitação */}
+        <div className="form-section">
+          <h3>{marcador(1, secaoSolicitacaoCompleta)} Solicitação</h3>
+          <p className="section-desc">Quando e por quem o pedido está sendo aberto.</p>
+          <div className="form-grid">
+            <div className="field full">
+              <label htmlFor="data_solicitacao">
+                Data da Solicitação <span className="req" aria-hidden="true">*</span>
+              </label>
+              <div className="input-icon">
+                <CalendarDays size={17} aria-hidden="true" />
+                <Controller
+                  name="data_solicitacao"
+                  control={control}
+                  render={({ field }) => (
+                    <DatePicker
+                      id="data_solicitacao"
+                      locale="pt-BR"
+                      dateFormat="dd/MM/yyyy"
+                      placeholderText="dd/mm/aaaa"
+                      selected={stringToDate(field.value)}
+                      onChange={(date: Date | null) => field.onChange(date ? dateToString(date) : '')}
+                      maxDate={new Date()}
+                      className="input"
+                      wrapperClassName="w-full"
+                      aria-invalid={errors.data_solicitacao ? 'true' : 'false'}
+                      aria-required="true"
+                      aria-describedby={errors.data_solicitacao ? 'err-data' : undefined}
+                      disabled={isSubmitting}
+                    />
+                  )}
+                />
+              </div>
+              {errors.data_solicitacao && <MensagemErro id="err-data">{errors.data_solicitacao.message}</MensagemErro>}
+            </div>
 
-          {/* ── Header com identidade visual da empresa ── */}
-          <div className={`form-header px-5 sm:px-8 py-6 flex flex-col sm:flex-row items-start sm:items-center gap-4 sm:gap-5`}>
-            <img
-              src={tema.logo}
-              alt={tema.logoAlt}
-              className="h-12 sm:h-14 w-auto"
-            />
-            <div>
-              <h1>
-                Novo pedido
-              </h1>
+            <div className="field">
+              <label htmlFor="solicitante">
+                Solicitante <span className="req" aria-hidden="true">*</span>
+              </label>
+              <input
+                id="solicitante"
+                type="text"
+                readOnly
+                value={user?.nome ?? ''}
+                aria-readonly="true"
+                aria-required="true"
+                disabled={isSubmitting}
+                aria-invalid={!!errors.solicitante}
+                aria-describedby={errors.solicitante ? 'err-solicitante' : undefined}
+                title="Preenchido com o usuário autenticado"
+                className="input input-readonly"
+                {...register('solicitante')}
+              />
+              {errors.solicitante && <MensagemErro id="err-solicitante">{errors.solicitante.message}</MensagemErro>}
+            </div>
+
+            <div className="field">
+              <label htmlFor="setor">
+                Setor <span className="req" aria-hidden="true">*</span>
+              </label>
+              <select
+                id="setor"
+                disabled={isSubmitting}
+                aria-required="true"
+                aria-invalid={!!errors.setor}
+                aria-describedby={errors.setor ? 'err-setor' : undefined}
+                className="select"
+                {...register('setor')}
+              >
+                <option value="" disabled>Selecione o setor</option>
+                {setores.map((s) => (
+                  <option key={s} value={s}>{s}</option>
+                ))}
+              </select>
+              {errors.setor && <MensagemErro id="err-setor">{errors.setor.message}</MensagemErro>}
             </div>
           </div>
+        </div>
 
-          {/* ── Corpo do formulário ── */}
-          <form
-            onSubmit={handleSubmit(onSubmit)}
-            noValidate
-            aria-label={`Formulário de logística reversa ${empresa}`}
-            className="px-5 sm:px-8 py-6 sm:py-8 space-y-6"
-          >
-
-            {/* NC de origem — vínculo opcional; quando selecionada, deve ser da mesma empresa e estar aberta */}
-            <div>
-              <label htmlFor="nc_id" className={labelBase}>
-                <ShieldAlert className="inline w-4 h-4 mr-1.5 -mt-0.5 opacity-60" />
-                NC de origem <span className="text-slate-400 font-normal">(opcional)</span>
+        {/* 2 · Cliente e endereço de postagem */}
+        <div className="form-section">
+          <h3>{marcador(2, secaoClienteCompleta)} Cliente</h3>
+          <p className="section-desc">Quem enviará a mercadoria e de onde ela será postada.</p>
+          <div className="form-grid">
+            <div className="field">
+              <label htmlFor="codigo_cliente">
+                Código da Cliente <span className="req" aria-hidden="true">*</span>
               </label>
-              {carregandoNcs ? (
-                <p className="text-sm text-slate-400">Carregando opções de vínculo (opcional)…</p>
-              ) : (
-                <select
-                  id="nc_id"
-                  disabled={isSubmitting}
-                  aria-invalid={!!errors.nc_id}
-                  aria-describedby={errors.nc_id ? 'err-nc' : undefined}
-                  className={`
-                    ${inputBase} ${FOCO} cursor-pointer
-                    ${errors.nc_id ? 'border-red-400' : 'border-slate-300'}
-                  `}
-                  {...register('nc_id')}
-                >
-                  <option value="">Sem NC vinculada</option>
-                  {opcoesNc.map((o) => (
-                    <option key={o.id} value={o.id}>
-                      {`${o.codigo} · ${formatarDataBr(o.data_ocorrencia)} · ${o.cliente ?? 'cliente não informada'} · ${textoClassificacaoVinculada(o)}`}
-                    </option>
-                  ))}
-                </select>
-              )}
-              {errors.nc_id && (
-                <p id="err-nc" className={errorBase} role="alert">
-                  {errors.nc_id.message}
-                </p>
-              )}
-            </div>
-
-            {/* Data da solicitação */}
-            <div>
-              <label htmlFor="data_solicitacao" className={labelBase}>
-                <CalendarDays className="inline w-4 h-4 mr-1.5 -mt-0.5 opacity-60" />
-                Data da Solicitação <span className="text-red-500">*</span>
-              </label>
-
-              <Controller
-                name="data_solicitacao"
-                control={control}
-                render={({ field }) => (
-                  <DatePicker
-                    id="data_solicitacao"
-                    locale="pt-BR"
-                    dateFormat="dd/MM/yyyy"
-                    placeholderText="dd/mm/aaaa"
-                    selected={stringToDate(field.value)}
-                    onChange={(date: Date | null) =>
-                      field.onChange(date ? dateToString(date) : '')
-                    }
-                    maxDate={new Date()}
-                    className={`
-                      ${inputBase}
-                      ${FOCO}
-                      ${errors.data_solicitacao ? 'border-red-400' : 'border-slate-300'}
-                    `}
-                    wrapperClassName="w-full"
-                    aria-invalid={errors.data_solicitacao ? 'true' : 'false'}
-                    aria-describedby={
-                      errors.data_solicitacao ? 'err-data' : undefined
-                    }
-                    disabled={isSubmitting}
-                  />
-                )}
+              <input
+                id="codigo_cliente"
+                type="number"
+                inputMode="numeric"
+                placeholder="Ex: 10234"
+                disabled={isSubmitting}
+                aria-required="true"
+                aria-invalid={!!errors.codigo_cliente}
+                aria-describedby={errors.codigo_cliente ? 'err-codigo' : undefined}
+                className="input num"
+                {...register('codigo_cliente', { valueAsNumber: true })}
               />
-
-              {errors.data_solicitacao && (
-                <p id="err-data" className={errorBase} role="alert">
-                  {errors.data_solicitacao.message}
-                </p>
-              )}
+              {errors.codigo_cliente && <MensagemErro id="err-codigo">{errors.codigo_cliente.message}</MensagemErro>}
             </div>
 
-            {/* Solicitante + Setor — 2 colunas */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-5">
-
-              {/* Solicitante */}
-              <div className="relative">
-                <label htmlFor="solicitante" className={labelBase}>
-                  Solicitante <span className="text-red-500">*</span>
-                </label>
-                <input
-                  id="solicitante"
-                  type="text"
-                  readOnly
-                  value={user?.nome ?? ''}
-                  aria-readonly="true"
-                  disabled={isSubmitting}
-                  aria-invalid={!!errors.solicitante}
-                  aria-describedby={errors.solicitante ? 'err-solicitante' : undefined}
-                  title="Preenchido com o usuário autenticado"
-                  className={`
-                    ${inputBase} bg-slate-50 text-slate-600 cursor-not-allowed
-                    ${errors.solicitante ? 'border-red-400' : 'border-slate-300'}
-                  `}
-                  {...register('solicitante')}
-                />
-                {errors.solicitante && (
-                  <p id="err-solicitante" className={errorBase} role="alert">
-                    {errors.solicitante.message}
-                  </p>
-                )}
-              </div>
-
-              {/* Setor */}
-              <div>
-                <label htmlFor="setor" className={labelBase}>
-                  Setor <span className="text-red-500">*</span>
-                </label>
-                <select
-                  id="setor"
-                  disabled={isSubmitting}
-                  aria-invalid={!!errors.setor}
-                  aria-describedby={errors.setor ? 'err-setor' : undefined}
-                  className={`
-                    ${inputBase} ${FOCO} cursor-pointer
-                    ${errors.setor ? 'border-red-400' : 'border-slate-300'}
-                  `}
-                  {...register('setor')}
-                >
-                  <option value="" disabled>Selecione o setor</option>
-                  {setores.map((s) => (
-                    <option key={s} value={s}>{s}</option>
-                  ))}
-                </select>
-                {errors.setor && (
-                  <p id="err-setor" className={errorBase} role="alert">
-                    {errors.setor.message}
-                  </p>
-                )}
-              </div>
+            <div className="field">
+              <label htmlFor="nome_cliente">
+                Nome da Cliente <span className="req" aria-hidden="true">*</span>
+              </label>
+              <input
+                id="nome_cliente"
+                type="text"
+                autoComplete="off"
+                placeholder="Nome completo"
+                disabled={isSubmitting}
+                aria-required="true"
+                aria-invalid={!!errors.nome_cliente}
+                aria-describedby={errors.nome_cliente ? 'err-nome' : undefined}
+                className="input"
+                {...register('nome_cliente')}
+              />
+              {errors.nome_cliente && <MensagemErro id="err-nome">{errors.nome_cliente.message}</MensagemErro>}
             </div>
 
-            <LeitorEtiqueta
-              key={chaveLeitorEtiqueta}
-              disabled={isSubmitting}
-              onAplicar={aplicarCamposEtiqueta}
-              onConferencia={(confirmado) => setEtiquetaAguardandoConferencia(!confirmado)}
-              onProcessamento={setEtiquetaEmLeitura}
-            />
-
-            {/* Código + Nome da cliente — 2 colunas */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-5">
-
-              {/* Código da cliente */}
-              <div>
-                <label htmlFor="codigo_cliente" className={labelBase}>
-                  Código da Cliente <span className="text-red-500">*</span>
-                </label>
-                <input
-                  id="codigo_cliente"
-                  type="number"
-                  inputMode="numeric"
-                  placeholder="Ex: 10234"
-                  disabled={isSubmitting}
-                  aria-invalid={!!errors.codigo_cliente}
-                  aria-describedby={errors.codigo_cliente ? 'err-codigo' : undefined}
-                  className={`
-                    ${inputBase} ${FOCO}
-                    ${errors.codigo_cliente ? 'border-red-400' : 'border-slate-300'}
-                  `}
-                  {...register('codigo_cliente', { valueAsNumber: true })}
-                />
-                {errors.codigo_cliente && (
-                  <p id="err-codigo" className={errorBase} role="alert">
-                    {errors.codigo_cliente.message}
-                  </p>
-                )}
-              </div>
-
-              {/* Nome da cliente */}
-              <div>
-                <label htmlFor="nome_cliente" className={labelBase}>
-                  Nome da Cliente <span className="text-red-500">*</span>
-                </label>
-                <input
-                  id="nome_cliente"
-                  type="text"
-                  autoComplete="off"
-                  placeholder="Nome completo"
-                  disabled={isSubmitting}
-                  aria-invalid={!!errors.nome_cliente}
-                  aria-describedby={errors.nome_cliente ? 'err-nome' : undefined}
-                  className={`
-                    ${inputBase} ${FOCO}
-                    ${errors.nome_cliente ? 'border-red-400' : 'border-slate-300'}
-                  `}
-                  {...register('nome_cliente')}
-                />
-                {errors.nome_cliente && (
-                  <p id="err-nome" className={errorBase} role="alert">
-                    {errors.nome_cliente.message}
-                  </p>
-                )}
-              </div>
-            </div>
-
-            {(carregandoHistoricoCliente || historicoCliente.length > 0 || erroHistoricoCliente || (typeof codigoClienteAtual === 'number' && Number.isSafeInteger(codigoClienteAtual) && codigoClienteAtual > 0)) && (
+            {mostrarHistorico && (
               <section
-                className={`rounded-xl border p-4 ${historicoCliente.length > 0 ? 'border-amber-200 bg-amber-50' : 'border-slate-200 bg-slate-50'}`}
+                className={`banner full ${historicoCliente.length > 0 ? 'banner-warn' : 'banner-neutral'}`}
                 aria-live="polite"
                 aria-label="Histórico de solicitações da cliente"
+                style={{ flexDirection: 'column', gap: 6 }}
               >
                 {carregandoHistoricoCliente ? (
-                  <p className="text-sm text-slate-600">Consultando histórico para este código de cliente…</p>
+                  <p className="b-text">Consultando histórico para este código de cliente…</p>
                 ) : erroHistoricoCliente ? (
-                  <p className="text-sm text-slate-600">Não foi possível consultar o histórico agora.</p>
+                  <p className="b-text">Não foi possível consultar o histórico agora.</p>
                 ) : (
                   <>
-                    <p className={`text-sm font-semibold ${historicoCliente.length > 0 ? 'text-amber-950' : 'text-slate-800'}`}>
+                    <p className="b-text strong">
                       {historicoCliente.length
                         ? `Há ${historicoCliente.length} solicitação${historicoCliente.length === 1 ? '' : 'es'} de reverso registradas para esta cliente nesta empresa; ${solicitacoesAbertasDaCliente} em aberto.`
                         : 'Nenhuma solicitação anterior encontrada para este código nesta empresa.'}
                     </p>
-                    {historicoCliente.length > 0 && <p className="mt-1 text-xs text-amber-900">Aviso para conferência: este histórico não impede um novo pedido.</p>}
-                    <ul className="mt-2 space-y-1 text-xs text-slate-600">
-                      {historicoCliente.slice(0, 5).map((item) => (
-                        <li key={item.id}>
-                          {formatarDataBr(item.data_solicitacao)} · {STATUS_LABEL[statusEfetivo(item)]} · {item.motivo}
-                        </li>
-                      ))}
-                    </ul>
+                    {historicoCliente.length > 0 && <p className="b-text small">Aviso para conferência: este histórico não impede um novo pedido.</p>}
+                    {historicoCliente.length > 0 && (
+                      <ul className="b-text xs" style={{ margin: 0, paddingLeft: 18 }}>
+                        {historicoCliente.slice(0, 5).map((item) => (
+                          <li key={item.id}>
+                            {formatarDataBr(item.data_solicitacao)} · {STATUS_LABEL[statusEfetivo(item)]} · {item.motivo}
+                          </li>
+                        ))}
+                      </ul>
+                    )}
                   </>
                 )}
               </section>
             )}
 
-            {/* CEP, número e endereço preenchido automaticamente (editável) */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-5">
-              <div>
-                <label htmlFor="cep-postagem" className={labelBase}>CEP</label>
-                <div className="relative">
-                  <input
-                    id="cep-postagem"
-                    type="text"
-                    inputMode="numeric"
-                    autoComplete="postal-code"
-                    placeholder="00000-000"
-                    value={cep.length > 5 ? `${cep.slice(0, 5)}-${cep.slice(5)}` : cep}
-                    onChange={(event) => alterarCep(event.currentTarget.value)}
-                    disabled={isSubmitting}
-                    aria-invalid={!!erroCep}
-                    aria-describedby={erroCep ? 'err-cep' : undefined}
-                    className={`${inputBase} ${FOCO} ${erroCep ? 'border-red-400' : 'border-slate-300'} pr-10`}
-                  />
-                  {buscandoCep && <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 animate-spin text-slate-400" aria-label="Consultando CEP" />}
-                </div>
-                {erroCep && <p id="err-cep" className={errorBase} role="alert">{erroCep}</p>}
-              </div>
-
-              <div>
-                <label htmlFor="numero_endereco" className={labelBase}>
-                  Número <span className="text-red-500">*</span>
-                </label>
+            <div className="field">
+              <label htmlFor="cep-postagem">CEP</label>
+              <div className="input-icon">
                 <input
-                  id="numero_endereco"
+                  id="cep-postagem"
                   type="text"
-                  autoComplete="address-line2"
-                  placeholder="Ex: 125 ou S/N"
+                  inputMode="numeric"
+                  autoComplete="postal-code"
+                  placeholder="00000-000"
+                  value={cep.length > 5 ? `${cep.slice(0, 5)}-${cep.slice(5)}` : cep}
+                  onChange={(event) => alterarCep(event.currentTarget.value)}
                   disabled={isSubmitting}
-                  aria-invalid={!!errors.numero_endereco}
-                  aria-describedby={errors.numero_endereco ? 'err-numero' : undefined}
-                  className={`${inputBase} ${FOCO} ${errors.numero_endereco ? 'border-red-400' : 'border-slate-300'}`}
-                  {...register('numero_endereco')}
+                  aria-invalid={!!erroCep}
+                  aria-describedby={erroCep ? 'err-cep' : undefined}
+                  className="input num"
+                  style={{ paddingLeft: 14, paddingRight: 42 }}
                 />
-                {errors.numero_endereco && (
-                  <p id="err-numero" className={errorBase} role="alert">{errors.numero_endereco.message}</p>
+                {buscandoCep && (
+                  <span className="trail" style={{ right: 14 }}>
+                    <Loader2 size={16} className="spin" style={{ color: 'var(--text-subtle)' }} aria-label="Consultando CEP" />
+                  </span>
                 )}
               </div>
-
-              <div className="sm:col-span-2">
-                <label htmlFor="endereco_postagem" className={labelBase}>
-                  Endereço <span className="text-red-500">*</span>
-                </label>
-                <input
-                  id="endereco_postagem"
-                  type="text"
-                  autoComplete="street-address"
-                  placeholder="Rua, bairro, cidade/UF — você pode editar"
-                  disabled={isSubmitting}
-                  aria-invalid={!!errors.endereco_postagem}
-                  aria-describedby={errors.endereco_postagem ? 'err-endereco' : undefined}
-                  className={`${inputBase} ${FOCO} ${errors.endereco_postagem ? 'border-red-400' : 'border-slate-300'}`}
-                  {...register('endereco_postagem')}
-                />
-                {errors.endereco_postagem && (
-                  <p id="err-endereco" className={errorBase} role="alert">{errors.endereco_postagem.message}</p>
-                )}
-              </div>
+              {erroCep && <MensagemErro id="err-cep">{erroCep}</MensagemErro>}
             </div>
 
-            {/* Motivo */}
-            <div>
-              <label htmlFor="motivo" className={labelBase}>
-                Motivo <span className="text-red-500">*</span>
+            <div className="field">
+              <label htmlFor="numero_endereco">
+                Número <span className="req" aria-hidden="true">*</span>
+              </label>
+              <input
+                id="numero_endereco"
+                type="text"
+                autoComplete="address-line2"
+                placeholder="Ex: 125 ou S/N"
+                disabled={isSubmitting}
+                aria-required="true"
+                aria-invalid={!!errors.numero_endereco}
+                aria-describedby={errors.numero_endereco ? 'err-numero' : undefined}
+                className="input"
+                {...register('numero_endereco')}
+              />
+              {errors.numero_endereco && <MensagemErro id="err-numero">{errors.numero_endereco.message}</MensagemErro>}
+            </div>
+
+            <div className="field full">
+              <label htmlFor="endereco_postagem">
+                Endereço <span className="req" aria-hidden="true">*</span>
+              </label>
+              <input
+                id="endereco_postagem"
+                type="text"
+                autoComplete="street-address"
+                placeholder="Rua, bairro, cidade/UF — você pode editar"
+                disabled={isSubmitting}
+                aria-required="true"
+                aria-invalid={!!errors.endereco_postagem}
+                aria-describedby={errors.endereco_postagem ? 'err-endereco' : undefined}
+                className="input"
+                {...register('endereco_postagem')}
+              />
+              <span className="help">Preenchido pelo CEP; confira e ajuste se precisar.</span>
+              {errors.endereco_postagem && <MensagemErro id="err-endereco">{errors.endereco_postagem.message}</MensagemErro>}
+            </div>
+          </div>
+        </div>
+
+        {/* 3 · Motivo */}
+        <div className="form-section">
+          <h3>{marcador(3, secaoMotivoCompleta)} Pedido</h3>
+          <p className="section-desc">O que motivou a reversa.</p>
+          <div className="form-grid">
+            <div className="field full">
+              <label htmlFor="motivo">
+                Motivo <span className="req" aria-hidden="true">*</span>
               </label>
               <select
                 id="motivo"
                 disabled={isSubmitting}
+                aria-required="true"
                 aria-invalid={!!errors.motivo}
                 aria-describedby={errors.motivo ? 'err-motivo' : undefined}
-                className={`
-                  ${inputBase} ${FOCO} cursor-pointer
-                  ${errors.motivo ? 'border-red-400' : 'border-slate-300'}
-                `}
+                className="select"
                 {...register('motivo')}
               >
                 <option value="" disabled>Selecione o motivo</option>
@@ -713,31 +600,19 @@ export default function ReverseLogisticsForm({ empresa }: ReverseLogisticsFormPr
                   <option key={m} value={m}>{m}</option>
                 ))}
               </select>
-              {errors.motivo && (
-                <p id="err-motivo" className={errorBase} role="alert">
-                  {errors.motivo.message}
-                </p>
-              )}
+              {errors.motivo && <MensagemErro id="err-motivo">{errors.motivo.message}</MensagemErro>}
             </div>
 
             {exibirEnderecoDestino && (
-              <section
-                className={`space-y-4 rounded-xl border border-slate-200 bg-slate-50/60 p-4 sm:p-5`}
-                aria-labelledby="endereco-destino-troca-titulo"
-              >
-                <div>
-                  <h2 id="endereco-destino-troca-titulo" className="text-sm font-semibold text-slate-800">
-                    Endereço da outra cliente
-                  </h2>
-                  <p className="mt-1 text-xs text-slate-500">
-                    Informe para quem a mercadoria deverá ser enviada.
-                  </p>
+              <section className="subsecao full" aria-labelledby="endereco-destino-troca-titulo">
+                <div style={{ marginBottom: 14 }}>
+                  <h4 id="endereco-destino-troca-titulo" className="strong">Endereço da outra cliente</h4>
+                  <p className="small muted" style={{ marginTop: 2 }}>Informe para quem a mercadoria deverá ser enviada.</p>
                 </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-5">
-                  <div>
-                    <label htmlFor="cep-destino-troca" className={labelBase}>CEP</label>
-                    <div className="relative">
+                <div className="form-grid">
+                  <div className="field">
+                    <label htmlFor="cep-destino-troca">CEP</label>
+                    <div className="input-icon">
                       <input
                         id="cep-destino-troca"
                         type="text"
@@ -749,20 +624,23 @@ export default function ReverseLogisticsForm({ empresa }: ReverseLogisticsFormPr
                         disabled={isSubmitting}
                         aria-invalid={!!errors.cep_destino_troca || !!erroCepDestinoTroca}
                         aria-describedby={errors.cep_destino_troca || erroCepDestinoTroca ? 'err-cep-destino-troca' : undefined}
-                        className={`${inputBase} ${FOCO} ${errors.cep_destino_troca || erroCepDestinoTroca ? 'border-red-400' : 'border-slate-300'} pr-10`}
+                        className="input num"
+                        style={{ paddingLeft: 14, paddingRight: 42 }}
                       />
-                      {buscandoCepDestinoTroca && <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 animate-spin text-slate-400" aria-label="Consultando CEP" />}
+                      {buscandoCepDestinoTroca && (
+                        <span className="trail" style={{ right: 14 }}>
+                          <Loader2 size={16} className="spin" style={{ color: 'var(--text-subtle)' }} aria-label="Consultando CEP" />
+                        </span>
+                      )}
                     </div>
                     {(errors.cep_destino_troca || erroCepDestinoTroca) && (
-                      <p id="err-cep-destino-troca" className={errorBase} role="alert">
-                        {errors.cep_destino_troca?.message || erroCepDestinoTroca}
-                      </p>
+                      <MensagemErro id="err-cep-destino-troca">{errors.cep_destino_troca?.message || erroCepDestinoTroca}</MensagemErro>
                     )}
                   </div>
 
-                  <div>
-                    <label htmlFor="numero_destino_troca" className={labelBase}>
-                      Número <span className="text-red-500">*</span>
+                  <div className="field">
+                    <label htmlFor="numero_destino_troca">
+                      Número <span className="req" aria-hidden="true">*</span>
                     </label>
                     <input
                       id="numero_destino_troca"
@@ -770,21 +648,18 @@ export default function ReverseLogisticsForm({ empresa }: ReverseLogisticsFormPr
                       autoComplete="address-line2"
                       placeholder="Ex: 125 ou S/N"
                       disabled={isSubmitting}
+                      aria-required="true"
                       aria-invalid={!!errors.numero_destino_troca}
                       aria-describedby={errors.numero_destino_troca ? 'err-numero-destino-troca' : undefined}
-                      className={`${inputBase} ${FOCO} ${errors.numero_destino_troca ? 'border-red-400' : 'border-slate-300'}`}
+                      className="input"
                       {...register('numero_destino_troca')}
                     />
-                    {errors.numero_destino_troca && (
-                      <p id="err-numero-destino-troca" className={errorBase} role="alert">
-                        {errors.numero_destino_troca.message}
-                      </p>
-                    )}
+                    {errors.numero_destino_troca && <MensagemErro id="err-numero-destino-troca">{errors.numero_destino_troca.message}</MensagemErro>}
                   </div>
 
-                  <div className="sm:col-span-2">
-                    <label htmlFor="endereco_destino_troca" className={labelBase}>
-                      Endereço <span className="text-red-500">*</span>
+                  <div className="field full">
+                    <label htmlFor="endereco_destino_troca">
+                      Endereço <span className="req" aria-hidden="true">*</span>
                     </label>
                     <input
                       id="endereco_destino_troca"
@@ -792,16 +667,13 @@ export default function ReverseLogisticsForm({ empresa }: ReverseLogisticsFormPr
                       autoComplete="street-address"
                       placeholder="Rua, bairro, cidade/UF — você pode editar"
                       disabled={isSubmitting}
+                      aria-required="true"
                       aria-invalid={!!errors.endereco_destino_troca}
                       aria-describedby={errors.endereco_destino_troca ? 'err-endereco-destino-troca' : undefined}
-                      className={`${inputBase} ${FOCO} ${errors.endereco_destino_troca ? 'border-red-400' : 'border-slate-300'}`}
+                      className="input"
                       {...register('endereco_destino_troca')}
                     />
-                    {errors.endereco_destino_troca && (
-                      <p id="err-endereco-destino-troca" className={errorBase} role="alert">
-                        {errors.endereco_destino_troca.message}
-                      </p>
-                    )}
+                    {errors.endereco_destino_troca && <MensagemErro id="err-endereco-destino-troca">{errors.endereco_destino_troca.message}</MensagemErro>}
                   </div>
                 </div>
               </section>
@@ -809,10 +681,10 @@ export default function ReverseLogisticsForm({ empresa }: ReverseLogisticsFormPr
 
             {/* Justificativa "Outros" — visível condicionalmente */}
             {exibirJustificativa && (
-              <div className="pt-1">
-                <label htmlFor="justificativa_outros" className={labelBase}>
+              <div className="field full">
+                <label htmlFor="justificativa_outros">
                   Justifique a opção "Outros"{' '}
-                  <span className="text-red-500">*</span>
+                  <span className="req" aria-hidden="true">*</span>
                 </label>
                 <textarea
                   id="justificativa_outros"
@@ -821,60 +693,37 @@ export default function ReverseLogisticsForm({ empresa }: ReverseLogisticsFormPr
                   disabled={isSubmitting}
                   aria-required={true}
                   aria-invalid={!!errors.justificativa_outros}
-                  aria-describedby={
-                    errors.justificativa_outros ? 'err-justificativa' : undefined
-                  }
-                  className={`
-                    w-full px-4 py-3 rounded-lg border bg-white text-sm text-slate-900
-                    placeholder:text-slate-400 resize-none transition-colors duration-150
-                    focus:outline-none focus:ring-2 focus:ring-offset-0 focus:border-transparent
-                    disabled:opacity-50 disabled:cursor-not-allowed
-                    ${FOCO}
-                    ${errors.justificativa_outros ? 'border-red-400' : 'border-slate-300'}
-                  `}
+                  aria-describedby={errors.justificativa_outros ? 'err-justificativa' : undefined}
+                  className="textarea"
                   {...register('justificativa_outros')}
                 />
-                {errors.justificativa_outros && (
-                  <p id="err-justificativa" className={errorBase} role="alert">
-                    {errors.justificativa_outros.message}
-                  </p>
-                )}
+                {errors.justificativa_outros && <MensagemErro id="err-justificativa">{errors.justificativa_outros.message}</MensagemErro>}
               </div>
             )}
-
-            {/* Divider */}
-            <hr className="border-slate-100" />
-
-            {/* Botão de submit */}
-            <button
-              type="submit"
-              disabled={isSubmitting || buscandoCep || buscandoCepDestinoTroca}
-              className={`
-                w-full h-12 rounded-lg font-semibold text-sm
-                flex items-center justify-center gap-2
-                transition-colors duration-150 cursor-pointer
-                focus:outline-none focus:ring-2 focus:ring-offset-2
-                disabled:opacity-60 disabled:cursor-not-allowed
-                form-submit ${FOCO}
-              `}
-            >
-              {isSubmitting ? (
-                <>
-                  <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" />
-                  Enviando…
-                </>
-              ) : (
-                <>
-                  <Send className="w-4 h-4" aria-hidden="true" />
-                  Enviar Solicitação
-                </>
-              )}
-            </button>
-
-          </form>
+          </div>
         </div>
 
-      </div>
+        {/* Ações: no celular ficam fixas na base, dentro do vidro (padrão visual, seção 14.5) */}
+        <div className="form-actions sticky">
+          <button
+            type="submit"
+            disabled={isSubmitting || buscandoCep || buscandoCepDestinoTroca}
+            className="btn btn-primary"
+          >
+            {isSubmitting ? (
+              <>
+                <Loader2 size={17} className="spin" aria-hidden="true" />
+                Enviando…
+              </>
+            ) : (
+              <>
+                <Send size={17} aria-hidden="true" />
+                Enviar Solicitação
+              </>
+            )}
+          </button>
+        </div>
+      </form>
     </div>
   );
 }

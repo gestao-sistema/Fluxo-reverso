@@ -28,11 +28,11 @@ export function NcConflitoEdicao({ consultando, diferencas, onConsultar, onReapl
     <section className="nc-aviso nc-field-wide" role="alert" aria-label="Conflito de edição">
       <p><strong>Esta não conformidade foi alterada por outra pessoa.</strong> {MENSAGEM_CONFLITO_EDICAO}</p>
       <div className="flex items-center gap-2 flex-wrap">
-        <button type="button" className="btn-secondary" onClick={onConsultar} disabled={consultando}>
+        <button type="button" className="btn btn-secondary" onClick={onConsultar} disabled={consultando}>
           Consultar versão atual
         </button>
         {diferencas && (
-          <button type="button" className="btn-primary" onClick={onReaplicar}>
+          <button type="button" className="btn btn-primary" onClick={onReaplicar}>
             Reaplicar minhas alterações sobre esta versão
           </button>
         )}
@@ -99,10 +99,10 @@ export function NcConfirmarCorrecao({ correcoes, motivo, disabled, onMotivo, onC
         onChange={(e) => onMotivo(e.target.value)}
       />
       <div className="flex items-center gap-2 flex-wrap">
-        <button type="button" className="btn-primary" onClick={onConfirmar} disabled={disabled || !pronto}>
+        <button type="button" className="btn btn-primary" onClick={onConfirmar} disabled={disabled || !pronto}>
           Confirmar correção
         </button>
-        <button type="button" className="btn-secondary" onClick={onCancelar} disabled={disabled}>
+        <button type="button" className="btn btn-secondary" onClick={onCancelar} disabled={disabled}>
           Voltar sem gravar
         </button>
       </div>
