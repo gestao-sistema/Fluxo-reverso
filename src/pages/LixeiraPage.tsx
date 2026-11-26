@@ -46,6 +46,9 @@ export default function LixeiraPage() {
     return chamados.filter((chamado) => pedidoCorrespondeABusca(chamado, busca));
   }, [busca, chamados]);
 
+  // Consulta falhou sem nada carregado: não dá para saber o conteúdo, então nem contagem nem "vazia".
+  const semDados = !!erro && chamados.length === 0;
+
   const restaurar = async () => {
     if (!idParaRestaurar) return;
     setRestaurando(true);
@@ -78,7 +81,7 @@ export default function LixeiraPage() {
       />
 
       <div className="list-toolbar">
-        <div className="list-summary">{loading ? 'Carregando' : `${filtrados.length} ${filtrados.length === 1 ? 'chamado' : 'chamados'}`}</div>
+        <div className="list-summary">{loading ? 'Carregando' : semDados ? 'Conteúdo indisponível' : `${filtrados.length} ${filtrados.length === 1 ? 'chamado' : 'chamados'}`}</div>
         <div className="input-icon" style={{ flex: '1 1 280px', maxWidth: 420 }}>
           <Search size={16} aria-hidden="true" />
           <input
@@ -102,7 +105,7 @@ export default function LixeiraPage() {
 
       {loading ? (
         <div className="card records-estado" role="status"><div className="skel records-estado-skeleton" /><span>Carregando chamados arquivados...</span></div>
-      ) : filtrados.length === 0 ? (
+      ) : semDados ? null : filtrados.length === 0 ? (
         <div className="card records-estado">
           <div className="records-estado-icone"><Archive size={24} aria-hidden="true" /></div>
           <h3>{busca ? 'Nenhum chamado encontrado' : 'A Lixeira está vazia'}</h3>
